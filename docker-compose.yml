@@ -1,0 +1,32 @@
+version: '3.9'
+services:
+  chromadb:
+    image: chromadb/chroma:latest
+    ports: ["8001:8000"]
+    volumes: [chroma_data:/chroma/chroma]
+
+  backend:
+    build: ./backend
+    ports: ["8000:8000"]
+    environment:
+      DUCKDB_PATH: /app/data/careaudit.duckdb
+      CHROMA_HOST: chromadb
+      CHROMA_PORT: 8000
+      GROQ_API_KEY: ${GROQ_API_KEY}
+    depends_on: [chromadb]
+    volumes:
+      - ./backend:/app
+      - backend_data:/app/data
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  frontend:
+    build: ./frontend
+    ports: ["3000:3000"]
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+      NEXT_PUBLIC_WS_URL: ws://localhost:8000
+    depends_on: [backend]
+
+volumes:
+  chroma_data:
+  backend_data:
