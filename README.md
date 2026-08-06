@@ -1,62 +1,115 @@
 # CareAudit AI
 
-**CareAudit Intelligence** — AI-powered Clinical Audit & Quality Assurance Platform
+CareAudit AI is an end-to-end operational workflow tool designed to automate and augment the clinical audit process, prior authorization intake, and appeal risk prediction. Utilizing a powerful 6-agent AI pipeline and pre-trained medical NLP models, this tool ensures 100% adherence to complex medical policies and significantly reduces turnaround times.
 
-> AI prepares → Human decides → AI audits → Organization learns
+## 🚀 Quick Start Guide
 
-## Tech Stack
+Welcome! If you've just cloned this repository, follow these exact steps to get the full application (Frontend + Backend + Seeded Database) running locally on your machine.
 
-- **Backend**: FastAPI (Python 3.11+) + LangGraph multi-agent orchestration
-- **LLM**: Groq API (llama-3.3-70b-versatile)
-- **Database**: DuckDB (local, zero-config)
-- **Vector DB**: ChromaDB (policy RAG)
-- **Frontend**: Next.js 14 + TypeScript + Tailwind CSS + shadcn/ui
-- **Charts**: Recharts | **Workflow Viz**: React Flow | **Animations**: Framer Motion
+### Prerequisites
 
-## Quick Start
+Ensure you have the following installed on your machine:
+- **Node.js** (v18 or higher)
+- **Python** (v3.10 or higher)
+- **Git**
 
-### 1. Backend
+---
+
+### Step 1: Clone the Repository
+
+Clone the project to your local machine:
 ```bash
+git clone <your-repo-url>
+cd careaudit-ai
+```
+
+---
+
+### Step 2: Backend Setup (Python & DuckDB)
+
+The backend is built with FastAPI and uses an in-memory/file-based DuckDB database. We have included a pre-seeded database (`data/careaudit.duckdb`) so you don't need to run the seeding scripts unless you want to start fresh.
+
+1. **Navigate to the backend directory:**
+   ```bash
+   cd backend
+   ```
+
+2. **Create a Python Virtual Environment:**
+   ```bash
+   python -m venv venv
+   ```
+
+3. **Activate the Virtual Environment:**
+   - **Windows:**
+     ```cmd
+     venv\Scripts\activate
+     ```
+   - **Mac/Linux:**
+     ```bash
+     source venv/bin/activate
+     ```
+
+4. **Install Dependencies:**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+5. **Start the Backend Server:**
+   ```bash
+   # Make sure you are in the careaudit-ai/backend folder
+   # Setting UTF-8 encoding is recommended for Windows
+   set PYTHONIOENCODING=utf-8
+   python -m uvicorn app.main:app --port 8000 --reload
+   ```
+   *The backend will now be running at `http://127.0.0.1:8000`.*
+
+---
+
+### Step 3: Frontend Setup (Next.js & React)
+
+The frontend is a modern, responsive dashboard built with Next.js and Tailwind CSS.
+
+1. **Open a NEW terminal window** (leave the backend running) and navigate to the frontend directory:
+   ```bash
+   cd frontend
+   ```
+
+2. **Install Node Modules:**
+   ```bash
+   npm install
+   ```
+
+3. **Start the Development Server:**
+   ```bash
+   npm run dev
+   ```
+   *Note: If you are on Windows and experience issues with `npm run dev` crashing due to spaces in your folder path, you can run the Next.js binary directly:*
+   ```bash
+   node node_modules/next/dist/bin/next dev
+   ```
+
+4. **Access the Application:**
+   Open your browser and navigate to [http://localhost:3000](http://localhost:3000).
+
+---
+
+### 🗄️ Database Reset & Seeding (Optional)
+
+If you ever need to reset the data and start from a clean slate, you can run the full seeder script.
+*Warning: This will delete all current data in the DuckDB file.*
+
+```bash
+# Ensure the backend server is stopped first to release file locks!
 cd backend
-pip install -r requirements.txt
-python -m app.database  # Initialize DuckDB schema
-python ../scripts/seed_database.py  # Seed demo data
-python ../scripts/ingest_policies.py  # Embed policies into ChromaDB
-uvicorn app.main:app --reload --port 8000
+python scripts/seed_full.py
 ```
+This will regenerate 30 cases, 1000 historical PA records, and fully re-populate the executive dashboards.
 
-### 2. Frontend
-```bash
-cd frontend
-npm install
-npm run dev  # http://localhost:3000
-```
+---
 
-### 3. Docker (optional)
-```bash
-docker-compose up -d
-```
-
-## Modules
-
-1. **Clinical Case Intake** — Document parsing → structured case objects
-2. **Policy Intelligence (RAG)** — Policy retrieval + criteria matching
-3. **Nurse Review Workspace** — 3-panel clinical review interface
-4. **AI QA Audit Engine** — Post-decision quality audit scoring
-5. **Appeal Risk Intelligence** — ML-based appeal overturn prediction
-6. **Reviewer Performance Analytics** — Individual + team metrics
-7. **Training & Coaching** — AI-generated personalized learning
-8. **Executive Command Center** — C-suite KPI dashboard
-9. **Multi-Agent Orchestration** — LangGraph state machine (6 agents)
-10. **Conversational Governance** — Natural language Q&A interface
-
-## Demo Users
-
-| Name | Role | Email | Password |
-|------|------|-------|----------|
-| Admin User | ADMIN | admin@careaudit.ai | admin123 |
-| Sarah Collins | NURSE | sarah.collins@careaudit.ai | nurse123 |
-| Marcus Webb | NURSE | marcus.webb@careaudit.ai | nurse123 |
-| Priya Sharma | NURSE | priya.sharma@careaudit.ai | nurse123 |
-| David Chen | NURSE | david.chen@careaudit.ai | nurse123 |
-| James Wilson | EXECUTIVE | james.wilson@careaudit.ai | exec123 |
+### 🛡️ Core Technologies & Architecture
+- **Frontend:** Next.js, React, Tailwind CSS
+- **Backend:** FastAPI, Python, LangGraph
+- **Database:** DuckDB (In-Memory Analytics), SQLAlchemy
+- **Security:** End-to-End Encryption, RBAC (Role-Based Access Control)
+- **AI Core:** 6-Agent Pipeline (Intake, Policy, QA, Reviewer Assistant, Appeal Risk, Executive/Training).
