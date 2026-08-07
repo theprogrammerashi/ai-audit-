@@ -313,7 +313,6 @@ export default function HomePage() {
           <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
             {isLoggedIn ? (
               <>
-                <span style={{ fontFamily: "'Outfit',sans-serif", fontSize: ".82rem", color: "rgba(15,14,12,.55)", fontWeight: 500 }}>{userName ? `Hi, ${userName.split(" ")[0]}` : "Welcome back"}</span>
                 <button className="btn-brand" onClick={() => router.push("/cases")}>Open Platform <ArrowRight size={14} /></button>
                 <button className="btn-signout" onClick={handleLogout}><LogOut size={14} /> Sign Out</button>
               </>

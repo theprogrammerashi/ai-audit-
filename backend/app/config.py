@@ -7,6 +7,10 @@ from typing import Optional
 import os
 
 
+_current_dir = os.path.dirname(os.path.abspath(__file__))
+ROOT_DIR = os.path.dirname(os.path.dirname(_current_dir))
+
+
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
     
@@ -16,7 +20,7 @@ class Settings(BaseSettings):
     DEBUG: bool = True
     
     # Database (DuckDB)
-    DUCKDB_PATH: str = "./data/careaudit.duckdb"
+    DUCKDB_PATH: str = os.path.join(ROOT_DIR, "data", "careaudit.duckdb")
     
     # Groq API
     GROQ_API_KEY: str = ""
@@ -26,7 +30,7 @@ class Settings(BaseSettings):
     # ChromaDB
     CHROMA_HOST: str = "localhost"
     CHROMA_PORT: int = 8001
-    CHROMA_PERSIST_DIR: str = "./data/chroma"
+    CHROMA_PERSIST_DIR: str = os.path.join(ROOT_DIR, "data", "chroma")
     
     # Security
     SECRET_KEY: str = "careaudit-dev-secret-key-change-in-production-32chars"

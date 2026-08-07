@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState, Fragment } from "react";
-import { AlertTriangle, DollarSign, TrendingUp, Loader2, FileText, Activity, Clock, Scale, CheckCircle, XCircle, Users, BarChart3, Shield, ArrowRight, ChevronDown, ChevronUp, Info, Target } from "lucide-react";
+import { AlertTriangle, DollarSign, TrendingUp, Loader2, FileText, Activity, Clock, Scale, CheckCircle, XCircle, X, Users, BarChart3, Shield, ArrowRight, ChevronDown, ChevronUp, Info, Target } from "lucide-react";
 import MetricCard from "@/components/shared/MetricCard";
+import CustomDropdown from "@/components/shared/CustomDropdown";
 import api from "@/lib/api";
 import { useRouter } from "next/navigation";
 
@@ -23,6 +24,16 @@ export default function AppealPage() {
   const [error, setError] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string>("NURSE");
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
+
+  // Tracker filters
+  const [trackerSearch, setTrackerSearch] = useState("");
+  const [trackerLevelFilter, setTrackerLevelFilter] = useState("all");
+  const [trackerStatusFilter, setTrackerStatusFilter] = useState("all");
+
+  // Risk filters
+  const [riskSearch, setRiskSearch] = useState("");
+  const [riskLevelFilter, setRiskLevelFilter] = useState("all");
+  const [riskDecisionFilter, setRiskDecisionFilter] = useState("all");
 
   useEffect(() => {
     const fetchData = async () => {
@@ -81,6 +92,49 @@ export default function AppealPage() {
   // Outcome distribution from analytics
   const outcomeDist = analyticsData.outcome_distribution || {};
   const totalOutcome = (outcomeDist.overturned || 0) + (outcomeDist.upheld || 0) + (outcomeDist.pending || 0);
+
+  // Filtered lists for rendering
+  const filteredIntake = intake.filter((c: any) => {
+    const query = trackerSearch.toLowerCase().trim();
+    const matchesSearch = !query || 
+      (c.id && c.id.toLowerCase().includes(query)) ||
+      (c.member_id && c.member_id.toLowerCase().includes(query)) ||
+      (c.diagnosis_category && c.diagnosis_category.toLowerCase().includes(query)) ||
+      (c.requested_service && c.requested_service.toLowerCase().includes(query));
+      
+    const matchesLevel = trackerLevelFilter === "all" ||
+      (c.appeal_level && c.appeal_level.toLowerCase().includes(trackerLevelFilter.toLowerCase()));
+      
+    let matchesStatus = true;
+    if (trackerStatusFilter !== "all") {
+      if (trackerStatusFilter === "pending") {
+        matchesStatus = !c.appeal_outcome;
+      } else if (trackerStatusFilter === "upheld") {
+        matchesStatus = c.appeal_outcome === "Upheld";
+      } else if (trackerStatusFilter === "overturned") {
+        matchesStatus = !!(c.appeal_outcome && c.appeal_outcome.includes("Overturned"));
+      }
+    }
+    
+    return matchesSearch && matchesLevel && matchesStatus;
+  });
+
+  const filteredCases = cases.filter((c: any) => {
+    const query = riskSearch.toLowerCase().trim();
+    const matchesSearch = !query ||
+      (c.case_number && c.case_number.toLowerCase().includes(query)) ||
+      (c.patient_name && c.patient_name.toLowerCase().includes(query)) ||
+      (c.diagnosis && c.diagnosis.toLowerCase().includes(query)) ||
+      (c.reviewer_name && c.reviewer_name.toLowerCase().includes(query));
+      
+    const matchesLevel = riskLevelFilter === "all" ||
+      c.risk_category === riskLevelFilter;
+      
+    const matchesDecision = riskDecisionFilter === "all" ||
+      c.decision === riskDecisionFilter;
+      
+    return matchesSearch && matchesLevel && matchesDecision;
+  });
 
   return (
     <div className="animate-fade-in" style={{ padding: "32px" }}>
@@ -144,6 +198,66 @@ export default function AppealPage() {
                 <span className="badge badge-danger">{overturnedCount} Overturned</span>
               </div>
             </div>
+            {/* Search & Filter Controls */}
+            <div style={{ padding: "12px 20px", borderBottom: "1px solid var(--border-default)", display: "flex", gap: "12px", background: "var(--bg-hover)", alignItems: "center", flexWrap: "wrap" }}>
+              <div style={{ flex: 1, minWidth: "200px", position: "relative" }}>
+                <input
+                  type="text"
+                  placeholder="Search by ID, Member, Diagnosis, or Service..."
+                  value={trackerSearch}
+                  onChange={(e) => setTrackerSearch(e.target.value)}
+                  className="input"
+                  style={{ paddingLeft: "36px", paddingRight: "32px" }}
+                />
+                <svg style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "var(--text-tertiary)" }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                {trackerSearch && (
+                  <button
+                    onClick={() => setTrackerSearch("")}
+                    style={{
+                      position: "absolute",
+                      right: "10px",
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      padding: "4px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "var(--text-tertiary)",
+                      borderRadius: "50%",
+                      transition: "background 0.2s"
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg-hover)")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+              <CustomDropdown
+                value={trackerLevelFilter}
+                onChange={setTrackerLevelFilter}
+                options={[
+                  { value: "all", label: "All Levels" },
+                  { value: "Level 1", label: "Level 1" },
+                  { value: "Level 2", label: "Level 2" },
+                  { value: "Expedited", label: "Expedited" }
+                ]}
+              />
+              <CustomDropdown
+                value={trackerStatusFilter}
+                onChange={setTrackerStatusFilter}
+                options={[
+                  { value: "all", label: "All Statuses" },
+                  { value: "pending", label: "Pending Review" },
+                  { value: "upheld", label: "Upheld" },
+                  { value: "overturned", label: "Overturned" }
+                ]}
+              />
+            </div>
+
             <div className="data-table-container" style={{ margin: 0, border: "none", borderRadius: 0 }}>
               <table className="data-table">
                 <thead>
@@ -160,10 +274,10 @@ export default function AppealPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {intake.length === 0 ? (
-                    <tr><td colSpan={9} style={{ padding: "32px", textAlign: "center", color: "var(--text-secondary)" }}>No appeal cases found.</td></tr>
+                  {filteredIntake.length === 0 ? (
+                    <tr><td colSpan={9} style={{ padding: "32px", textAlign: "center", color: "var(--text-secondary)" }}>No appeal cases found matching filters.</td></tr>
                   ) : (
-                    intake.map((c: any) => {
+                    filteredIntake.map((c: any) => {
                       const outcome = outcomeBadge[c.appeal_outcome] || null;
                       return (
                         <tr key={c.id} style={{ cursor: "pointer" }} onClick={() => router.push(`/workspace/appeal/${c.id}`)}>
@@ -219,6 +333,66 @@ export default function AppealPage() {
                 <Info size={14} /> Click any row for detailed risk analysis
               </span>
             </div>
+            {/* Search & Filter Controls */}
+            <div style={{ padding: "12px 20px", borderBottom: "1px solid var(--border-default)", display: "flex", gap: "12px", background: "var(--bg-hover)", alignItems: "center", flexWrap: "wrap" }}>
+              <div style={{ flex: 1, minWidth: "200px", position: "relative" }}>
+                <input
+                  type="text"
+                  placeholder="Search by Case #, Patient, Diagnosis, or Reviewer..."
+                  value={riskSearch}
+                  onChange={(e) => setRiskSearch(e.target.value)}
+                  className="input"
+                  style={{ paddingLeft: "36px", paddingRight: "32px" }}
+                />
+                <svg style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "var(--text-tertiary)" }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                {riskSearch && (
+                  <button
+                    onClick={() => setRiskSearch("")}
+                    style={{
+                      position: "absolute",
+                      right: "10px",
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      padding: "4px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "var(--text-tertiary)",
+                      borderRadius: "50%",
+                      transition: "background 0.2s"
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg-hover)")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+              <CustomDropdown
+                value={riskLevelFilter}
+                onChange={setRiskLevelFilter}
+                options={[
+                  { value: "all", label: "All Risk Levels" },
+                  { value: "CRITICAL", label: "Critical" },
+                  { value: "HIGH", label: "High" },
+                  { value: "MEDIUM", label: "Medium" },
+                  { value: "LOW", label: "Low" }
+                ]}
+              />
+              <CustomDropdown
+                value={riskDecisionFilter}
+                onChange={setRiskDecisionFilter}
+                options={[
+                  { value: "all", label: "All Decisions" },
+                  { value: "DENIED", label: "Denied" },
+                  { value: "APPROVED", label: "Approved" }
+                ]}
+              />
+            </div>
+
             <div className="data-table-container" style={{ margin: 0, border: "none", borderRadius: 0 }}>
               <table className="data-table">
                 <thead>
@@ -229,15 +403,15 @@ export default function AppealPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {cases.length === 0 ? (
+                  {filteredCases.length === 0 ? (
                     <tr>
                       <td colSpan={9} style={{ padding: "32px", textAlign: "center", color: "var(--text-secondary)" }}>
-                        <CheckCircle size={24} style={{ color: "var(--success)", marginBottom: "8px" }} />
-                        <div>{userRole === "NURSE" ? "None of your cases currently have appeal risk flags." : "No appeal risk cases found for your team."}</div>
+                        <Info size={24} style={{ color: "var(--primary)", marginBottom: "8px" }} />
+                        <div>No cases found matching filters.</div>
                       </td>
                     </tr>
                   ) : (
-                    cases.map((c: any) => {
+                    filteredCases.map((c: any) => {
                       const isExpanded = expandedRow === c.case_number;
                       const prob = Math.round(c.overturn_probability * 100);
                       const probColor = prob > 60 ? "var(--danger)" : prob > 30 ? "var(--warning)" : "var(--success)";

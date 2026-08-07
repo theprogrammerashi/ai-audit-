@@ -576,12 +576,14 @@ def format_fallback(intent: str, data: dict) -> str:
         lines.append("| --- | --- | --- | --- | --- | --- | --- |")
         for i, r in enumerate(reviewers, 1):
             gaps = ", ".join(r.get("gaps", [])[:2]) if r.get("gaps") else "None"
-            trend_icon = '[UP]' if r.get('trend') == 'improving' else '[DOWN]' if r.get('trend') == 'declining' else '[--]'
-            lines.append(f"| {i} | {r['name']} | {r['qa_score']}% | {r['approval_rate']} | {r['volume']} | {trend_icon} {r['trend']} | {gaps} |")
+            trend_icon = '[UP]' if r.get('trend', '').lower() == 'improving' else '[DOWN]' if r.get('trend', '').lower() == 'declining' else '[--]'
+            qa_score_formatted = f"{r['qa_score']:.1f}" if isinstance(r['qa_score'], (int, float)) else str(r['qa_score'])
+            lines.append(f"| {i} | {r['name']} | {qa_score_formatted}% | {r['approval_rate']} | {r['volume']} | {trend_icon} {r['trend']} | {gaps} |")
 
         worst = reviewers[0] if reviewers else None
         if worst and worst.get('qa_score', 100) < 80:
-            lines.append(f"\n**[ACTION REQUIRED] Immediate Attention Needed:** {worst['name']} has the lowest QA score at **{worst['qa_score']}%**. Their main gaps are in {', '.join(worst.get('gaps', ['documentation']))}.")
+            worst_qa_formatted = f"{worst['qa_score']:.1f}" if isinstance(worst['qa_score'], (int, float)) else str(worst['qa_score'])
+            lines.append(f"\n**[ACTION REQUIRED] Immediate Attention Needed:** {worst['name']} has the lowest QA score at **{worst_qa_formatted}%**. Their main gaps are in {', '.join(worst.get('gaps', ['documentation']))}.")
         lines.append(f"\n**[INSIGHT] Recommendation:** Focus coaching efforts on reviewers scoring below the team average of {avg}%.")
         return "\n".join(lines)
 
@@ -958,4 +960,6 @@ For trend_query: Identify whether the organization is improving or declining. Hi
             "content": format_fallback(intent, data),
             "structured_data": {"intent": intent}
         }
+
+
 

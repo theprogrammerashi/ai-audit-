@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FolderOpen, Plus, Search, ChevronRight, Clock, Loader2, AlertTriangle, FileText, Eye } from "lucide-react";
 import api from "@/lib/api";
+import CustomDropdown from "@/components/shared/CustomDropdown";
 
 const statusColors: Record<string, string> = {
   PENDING_REVIEW: "badge-warning", IN_REVIEW: "badge-info", DECIDED: "badge-primary",
@@ -119,22 +120,29 @@ export default function CasesPage() {
         
         {activeTab === "prior_auths" && (
           <>
-            <select className="input" style={{ width: "200px" }} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-              <option value="ALL">All Statuses</option>
-              <option value="PENDING_REVIEW">Pending Review</option>
-              <option value="IN_REVIEW">In Review</option>
-              <option value="DECIDED">Decided</option>
-              <option value="AUDITED">Audited</option>
-
-            </select>
+            <CustomDropdown
+              value={statusFilter}
+              onChange={setStatusFilter}
+              options={[
+                { value: "ALL", label: "All Statuses" },
+                { value: "PENDING_REVIEW", label: "Pending Review" },
+                { value: "IN_REVIEW", label: "In Review" },
+                { value: "DECIDED", label: "Decided" },
+                { value: "AUDITED", label: "Audited" }
+              ]}
+              width="200px"
+            />
             
             {user?.role !== "NURSE" && (
-              <select className="input" style={{ width: "200px" }} value={nurseFilter} onChange={(e) => setNurseFilter(e.target.value)}>
-                <option value="ALL">All Nurses</option>
-                {uniqueNurses.map((n: any) => (
-                  <option key={n} value={n}>{n}</option>
-                ))}
-              </select>
+              <CustomDropdown
+                value={nurseFilter}
+                onChange={setNurseFilter}
+                options={[
+                  { value: "ALL", label: "All Nurses" },
+                  ...uniqueNurses.map((n: any) => ({ value: n, label: n }))
+                ]}
+                width="200px"
+              />
             )}
           </>
         )}

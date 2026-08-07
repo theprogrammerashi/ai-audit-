@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { Bot, X, Send, Minimize2, Sparkles, ChevronDown, Lock, Maximize2, Copy, Check, ExternalLink, HelpCircle, MessageSquare } from "lucide-react";
+import { Bot, X, Send, Minimize2, Sparkles, ChevronDown, Lock, Maximize2, Copy, Check, ExternalLink, HelpCircle, MessageSquare, TrendingUp, TrendingDown, Activity } from "lucide-react";
 import api from "@/lib/api";
 
 interface Message {
@@ -99,6 +99,22 @@ function renderInlineMarkdown(text: string) {
     if (part.startsWith("**") && part.endsWith("**")) {
       return <strong key={i}>{part.slice(2, -2)}</strong>;
     }
+
+    // Split for Trend tokens [UP], [DOWN], [--]
+    if (part.includes('[UP]') || part.includes('[DOWN]') || part.includes('[--]')) {
+      const tokens = part.split(/(\[UP\]|\[DOWN\]|\[--\])/g);
+      return (
+        <span key={i}>
+          {tokens.map((tok, j) => {
+            if (tok === '[UP]') return <TrendingUp key={j} size={13} style={{ color: 'var(--success)', display: 'inline-flex', verticalAlign: 'middle', marginRight: '2px' }} />;
+            if (tok === '[DOWN]') return <TrendingDown key={j} size={13} style={{ color: 'var(--danger)', display: 'inline-flex', verticalAlign: 'middle', marginRight: '2px' }} />;
+            if (tok === '[--]') return <Activity key={j} size={13} style={{ color: 'var(--info, #0ea5e9)', display: 'inline-flex', verticalAlign: 'middle', marginRight: '2px' }} />;
+            return tok;
+          })}
+        </span>
+      );
+    }
+
     // Color-code scores inline
     const scoreMatch = part.match(/(\d{1,3})(\.\d+)?%?/);
     if (scoreMatch) {
@@ -144,7 +160,32 @@ function renderTableJSX(rows: string[], segIdx: number) {
                   else if (numVal >= 70) { color = 'var(--warning)'; fw = 600; }
                   else if (numVal < 70 && numVal > 0) { color = 'var(--danger)'; fw = 600; }
                 }
-                return <td key={ci} style={{ padding: '6px 10px', borderBottom: '1px solid var(--border-default)', color, fontWeight: fw }}>{cell}</td>;
+
+                let cellElement: React.ReactNode = cell;
+                if (cell.includes('[UP]')) {
+                  cellElement = (
+                    <span style={{ color: 'var(--success)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}>
+                      <TrendingUp size={12} />
+                      {cell.replace('[UP]', '').trim()}
+                    </span>
+                  );
+                } else if (cell.includes('[DOWN]')) {
+                  cellElement = (
+                    <span style={{ color: 'var(--danger)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}>
+                      <TrendingDown size={12} />
+                      {cell.replace('[DOWN]', '').trim()}
+                    </span>
+                  );
+                } else if (cell.includes('[--]')) {
+                  cellElement = (
+                    <span style={{ color: 'var(--info, #0ea5e9)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}>
+                      <Activity size={12} />
+                      {cell.replace('[--]', '').trim()}
+                    </span>
+                  );
+                }
+
+                return <td key={ci} style={{ padding: '6px 10px', borderBottom: '1px solid var(--border-default)', color, fontWeight: fw }}>{cellElement}</td>;
               })}
             </tr>
           ))}

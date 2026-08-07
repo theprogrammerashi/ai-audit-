@@ -240,10 +240,18 @@ export default function ChatPage() {
       if (seg.type === 'table') {
         html += renderTable(seg.content);
       } else {
-        html += seg.content
+        let content = seg.content
           .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
           .replace(/\n/g, "<br />")
           .replace(/^- /gm, "&#8226; ");
+
+        // Also replace in plain text
+        content = content
+          .replace(/\[UP\]/g, `<span style="color:var(--success);font-weight:600;display:inline-flex;align-items:center;gap:4px;white-space:nowrap;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;flex-shrink:0;"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg></span>`)
+          .replace(/\[DOWN\]/g, `<span style="color:var(--danger);font-weight:600;display:inline-flex;align-items:center;gap:4px;white-space:nowrap;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;flex-shrink:0;"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"></polyline><polyline points="17 18 23 18 23 12"></polyline></svg></span>`)
+          .replace(/\[--\]/g, `<span style="color:var(--info, #0ea5e9);font-weight:600;display:inline-flex;align-items:center;gap:4px;white-space:nowrap;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;flex-shrink:0;"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg></span>`);
+
+        html += content;
       }
     }
     return html;
@@ -281,7 +289,40 @@ export default function ChatPage() {
           else if (v >= 70) cellStyle += 'color:var(--warning);font-weight:600;';
           else if (v < 70 && v > 0) cellStyle += 'color:var(--danger);font-weight:600;';
         }
-        tableHtml += `<td style="${cellStyle}">${cell.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')}</td>`;
+
+        let cellContent = cell.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        if (cell.includes('[UP]')) {
+          cellContent = `
+            <span style="color:var(--success);font-weight:600;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
+                <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+                <polyline points="17 6 23 6 23 12"></polyline>
+              </svg>
+              ${cell.replace('[UP]', '').trim()}
+            </span>
+          `;
+        } else if (cell.includes('[DOWN]')) {
+          cellContent = `
+            <span style="color:var(--danger);font-weight:600;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
+                <polyline points="23 18 13.5 8.5 8.5 13.5 1 6"></polyline>
+                <polyline points="17 18 23 18 23 12"></polyline>
+              </svg>
+              ${cell.replace('[DOWN]', '').trim()}
+            </span>
+          `;
+        } else if (cell.includes('[--]')) {
+          cellContent = `
+            <span style="color:var(--info, #0ea5e9);font-weight:600;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+              </svg>
+              ${cell.replace('[--]', '').trim()}
+            </span>
+          `;
+        }
+
+        tableHtml += `<td style="${cellStyle}">${cellContent}</td>`;
       }
       tableHtml += '</tr>';
     }
@@ -583,7 +624,7 @@ export default function ChatPage() {
               
               <div
                 style={{
-                  maxWidth: "75%",
+                  maxWidth: msg.role === "assistant" ? "88%" : "75%",
                   padding: msg.role === "assistant" ? "20px 24px" : "12px 18px",
                   borderRadius: "var(--radius-lg)",
                   background: msg.role === "assistant" ? "var(--bg-surface)" : "var(--primary)",

@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { ShieldCheck, ChevronRight, Clock, AlertTriangle, Loader2, Search, Filter, X, FolderOpen, FileText, BadgeCheck, EyeOff } from "lucide-react";
 import api from "@/lib/api";
+import CustomDropdown from "@/components/shared/CustomDropdown";
 
 type FilterState = {
   search: string;
@@ -236,77 +237,77 @@ export default function AuditPage() {
           )}
         </button>
 
-        <select
+        <CustomDropdown
           value={filters.sort}
-          onChange={(e) => setFilters((p) => ({ ...p, sort: e.target.value }))}
-          style={{
-            padding: "8px 12px", borderRadius: "var(--radius-md)",
-            border: "1px solid var(--border-default)", background: "var(--bg-surface)",
-            fontSize: "0.85rem", color: "var(--text-primary)", cursor: "pointer",
-          }}
-        >
-          <option value="newest">Newest First</option>
-          <option value="oldest">Oldest First</option>
-          <option value="qa_high">QA Score: High → Low</option>
-          <option value="qa_low">QA Score: Low → High</option>
-          <option value="risk_high">Risk: High → Low</option>
-        </select>
+          onChange={(val) => setFilters((p) => ({ ...p, sort: val }))}
+          options={[
+            { value: "newest", label: "Newest First" },
+            { value: "oldest", label: "Oldest First" },
+            { value: "qa_high", label: "QA Score: High → Low" },
+            { value: "qa_low", label: "QA Score: Low → High" },
+            { value: "risk_high", label: "Risk: High → Low" }
+          ]}
+          width="160px"
+        />
       </div>
-
       {/* Advanced Filter Panel */}
       {showFilters && (
         <div className="card" style={{ padding: "16px 20px", marginBottom: "16px", display: "flex", gap: "16px", alignItems: "flex-end", flexWrap: "wrap" }}>
           <div style={{ flex: 1, minWidth: "150px" }}>
             <label className="label" style={{ display: "block", marginBottom: "4px" }}>Nurse / Reviewer</label>
-            <select
+            <CustomDropdown
               value={filters.nurse}
-              onChange={(e) => setFilters((p) => ({ ...p, nurse: e.target.value }))}
-              style={{ width: "100%", padding: "8px", borderRadius: "var(--radius-sm)", border: "1px solid var(--border-default)", fontSize: "0.85rem", background: "var(--bg-body)", color: "var(--text-primary)" }}
-            >
-              <option value="">All Nurses</option>
-              {nurses.map((n) => <option key={n} value={n}>{n}</option>)}
-            </select>
+              onChange={(val) => setFilters((p) => ({ ...p, nurse: val }))}
+              options={[
+                { value: "", label: "All Nurses" },
+                ...nurses.map((n) => ({ value: n, label: n }))
+              ]}
+              width="100%"
+            />
           </div>
 
           <div style={{ flex: 1, minWidth: "120px" }}>
             <label className="label" style={{ display: "block", marginBottom: "4px" }}>Risk Level</label>
-            <select
+            <CustomDropdown
               value={filters.risk}
-              onChange={(e) => setFilters((p) => ({ ...p, risk: e.target.value }))}
-              style={{ width: "100%", padding: "8px", borderRadius: "var(--radius-sm)", border: "1px solid var(--border-default)", fontSize: "0.85rem", background: "var(--bg-body)", color: "var(--text-primary)" }}
-            >
-              <option value="">All Risk Levels</option>
-              <option value="LOW">Low</option>
-              <option value="MEDIUM">Medium</option>
-              <option value="HIGH">High</option>
-              <option value="CRITICAL">Critical</option>
-            </select>
+              onChange={(val) => setFilters((p) => ({ ...p, risk: val }))}
+              options={[
+                { value: "", label: "All Risk Levels" },
+                { value: "LOW", label: "Low" },
+                { value: "MEDIUM", label: "Medium" },
+                { value: "HIGH", label: "High" },
+                { value: "CRITICAL", label: "Critical" }
+              ]}
+              width="100%"
+            />
           </div>
 
           <div style={{ flex: 1, minWidth: "120px" }}>
             <label className="label" style={{ display: "block", marginBottom: "4px" }}>QA Result</label>
-            <select
+            <CustomDropdown
               value={filters.result}
-              onChange={(e) => setFilters((p) => ({ ...p, result: e.target.value }))}
-              style={{ width: "100%", padding: "8px", borderRadius: "var(--radius-sm)", border: "1px solid var(--border-default)", fontSize: "0.85rem", background: "var(--bg-body)", color: "var(--text-primary)" }}
-            >
-              <option value="">All Results</option>
-              <option value="PASS">Pass (≥80%)</option>
-              <option value="FAIL">Fail (&lt;80%)</option>
-            </select>
+              onChange={(val) => setFilters((p) => ({ ...p, result: val }))}
+              options={[
+                { value: "", label: "All Results" },
+                { value: "PASS", label: "Pass (≥80%)" },
+                { value: "FAIL", label: "Fail (<80%)" }
+              ]}
+              width="100%"
+            />
           </div>
 
           <div style={{ flex: 1, minWidth: "120px" }}>
             <label className="label" style={{ display: "block", marginBottom: "4px" }}>Decision</label>
-            <select
+            <CustomDropdown
               value={filters.decision}
-              onChange={(e) => setFilters((p) => ({ ...p, decision: e.target.value }))}
-              style={{ width: "100%", padding: "8px", borderRadius: "var(--radius-sm)", border: "1px solid var(--border-default)", fontSize: "0.85rem", background: "var(--bg-body)", color: "var(--text-primary)" }}
-            >
-              <option value="">All Decisions</option>
-              <option value="APPROVED">Approved</option>
-              <option value="DENIED">Denied</option>
-            </select>
+              onChange={(val) => setFilters((p) => ({ ...p, decision: val }))}
+              options={[
+                { value: "", label: "All Decisions" },
+                { value: "APPROVED", label: "Approved" },
+                { value: "DENIED", label: "Denied" }
+              ]}
+              width="100%"
+            />
           </div>
 
           <button onClick={clearFilters} className="btn btn-secondary" style={{ padding: "8px 14px", fontSize: "0.85rem" }}>

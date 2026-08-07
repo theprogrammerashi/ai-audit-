@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import {
   ShieldCheck, ArrowLeft, XCircle, Lightbulb, Loader2, AlertTriangle,
   CheckCircle, Edit3, Save, Eye, EyeOff, Target, FileText,
-  Scale, Clock, Users, ChevronDown, ChevronUp, Shield, BadgeCheck
+  Scale, Clock, Users, ChevronDown, ChevronUp, Shield, BadgeCheck, X
 } from "lucide-react";
 import api from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
@@ -232,7 +232,7 @@ export default function AuditDetailPage() {
         </div>
 
         <div style={{ display: "flex", justifyContent: "center", gap: "10px", flexWrap: "wrap" }}>
-          <span className={`badge ${d.risk_level === "CRITICAL" ? "badge-danger" : d.risk_level === "HIGH" ? "badge-warning" : d.risk_level === "MEDIUM" ? "badge-info" : "badge-success"}`}
+          <span className={`badge ${(d.risk_level === "CRITICAL" || d.risk_level === "HIGH") ? "badge-danger" : d.risk_level === "MEDIUM" ? "badge-info" : "badge-success"}`}
             style={{ fontSize: "0.85rem", padding: "6px 18px" }}>
             <Shield size={12} style={{ marginRight: "4px" }} /> {d.risk_level} Risk
           </span>
@@ -354,7 +354,7 @@ export default function AuditDetailPage() {
                 <div style={{ height: "6px", background: "var(--border-default)", borderRadius: "3px", overflow: "hidden" }}>
                   <div style={{
                     height: "100%", width: `${currentVal}%`, borderRadius: "3px",
-                    background: `linear-gradient(90deg, ${valColor}, ${valColor}cc)`,
+                    background: valColor,
                     transition: "width 0.5s ease"
                   }} />
                 </div>
@@ -400,109 +400,119 @@ export default function AuditDetailPage() {
         )}
       </div>
 
-      {/* ── Dimension Detail (Expand) ──────────────────────────── */}
+      {/* ── Dimension Detail Modal ──────────────────────────── */}
       {selectedDim && !isEditing && (() => {
         const dimConfig = DIMENSION_CONFIG.find(d => d.key === selectedDim);
         return (
-          <div className="card" style={{
-            padding: "20px", marginBottom: "24px", borderLeft: "4px solid var(--primary)",
-            background: "linear-gradient(135deg, var(--bg-surface), rgba(232,82,26,0.02))"
-          }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
-              <h3 style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--primary)", fontSize: "0.95rem", margin: 0 }}>
-                <Lightbulb size={18} /> {dimConfig?.label} — Detailed Analysis
-              </h3>
-              <button onClick={() => setSelectedDim(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-tertiary)" }}>
-                <ChevronUp size={16} />
-              </button>
-            </div>
-            <p style={{ fontSize: "0.9rem", lineHeight: 1.7, color: "var(--text-secondary)", marginBottom: "16px" }}>
-              {selectedDim === "timeliness_score"
-                ? (d.timeliness_explanation || "The review was completed within the expected SLA timeframe. Timeliness is measured from case assignment to final decision submission.")
-                : `Analysis for ${dimConfig?.label} based on the submitted rationale, clinical evidence, and policy criteria. Score: ${d[selectedDim] ?? 'N/A'}%. Weight contribution: ${Math.round((dimConfig?.weight || 0) * 100)}% of total.`}
-            </p>
-            {d.missing_evidence && d.missing_evidence.length > 0 && (
+          <div style={{
+            position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+            background: "rgba(0,0,0,0.5)", zIndex: 9999,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            backdropFilter: "blur(2px)"
+          }} onClick={() => setSelectedDim(null)}>
+            <div style={{
+              background: "var(--bg-surface)", borderRadius: "var(--radius-lg)",
+              width: "90%", maxWidth: "600px", display: "flex", flexDirection: "column",
+              boxShadow: "var(--shadow-xl)", overflow: "hidden"
+            }} onClick={(e) => e.stopPropagation()}>
               <div style={{
-                background: "linear-gradient(135deg, rgba(220,38,38,0.06), rgba(220,38,38,0.02))",
-                padding: "14px", borderRadius: "var(--radius-md)", border: "1px solid rgba(220,38,38,0.15)"
+                padding: "16px 20px", borderBottom: "1px solid var(--border-default)",
+                display: "flex", justifyContent: "space-between", alignItems: "center"
               }}>
-                <strong style={{ color: "var(--danger)", fontSize: "0.82rem", display: "flex", alignItems: "center", gap: "6px", marginBottom: "8px" }}>
-                  <XCircle size={14} /> Missing Evidence
-                </strong>
-                <ul style={{ margin: 0, paddingLeft: "20px", fontSize: "0.82rem", color: "var(--text-secondary)" }}>
-                  {d.missing_evidence.map((e: string, i: number) => <li key={i} style={{ marginBottom: "4px" }}>{e}</li>)}
-                </ul>
+                <span style={{ fontWeight: 600, fontSize: "0.95rem", display: "flex", alignItems: "center", gap: "8px", color: "var(--primary)" }}>
+                  <Lightbulb size={18} /> {dimConfig?.label} — Detailed Analysis
+                </span>
+                <button onClick={() => setSelectedDim(null)} style={{
+                  background: "none", border: "none", cursor: "pointer", padding: "4px",
+                  color: "var(--text-tertiary)", borderRadius: "var(--radius-sm)"
+                }}>
+                  <X size={20} />
+                </button>
               </div>
-            )}
+              <div style={{ padding: "24px", overflowY: "auto", maxHeight: "70vh", fontSize: "0.88rem", lineHeight: 1.6, color: "var(--text-secondary)" }}>
+                <p style={{ fontSize: "0.9rem", color: "var(--text-primary)", marginBottom: "16px", fontWeight: 500 }}>
+                  {selectedDim === "timeliness_score"
+                    ? (d.timeliness_explanation || "The review was completed within the expected SLA timeframe. Timeliness is measured from case assignment to final decision submission.")
+                    : `Analysis for ${dimConfig?.label} based on the submitted rationale, clinical evidence, and policy criteria. Score: ${d[selectedDim] ?? 'N/A'}%. Weight contribution: ${Math.round((dimConfig?.weight || 0) * 100)}% of total.`}
+                </p>
+
+                {(() => {
+                  const getDimFindings = () => {
+                    if (!d.findings || d.findings.length === 0) return [];
+                    return d.findings.filter((f: any) => {
+                      const type = f.type || "";
+                      const desc = (f.description || "").toLowerCase();
+                      
+                      if (selectedDim === "clinical_accuracy") {
+                        return type === "POLICY_MISMATCH" || type === "CLINICAL_MISS";
+                      }
+                      if (selectedDim === "documentation_completeness") {
+                        return type === "DOCUMENTATION_GAP" && !desc.includes("policy code");
+                      }
+                      if (selectedDim === "policy_compliance") {
+                        return type === "DOCUMENTATION_GAP" && desc.includes("policy code");
+                      }
+                      if (selectedDim === "consistency_score") {
+                        return type === "CONSISTENCY_FLAG";
+                      }
+                      if (selectedDim === "timeliness_score") {
+                        return type === "SLA_BREACH";
+                      }
+                      return false;
+                    });
+                  };
+                  
+                  const dimFindings = getDimFindings();
+
+                  return (
+                    <>
+                      {dimFindings.length > 0 && (
+                        <div style={{
+                          background: "rgba(239, 68, 68, 0.04)",
+                          padding: "14px", borderRadius: "var(--radius-md)", border: "1px solid rgba(239, 68, 68, 0.15)",
+                          marginBottom: "16px"
+                        }}>
+                          <strong style={{ color: "var(--danger)", fontSize: "0.82rem", display: "flex", alignItems: "center", gap: "6px", marginBottom: "8px" }}>
+                            <AlertTriangle size={14} /> Audit Findings ({dimFindings.length})
+                          </strong>
+                          <ul style={{ margin: 0, paddingLeft: "20px", fontSize: "0.82rem", color: "var(--text-secondary)", listStyleType: "disc" }}>
+                            {dimFindings.map((f: any, i: number) => (
+                              <li key={i} style={{ marginBottom: "6px" }}>
+                                <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>[{f.severity}]</span> {f.description}
+                                {f.recommendation && (
+                                  <div style={{ color: "var(--primary)", marginTop: "2px", fontStyle: "italic" }}>
+                                    💡 Recommendation: {f.recommendation}
+                                  </div>
+                                )}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {selectedDim === "documentation_completeness" && d.missing_evidence && d.missing_evidence.length > 0 && (
+                        <div style={{
+                          background: "linear-gradient(135deg, rgba(220,38,38,0.06), rgba(220,38,38,0.02))",
+                          padding: "14px", borderRadius: "var(--radius-md)", border: "1px solid rgba(220,38,38,0.15)"
+                        }}>
+                          <strong style={{ color: "var(--danger)", fontSize: "0.82rem", display: "flex", alignItems: "center", gap: "6px", marginBottom: "8px" }}>
+                            <XCircle size={14} /> Missing Evidence
+                          </strong>
+                          <ul style={{ margin: 0, paddingLeft: "20px", fontSize: "0.82rem", color: "var(--text-secondary)", listStyleType: "disc" }}>
+                            {d.missing_evidence.map((e: string, i: number) => <li key={i} style={{ marginBottom: "4px" }}>{e}</li>)}
+                          </ul>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
+              </div>
+            </div>
           </div>
         );
       })()}
 
-      {/* ── Audit Findings ─────────────────────────────────────── */}
-      {d.findings && d.findings.length > 0 && (
-        <div style={{ marginBottom: "24px" }}>
-          <h3 style={{ marginBottom: "14px", fontSize: "1rem", display: "flex", alignItems: "center", gap: "8px" }}>
-            <AlertTriangle size={18} style={{ color: "var(--warning)" }} /> Audit Findings
-            <span className="badge badge-info" style={{ marginLeft: "4px" }}>{d.findings.length}</span>
-          </h3>
-          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-            {d.findings.map((f: any, i: number) => {
-              const SevIcon = severityIcons[f.severity] || Target;
-              const borderColor = f.severity === "CRITICAL" ? "var(--danger)" : f.severity === "HIGH" ? "var(--warning)" : "var(--info)";
-              return (
-                <div key={i} className="card" style={{
-                  padding: "18px", borderLeft: `4px solid ${borderColor}`,
-                  transition: "all 0.2s ease"
-                }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px" }}>
-                    <SevIcon size={16} style={{ color: borderColor }} />
-                    <span className={`badge ${severityColors[f.severity] || "badge-info"}`}>{f.severity}</span>
-                    <span style={{ fontSize: "0.78rem", color: "var(--text-tertiary)", background: "var(--bg-hover)", padding: "2px 10px", borderRadius: "var(--radius-sm)" }}>
-                      {f.type?.replace(/_/g, " ") || "Finding"}
-                    </span>
-                  </div>
-                  <p style={{ fontSize: "0.88rem", marginBottom: "8px", color: "var(--text-primary)", lineHeight: 1.5 }}>{f.description}</p>
-                  {f.recommendation && (
-                    <p style={{
-                      fontSize: "0.82rem", color: "var(--primary)", fontWeight: 500,
-                      display: "flex", alignItems: "flex-start", gap: "6px",
-                      padding: "10px 14px", borderRadius: "var(--radius-sm)",
-                      background: "rgba(232,82,26,0.04)", margin: 0
-                    }}>
-                      <Lightbulb size={14} style={{ marginTop: "2px", flexShrink: 0 }} /> {f.recommendation}
-                    </p>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
 
-      {/* ── Missing Evidence ────────────────────────────────────── */}
-      {d.missing_evidence && d.missing_evidence.length > 0 && !selectedDim && (
-        <div style={{ marginBottom: "24px" }}>
-          <h3 style={{ marginBottom: "14px", fontSize: "1rem", display: "flex", alignItems: "center", gap: "8px" }}>
-            <XCircle size={18} style={{ color: "var(--danger)" }} /> Missing Evidence
-          </h3>
-          <div className="card" style={{ padding: "18px" }}>
-            {d.missing_evidence.map((e: string, i: number) => (
-              <div key={i} style={{
-                display: "flex", alignItems: "center", gap: "10px", padding: "10px 0",
-                borderBottom: i < d.missing_evidence.length - 1 ? "1px solid var(--border-default)" : "none"
-              }}>
-                <div style={{
-                  width: "24px", height: "24px", borderRadius: "6px", flexShrink: 0,
-                  background: "rgba(220,38,38,0.08)", display: "flex", alignItems: "center", justifyContent: "center"
-                }}>
-                  <XCircle size={12} style={{ color: "var(--danger)" }} />
-                </div>
-                <span style={{ fontSize: "0.88rem", color: "var(--text-secondary)" }}>{e}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* ── Action Buttons ─────────────────────────────────────── */}
       <div style={{

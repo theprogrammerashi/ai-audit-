@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { GraduationCap, Clock, CheckCircle, BookOpen, X, ChevronRight, Award, Play, Timer, RotateCcw, AlertTriangle, Loader2 } from "lucide-react";
 import api from "@/lib/api";
+import CustomDropdown from "@/components/shared/CustomDropdown";
 
 interface QuizQuestion {
   q: string;
@@ -184,29 +185,27 @@ export default function TrainingPage() {
         {(userRole === "QA_LEAD" || userRole === "ADMIN") && (
           <div style={{ display: "flex", gap: "16px", marginBottom: "24px", alignItems: "center" }}>
             <span style={{ fontSize: "0.9rem", fontWeight: 500 }}>Filter by:</span>
-            <select 
-              value={filterNurse} 
-              onChange={e => setFilterNurse(e.target.value)}
-              className="input-field" 
-              style={{ width: "200px" }}
-            >
-              <option value="ALL">All Nurses</option>
-              {uniqueNurses.map((name: any) => (
-                <option key={name} value={name}>{name}</option>
-              ))}
-            </select>
+            <CustomDropdown
+              value={filterNurse}
+              onChange={setFilterNurse}
+              options={[
+                { value: "ALL", label: "All Nurses" },
+                ...uniqueNurses.map((name: any) => ({ value: name, label: name }))
+              ]}
+              width="200px"
+            />
             
-            <select 
-              value={statusFilter} 
-              onChange={e => setStatusFilter(e.target.value)}
-              className="input-field" 
-              style={{ width: "180px" }}
-            >
-              <option value="ALL">All Statuses</option>
-              <option value="COMPLETED">Completed</option>
-              <option value="IN_PROGRESS">In Progress</option>
-              <option value="ASSIGNED">Assigned</option>
-            </select>
+            <CustomDropdown
+              value={statusFilter}
+              onChange={setStatusFilter}
+              options={[
+                { value: "ALL", label: "All Statuses" },
+                { value: "COMPLETED", label: "Completed" },
+                { value: "IN_PROGRESS", label: "In Progress" },
+                { value: "ASSIGNED", label: "Assigned" }
+              ]}
+              width="180px"
+            />
             
             {(filterNurse !== "ALL" || statusFilter !== "ALL") && (
               <button 

@@ -20,9 +20,6 @@ const NAV_ITEMS = [
   { label: "Analytics", href: "/analytics", icon: BarChart3, roles: ["QA_LEAD", "ADMIN", "EXECUTIVE"] },
   { label: "Appeal Risk", href: "/appeal", icon: AlertTriangle, roles: ["NURSE", "QA_LEAD", "ADMIN", "EXECUTIVE"] },
   { label: "Training", href: "/training", icon: GraduationCap, roles: ["NURSE", "QA_LEAD", "ADMIN", "EXECUTIVE"] },
-  { label: "Executive", href: "/executive", icon: Building2, roles: ["QA_LEAD", "ADMIN", "EXECUTIVE"] },
-  { label: "Policies", href: "/policy", icon: FileText, roles: ["NURSE", "QA_LEAD", "ADMIN", "EXECUTIVE"] },
-  { label: "Agent Pipeline", href: "/agent-pipeline", icon: Workflow, roles: ["QA_LEAD", "ADMIN", "EXECUTIVE"] },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -31,6 +28,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { user, logout, loadFromStorage } = useAuthStore();
   const [mounted, setMounted] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
 
   useEffect(() => {
     loadFromStorage();
@@ -193,70 +191,188 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div style={{ height: "24px", background: "linear-gradient(180deg, transparent, #FBF9F7)", position: "absolute", bottom: "64px", width: "100%", pointerEvents: "none" }} />
 
         {/* ── User Section ── */}
-        <div
-          style={{
-            padding: collapsed ? "12px 6px" : "12px 16px",
-            borderTop: "1px solid var(--border-default)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: collapsed ? "center" : "space-between",
-            gap: "8px",
-          }}
-        >
-          {/* User avatar */}
+        <div style={{ position: "relative" }}>
+          {profileMenuOpen && (
+            <>
+              {/* Backdrop to dismiss menu */}
+              <div 
+                onClick={() => setProfileMenuOpen(false)} 
+                style={{ position: "fixed", inset: 0, zIndex: 98 }} 
+              />
+              {/* Profile Dropdown Menu */}
+              <div style={{
+                position: "absolute",
+                bottom: "calc(100% + 4px)",
+                left: collapsed ? "8px" : "12px",
+                width: collapsed ? "48px" : "216px",
+                background: "var(--bg-surface)",
+                border: "1px solid var(--border-default)",
+                borderRadius: "var(--radius-md)",
+                boxShadow: "var(--shadow-lg)",
+                zIndex: 99,
+                padding: "6px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "4px",
+                alignItems: "center",
+              }}>
+                {user && ["NURSE", "QA_LEAD", "ADMIN", "EXECUTIVE"].includes(user.role) && (
+                  <button
+                    onClick={() => {
+                      router.push("/policy");
+                      setProfileMenuOpen(false);
+                    }}
+                    title="Policies"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: collapsed ? "center" : "flex-start",
+                      gap: "8px",
+                      width: "100%",
+                      padding: collapsed ? "8px 0" : "8px 12px",
+                      borderRadius: "6px",
+                      border: "none",
+                      background: pathname.startsWith("/policy") ? "var(--bg-active)" : "transparent",
+                      color: pathname.startsWith("/policy") ? "var(--primary)" : "var(--text-secondary)",
+                      fontSize: "0.82rem",
+                      cursor: "pointer",
+                      textAlign: "left",
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!pathname.startsWith("/policy")) {
+                        e.currentTarget.style.background = "var(--bg-hover)";
+                        e.currentTarget.style.color = "var(--primary)";
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!pathname.startsWith("/policy")) {
+                        e.currentTarget.style.background = "transparent";
+                        e.currentTarget.style.color = "var(--text-secondary)";
+                      }
+                    }}
+                  >
+                    <FileText size={16} style={{ flexShrink: 0 }} />
+                    {!collapsed && <span>Policies</span>}
+                  </button>
+                )}
+
+                {user && ["QA_LEAD", "ADMIN", "EXECUTIVE"].includes(user.role) && (
+                  <button
+                    onClick={() => {
+                      router.push("/agent-pipeline");
+                      setProfileMenuOpen(false);
+                    }}
+                    title="Agent Pipeline"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: collapsed ? "center" : "flex-start",
+                      gap: "8px",
+                      width: "100%",
+                      padding: collapsed ? "8px 0" : "8px 12px",
+                      borderRadius: "6px",
+                      border: "none",
+                      background: pathname.startsWith("/agent-pipeline") ? "var(--bg-active)" : "transparent",
+                      color: pathname.startsWith("/agent-pipeline") ? "var(--primary)" : "var(--text-secondary)",
+                      fontSize: "0.82rem",
+                      cursor: "pointer",
+                      textAlign: "left",
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!pathname.startsWith("/agent-pipeline")) {
+                        e.currentTarget.style.background = "var(--bg-hover)";
+                        e.currentTarget.style.color = "var(--primary)";
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!pathname.startsWith("/agent-pipeline")) {
+                        e.currentTarget.style.background = "transparent";
+                        e.currentTarget.style.color = "var(--text-secondary)";
+                      }
+                    }}
+                  >
+                    <Workflow size={16} style={{ flexShrink: 0 }} />
+                    {!collapsed && <span>Agent Pipeline</span>}
+                  </button>
+                )}
+              </div>
+            </>
+          )}
+
           <div
+            onClick={() => setProfileMenuOpen(!profileMenuOpen)}
             style={{
-              width: "36px",
-              height: "36px",
-              borderRadius: "50%",
-              background: "linear-gradient(135deg, #E8521A, #c44015)",
+              padding: collapsed ? "12px 6px" : "12px 16px",
+              borderTop: "1px solid var(--border-default)",
               display: "flex",
               alignItems: "center",
-              justifyContent: "center",
-              color: "white",
-              fontSize: "0.85rem",
-              fontWeight: 700,
-              flexShrink: 0,
-              boxShadow: "0 2px 8px rgba(232, 82, 26, 0.25)",
+              justifyContent: collapsed ? "center" : "space-between",
+              gap: "8px",
+              cursor: "pointer",
+              transition: "background 0.15s ease",
             }}
-            title={user?.full_name || "Guest"}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "var(--bg-hover)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "transparent";
+            }}
           >
-            {(user?.full_name || "G").charAt(0).toUpperCase()}
-          </div>
-
-          {!collapsed && (
-            <div style={{ flex: 1, overflow: "hidden" }}>
-              <div style={{ fontSize: "0.8rem", fontWeight: 500, color: "var(--text-primary)", whiteSpace: "nowrap", textOverflow: "ellipsis", overflow: "hidden" }}>
-                {user?.full_name || "Guest User"}
-              </div>
-              <div style={{ fontSize: "0.7rem", color: "var(--text-tertiary)" }}>
-                {user?.role || "NURSE"}
-              </div>
-            </div>
-          )}
-
-          {!collapsed && (
-            <button
-              onClick={() => { logout(); router.push("/login"); }}
+            {/* User avatar */}
+            <div
               style={{
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                padding: "4px",
-                color: "var(--text-tertiary)",
+                width: "36px",
+                height: "36px",
+                borderRadius: "50%",
+                background: "linear-gradient(135deg, #E8521A, #c44015)",
                 display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "white",
+                fontSize: "0.85rem",
+                fontWeight: 700,
+                flexShrink: 0,
+                boxShadow: "0 2px 8px rgba(232, 82, 26, 0.25)",
               }}
-              title="Logout"
+              title={user?.full_name || "Guest"}
             >
-              <LogOut size={16} />
-            </button>
-          )}
-
-          {collapsed && (
-            <div style={{ display: "none" }}>
-              {/* Logout hidden in collapsed mode — accessible via expand */}
+              {(user?.full_name || "G").charAt(0).toUpperCase()}
             </div>
-          )}
+
+            {!collapsed && (
+              <div style={{ flex: 1, overflow: "hidden" }}>
+                <div style={{ fontSize: "0.8rem", fontWeight: 500, color: "var(--text-primary)", whiteSpace: "nowrap", textOverflow: "ellipsis", overflow: "hidden" }}>
+                  {user?.full_name || "Guest User"}
+                </div>
+                <div style={{ fontSize: "0.7rem", color: "var(--text-tertiary)" }}>
+                  {user?.role || "NURSE"}
+                </div>
+              </div>
+            )}
+
+            {!collapsed && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  logout();
+                  router.push("/login");
+                }}
+                style={{
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  padding: "4px",
+                  color: "var(--text-tertiary)",
+                  display: "flex",
+                  position: "relative",
+                  zIndex: 101,
+                }}
+                title="Logout"
+              >
+                <LogOut size={16} />
+              </button>
+            )}
+          </div>
         </div>
       </aside>
 

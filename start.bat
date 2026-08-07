@@ -24,17 +24,23 @@ if errorlevel 1 (
 :: -- Step 3: Set up Python Virtual Environment --
 echo [1/6] Setting up Python virtual environment...
 cd /d "%~dp0backend"
-if not exist "venv" (
-    echo Creating virtual environment...
-    python -m venv venv
+set VENV_DIR=venv
+if exist ".venv" (
+    set VENV_DIR=.venv
+) else (
+    if not exist "venv" (
+        echo Creating virtual environment...
+        py -3.12 -m venv .venv
+        set VENV_DIR=.venv
+    )
 )
-call venv\Scripts\activate.bat
+call %VENV_DIR%\Scripts\activate.bat
 echo Virtual environment activated.
 
 :: -- Step 4: Install Python Dependencies --
-echo [2/6] Installing Python dependencies...
-pip install -r requirements.txt --quiet 2>nul
-echo Python dependencies installed.
+echo [2/6] Checking/Installing Python dependencies...
+pip install -r requirements.txt
+echo Python dependencies ready.
 
 :: -- Step 5: Initialize Database and Seed Data --
 echo [3/6] Initializing DuckDB database...
@@ -71,7 +77,7 @@ echo.
 :: Start Backend in background
 cd /d "%~dp0backend"
 set PYTHONIOENCODING=utf-8
-start "CareAudit-Backend" cmd /c "call venv\Scripts\activate.bat && set PYTHONIOENCODING=utf-8 && uvicorn app.main:app --reload --port 8000"
+start "CareAudit-Backend" cmd /c "call %VENV_DIR%\Scripts\activate.bat && set PYTHONIOENCODING=utf-8 && uvicorn app.main:app --reload --port 8000"
 
 :: Start Frontend in foreground
 cd /d "%~dp0frontend"

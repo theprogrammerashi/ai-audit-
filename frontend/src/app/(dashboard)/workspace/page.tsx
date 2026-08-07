@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LayoutDashboard, Clock, ChevronRight, AlertTriangle, Loader2, CheckCircle, History, Users, FileText, FolderOpen, ShieldCheck, XCircle, Eye } from "lucide-react";
 import api from "@/lib/api";
+import CustomDropdown from "@/components/shared/CustomDropdown";
 
 const priorityStyles: Record<string, { bg: string; color: string; badge: string }> = {
   STANDARD: { bg: "var(--bg-body)", color: "var(--text-secondary)", badge: "badge-info" },
@@ -79,17 +80,15 @@ export default function WorkspacePage() {
         {userRole !== "NURSE" && qaOverview && (
           <div style={{ display: "flex", gap: "16px", alignItems: "center" }}>
             <span style={{ fontSize: "0.9rem", fontWeight: 500 }}>Filter by:</span>
-            <select 
-              value={filterNurse} 
-              onChange={e => setFilterNurse(e.target.value)}
-              className="input-field" 
-              style={{ width: "200px" }}
-            >
-              <option value="ALL">All Nurses</option>
-              {qaOverview.nurses.map((n: any) => (
-                <option key={n.id} value={n.id}>{n.name}</option>
-              ))}
-            </select>
+            <CustomDropdown
+              value={filterNurse}
+              onChange={setFilterNurse}
+              options={[
+                { value: "ALL", label: "All Nurses" },
+                ...qaOverview.nurses.map((n: any) => ({ value: n.id, label: n.name }))
+              ]}
+              width="200px"
+            />
             {filterNurse !== "ALL" && (
               <button className="btn btn-secondary" onClick={() => setFilterNurse("ALL")}>Clear Filters</button>
             )}
