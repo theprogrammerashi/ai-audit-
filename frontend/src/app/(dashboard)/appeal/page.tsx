@@ -9,9 +9,9 @@ import { useRouter } from "next/navigation";
 
 const riskBadge: Record<string, string> = { HIGH: "badge-danger", CRITICAL: "badge-danger", MEDIUM: "badge-warning", LOW: "badge-success" };
 const outcomeBadge: Record<string, { cls: string; label: string }> = {
-  "Overturned - Full": { cls: "badge-danger", label: "Overturned" },
-  "Overturned - Partial": { cls: "badge-warning", label: "Partial Overturn" },
-  "Upheld": { cls: "badge-success", label: "Upheld" },
+  "Overturned - Full": { cls: "c-badge-danger", label: "Overturned" },
+  "Overturned - Partial": { cls: "c-badge-warning", label: "Partial Overturn" },
+  "Upheld": { cls: "c-badge-success", label: "Upheld" },
 };
 
 export default function AppealPage() {
@@ -175,27 +175,129 @@ export default function AppealPage() {
         ))}
       </div>
 
+      <style dangerouslySetInnerHTML={{__html: `
+        .tabular-risk-dashboard {
+          --tab-border: #E2E8F0;
+          --tab-bg-alt: #F8FAFC;
+          --tab-text: #334155;
+          --tab-text-dark: #0F172A;
+        }
+        .tabular-metrics-ribbon {
+          display: flex;
+          align-items: center;
+          background: #fff;
+          border: 1px solid var(--tab-border);
+          border-radius: 6px;
+          padding: 10px 16px;
+          margin-bottom: 16px;
+          gap: 12px;
+          font-family: monospace;
+          font-size: 0.85rem;
+          color: var(--tab-text);
+        }
+        .tabular-metric-item {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 6px 12px;
+          border-radius: 6px;
+          border: 1px solid var(--tab-border);
+          background: var(--tab-bg-alt);
+        }
+        .tabular-metric-val {
+          font-weight: 700;
+          color: var(--tab-text-dark);
+          font-size: 1rem;
+        }
+        .tabular-table-container {
+          background: #fff;
+          border: 1px solid var(--tab-border);
+          border-radius: 6px;
+          overflow: hidden;
+        }
+        .tabular-table {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 0.82rem;
+        }
+        .tabular-table th {
+          background: var(--tab-bg-alt);
+          color: var(--tab-text);
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          padding: 10px 12px !important;
+          border-bottom: 2px solid var(--tab-border) !important;
+          border-right: 1px solid var(--tab-border);
+          text-align: left;
+        }
+        .tabular-table th:last-child { border-right: none; }
+        .tabular-table td {
+          padding: 8px 12px !important;
+          border-bottom: 1px solid var(--tab-border) !important;
+          border-right: 1px solid var(--tab-border);
+          color: var(--tab-text-dark);
+        }
+        .tabular-table td:last-child { border-right: none; }
+        .tabular-table tbody tr:nth-child(even) { background: var(--tab-bg-alt); }
+        .tabular-table tbody tr:hover { background: #F1F5F9 !important; }
+        .compact-badge {
+          display: inline-block;
+          padding: 2px 6px;
+          border-radius: 4px;
+          font-size: 0.7rem;
+          font-weight: 700;
+          border: 1px solid currentColor;
+        }
+        .c-badge-danger { color: #DC2626; background: #FEF2F2; }
+        .c-badge-warning { color: #D97706; background: #FFFBEB; }
+        .c-badge-success { color: #059669; background: #ECFDF5; }
+        .c-badge-info { color: #2563EB; background: #EFF6FF; }
+        .compact-bar-wrap {
+          width: 50px; height: 6px; background: #E2E8F0; border-radius: 2px; overflow: hidden;
+        }
+        .compact-bar-fill {
+          height: 100%; border-radius: 2px;
+        }
+      `}} />
+
       {/* ═══ Tab 1: Appeal Tracker ═══ */}
       {activeTab === "tracker" && (
-        <div>
+        <div className="tabular-risk-dashboard">
           {/* Summary Cards */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "16px", marginBottom: "28px" }}>
-            <MetricCard label="Open Appeals" value={openAppeals.toString()} accentColor="var(--warning)" icon={<Clock size={13} />} />
-            <MetricCard label="Resolved (Total)" value={resolvedAppeals.toString()} accentColor="var(--success)" icon={<CheckCircle size={13} />} />
-            <MetricCard label="Overturn Rate" value={`${overturnRate}%`} accentColor={overturnRate > 40 ? "var(--danger)" : "var(--info)"} icon={<TrendingUp size={13} />} />
-            <MetricCard label="Avg Resolution" value={`${Math.round(avgResolutionDays)} days`} accentColor="var(--primary)" icon={<Clock size={13} />} />
+          <div className="tabular-metrics-ribbon">
+            <div className="tabular-metric-item" style={{ background: "rgba(245,158,11,0.08)", borderColor: "rgba(245,158,11,0.3)" }}>
+              <span style={{ color: "#F59E0B" }}><Clock size={14} /></span>
+              <span style={{ color: "#F59E0B" }}>OPEN APPEALS:</span>
+              <span className="tabular-metric-val">{openAppeals}</span>
+            </div>
+            <div className="tabular-metric-item" style={{ background: "rgba(16,185,129,0.08)", borderColor: "rgba(16,185,129,0.3)" }}>
+              <span style={{ color: "#10B981" }}><CheckCircle size={14} /></span>
+              <span style={{ color: "#10B981" }}>RESOLVED:</span>
+              <span className="tabular-metric-val">{resolvedAppeals}</span>
+            </div>
+            <div className="tabular-metric-item" style={{ background: overturnRate > 40 ? "rgba(220,38,38,0.08)" : "rgba(37,99,235,0.08)", borderColor: overturnRate > 40 ? "rgba(220,38,38,0.3)" : "rgba(37,99,235,0.3)" }}>
+              <span style={{ color: overturnRate > 40 ? "#DC2626" : "#2563EB" }}><TrendingUp size={14} /></span>
+              <span style={{ color: overturnRate > 40 ? "#DC2626" : "#2563EB" }}>OVERTURN RATE:</span>
+              <span className="tabular-metric-val">{overturnRate}%</span>
+            </div>
+            <div className="tabular-metric-item" style={{ background: "rgba(232,82,26,0.08)", borderColor: "rgba(232,82,26,0.3)" }}>
+              <span style={{ color: "#E8521A" }}><Clock size={14} /></span>
+              <span style={{ color: "#E8521A" }}>AVG RESOLUTION:</span>
+              <span className="tabular-metric-val">{Math.round(avgResolutionDays)} days</span>
+            </div>
           </div>
 
           {/* Appeal Intake Table */}
-          <div className="card" style={{ padding: "0", overflow: "hidden" }}>
-            <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border-default)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <h3 style={{ fontSize: "1rem", margin: 0, display: "flex", alignItems: "center", gap: "8px" }}>
-                <FileText size={18} style={{ color: "var(--primary)" }} /> Appeal Cases
+          <div className="tabular-table-container">
+            <div style={{ padding: "10px 16px", borderBottom: "1px solid var(--tab-border)", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#fff" }}>
+              <h3 style={{ fontSize: "0.95rem", margin: 0, display: "flex", alignItems: "center", gap: "8px", fontWeight: 700, color: "var(--tab-text-dark)" }}>
+                <FileText size={16} style={{ color: "#E8521A" }} /> APPEAL CASES
               </h3>
               <div style={{ display: "flex", gap: "8px" }}>
-                <span className="badge badge-warning">{openAppeals} Pending</span>
-                <span className="badge badge-success">{upheldCount} Upheld</span>
-                <span className="badge badge-danger">{overturnedCount} Overturned</span>
+                <span className="compact-badge c-badge-warning">{openAppeals} Pending</span>
+                <span className="compact-badge c-badge-success">{upheldCount} Upheld</span>
+                <span className="compact-badge c-badge-danger">{overturnedCount} Overturned</span>
               </div>
             </div>
             {/* Search & Filter Controls */}
@@ -258,8 +360,8 @@ export default function AppealPage() {
               />
             </div>
 
-            <div className="data-table-container" style={{ margin: 0, border: "none", borderRadius: 0 }}>
-              <table className="data-table">
+            <div style={{ margin: 0, border: "none", borderRadius: 0, overflowX: "auto" }}>
+              <table className="tabular-table">
                 <thead>
                   <tr>
                     <th>Appeal ID</th>
@@ -277,26 +379,26 @@ export default function AppealPage() {
                   {filteredIntake.length === 0 ? (
                     <tr><td colSpan={9} style={{ padding: "32px", textAlign: "center", color: "var(--text-secondary)" }}>No appeal cases found matching filters.</td></tr>
                   ) : (
-                    filteredIntake.map((c: any) => {
-                      const outcome = outcomeBadge[c.appeal_outcome] || null;
+                    filteredIntake.map((c: any, index: number) => {
+                      const outcome = outcomeBadge[c.appeal_outcome];
                       return (
-                        <tr key={c.id} style={{ cursor: "pointer" }} onClick={() => router.push(`/workspace/appeal/${c.id}`)}>
-                          <td style={{ fontWeight: 600, color: "var(--primary)" }}>{c.id}</td>
-                          <td>{c.member_id || "N/A"}</td>
+                        <tr key={`${c.id}-${index}`} style={{ cursor: "pointer" }} onClick={() => router.push(`/workspace/appeal/${c.id}`)}>
+                          <td style={{ fontWeight: 600, fontFamily: "monospace", fontSize: "0.85rem", color: "var(--tab-text-dark)" }}>{c.id}</td>
+                          <td style={{ fontWeight: 600 }}>{c.member_id || "N/A"}</td>
                           <td>{c.diagnosis_category}</td>
                           <td style={{ maxWidth: "200px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.requested_service}</td>
                           <td>
-                            <span className={`badge ${c.appeal_level?.includes("Expedited") ? "badge-danger" : c.appeal_level?.includes("Level 2") ? "badge-warning" : "badge-info"}`}>
+                            <span className={`compact-badge c-badge-${c.appeal_level?.includes("Expedited") ? "danger" : c.appeal_level?.includes("Level 2") ? "warning" : "info"}`}>
                               {c.appeal_level?.replace(" - Internal", "").replace(" - External", "") || "L1"}
                             </span>
                           </td>
                           <td style={{ fontSize: "0.82rem" }}>{c.denial_reason_category}</td>
-                          <td style={{ fontWeight: 600 }}>${(c.financial_amount_disputed || 0).toLocaleString()}</td>
+                          <td style={{ fontWeight: 700, fontFamily: "monospace" }}>${(c.financial_amount_disputed || 0).toLocaleString()}</td>
                           <td>
                             {c.appeal_outcome ? (
-                              <span className={`badge ${outcome?.cls || "badge-info"}`}>{outcome?.label || c.appeal_outcome}</span>
+                              <span className={`compact-badge ${outcome?.cls || "c-badge-info"}`}>{outcome?.label || c.appeal_outcome}</span>
                             ) : (
-                              <span className="badge badge-warning">Pending Review</span>
+                              <span className="compact-badge c-badge-warning">Pending Review</span>
                             )}
                           </td>
                           <td style={{ fontSize: "0.82rem", color: "var(--text-secondary)" }}>
@@ -315,22 +417,34 @@ export default function AppealPage() {
 
       {/* ═══ Tab 2: Risk Dashboard ═══ */}
       {activeTab === "risk" && (
-        <div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "16px", marginBottom: "28px" }}>
-            <MetricCard label="Total Financial Exposure" value={`$${dashboardData.total_exposure.toLocaleString()}`} accentColor="var(--danger)" icon={<DollarSign size={13} />} />
-            <MetricCard label="Cases with Appeal Risk" value={cases.length.toString()} accentColor="var(--warning)" icon={<AlertTriangle size={13} />} />
-            <MetricCard label="Avg Overturn Probability" value={`${Math.round(dashboardData.avg_overturn_probability * 100)}%`} accentColor="var(--info)" icon={<TrendingUp size={13} />} />
+        <div className="tabular-risk-dashboard">
+          <div className="tabular-metrics-ribbon">
+            <div className="tabular-metric-item" style={{ background: "rgba(232,82,26,0.08)", borderColor: "rgba(232,82,26,0.3)" }}>
+              <span style={{ color: "#E8521A" }}><DollarSign size={14} /></span>
+              <span style={{ color: "#E8521A" }}>TOTAL FINANCIAL EXPOSURE:</span>
+              <span className="tabular-metric-val">${dashboardData.total_exposure.toLocaleString()}</span>
+            </div>
+            <div className="tabular-metric-item" style={{ background: "rgba(245,158,11,0.08)", borderColor: "rgba(245,158,11,0.3)" }}>
+              <span style={{ color: "#F59E0B" }}><AlertTriangle size={14} /></span>
+              <span style={{ color: "#F59E0B" }}>CASES W/ RISK:</span>
+              <span className="tabular-metric-val">{cases.length}</span>
+            </div>
+            <div className="tabular-metric-item" style={{ background: "rgba(232,82,26,0.08)", borderColor: "rgba(232,82,26,0.3)" }}>
+              <span style={{ color: "#E8521A" }}><TrendingUp size={14} /></span>
+              <span style={{ color: "#E8521A" }}>AVG PROBABILITY:</span>
+              <span className="tabular-metric-val">{Math.round(dashboardData.avg_overturn_probability * 100)}%</span>
+            </div>
           </div>
 
           {/* Risk Table with Expandable Detail */}
-          <div className="card" style={{ padding: "0", overflow: "hidden" }}>
-            <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border-default)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <h3 style={{ fontSize: "1rem", margin: 0, display: "flex", alignItems: "center", gap: "8px" }}>
-                <Shield size={18} style={{ color: "var(--danger)" }} />
-                {userRole === "NURSE" ? "Your Cases — Appeal Risk Assessment" : "Team Cases — Appeal Risk Assessment"}
+          <div className="tabular-table-container">
+            <div style={{ padding: "10px 16px", borderBottom: "1px solid var(--tab-border)", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#fff" }}>
+              <h3 style={{ fontSize: "0.95rem", margin: 0, display: "flex", alignItems: "center", gap: "8px", fontWeight: 700, color: "var(--tab-text-dark)" }}>
+                <Shield size={16} style={{ color: "#E8521A" }} />
+                {userRole === "NURSE" ? "YOUR CASES" : "TEAM CASES"} (APPEAL RISK)
               </h3>
-              <span style={{ fontSize: "0.8rem", color: "var(--text-tertiary)", display: "flex", alignItems: "center", gap: "4px" }}>
-                <Info size={14} /> Click any row for detailed risk analysis
+              <span style={{ fontSize: "0.8rem", color: "var(--tab-text)", display: "flex", alignItems: "center", gap: "4px" }}>
+                <Info size={14} /> Click row for details
               </span>
             </div>
             {/* Search & Filter Controls */}
@@ -393,11 +507,11 @@ export default function AppealPage() {
               />
             </div>
 
-            <div className="data-table-container" style={{ margin: 0, border: "none", borderRadius: 0 }}>
-              <table className="data-table">
+            <div style={{ margin: 0, border: "none", borderRadius: 0, overflowX: "auto" }}>
+              <table className="tabular-table">
                 <thead>
                   <tr>
-                    {["Case #", "Patient", "Diagnosis", "Decision", "Overturn Probability", "Financial Exposure", "Risk Level", "Reviewer", ""].map((h) => (
+                    {["Case #", "Patient", "Diagnosis", "Decision", "Overturn Prob", "Exposure", "Risk Level", "Reviewer", ""].map((h) => (
                       <th key={h}>{h}</th>
                     ))}
                   </tr>
@@ -411,7 +525,7 @@ export default function AppealPage() {
                       </td>
                     </tr>
                   ) : (
-                    filteredCases.map((c: any) => {
+                    filteredCases.map((c: any, index: number) => {
                       const isExpanded = expandedRow === c.case_number;
                       const prob = Math.round(c.overturn_probability * 100);
                       const probColor = prob > 60 ? "var(--danger)" : prob > 30 ? "var(--warning)" : "var(--success)";
@@ -419,27 +533,25 @@ export default function AppealPage() {
                       const recommendation = c.appeal_recommendation || "";
 
                       return (
-                        <Fragment key={c.case_number}>
+                        <Fragment key={`${c.case_number}-${index}`}>
                           <tr 
+                            style={{ cursor: "pointer" }}
                             onClick={() => setExpandedRow(isExpanded ? null : c.case_number)}
-                            style={{ cursor: "pointer", transition: "background 0.15s" }}
-                            onMouseEnter={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = "rgba(232,82,26,0.03)"; }}
-                            onMouseLeave={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = ""; }}
                           >
-                            <td style={{ fontWeight: 600 }}>{c.case_number}</td>
-                            <td>{c.patient_name || "N/A"}</td>
+                            <td style={{ fontWeight: 600, fontFamily: "monospace", fontSize: "0.85rem" }}>{c.case_number}</td>
+                            <td style={{ fontWeight: 600 }}>{c.patient_name || "N/A"}</td>
                             <td>{c.diagnosis}</td>
-                            <td><span className={c.decision === "DENIED" ? "badge badge-danger" : "badge badge-success"}>{c.decision}</span></td>
+                            <td><span className={c.decision === "DENIED" ? "compact-badge c-badge-danger" : "compact-badge c-badge-success"}>{c.decision}</span></td>
                             <td>
                               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                                <div style={{ width: "60px", height: "6px", background: "var(--border-default)", borderRadius: "3px" }}>
-                                  <div style={{ height: "100%", width: `${prob}%`, background: probColor, borderRadius: "3px", transition: "width 0.5s" }} />
+                                <div className="compact-bar-wrap">
+                                  <div className="compact-bar-fill" style={{ width: `${prob}%`, background: probColor }} />
                                 </div>
-                                <span style={{ fontWeight: 600, color: probColor }}>{prob}%</span>
+                                <span style={{ fontWeight: 700, fontFamily: "monospace", color: probColor }}>{prob}%</span>
                               </div>
                             </td>
-                            <td style={{ fontWeight: 600 }}>${c.financial_exposure.toLocaleString()}</td>
-                            <td><span className={`badge ${riskBadge[c.risk_category] || "badge-info"}`}>{c.risk_category}</span></td>
+                            <td style={{ fontWeight: 700, fontFamily: "monospace" }}>${c.financial_exposure.toLocaleString()}</td>
+                            <td><span className={`compact-badge c-badge-${c.risk_category === "LOW" ? "success" : c.risk_category === "MEDIUM" ? "warning" : "danger"}`}>{c.risk_category}</span></td>
 
                             <td style={{ color: "var(--text-secondary)" }}>{c.reviewer_name}</td>
                             <td>

@@ -346,12 +346,6 @@ export default function HomePage() {
                   {isLoggedIn ? "Open Platform" : "Explore Platform"} <ArrowRight size={16} />
                 </button>
               </div>
-              <div className="hero-trust">
-                <p style={{ fontFamily: "'Outfit',sans-serif", fontSize: ".72rem", fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: "rgba(15,14,12,.35)", marginBottom: "14px" }}>Trusted by Leading Health Systems</p>
-                <div style={{ display: "flex", alignItems: "center", gap: "28px", flexWrap: "wrap" }}>
-                  {["MedStar Health", "Ascension", "HCA Healthcare", "Tenet Health"].map(o => <span key={o} style={{ fontFamily: "'Outfit',sans-serif", fontSize: ".9rem", fontWeight: 600, color: "rgba(15,14,12,.3)" }}>{o}</span>)}
-                </div>
-              </div>
             </div>
             <div className="hero-mockup" style={{ position: "relative", minHeight: "440px" }}>
               <div style={{ background: "#fff", borderRadius: "16px", border: "1px solid rgba(15,14,12,.08)", boxShadow: "0 24px 80px rgba(0,0,0,.12)", overflow: "hidden", position: "relative", zIndex: 2 }}>
