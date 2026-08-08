@@ -2,28 +2,51 @@
 CareAudit AI - DuckDB Database Layer
 Provides connection management and schema initialization for DuckDB.
 """
-import duckdb
+import sqlite3
 import os
 from pathlib import Path
 from app.config import settings
 
 
 # Ensure data directory exists
-_db_path = Path(settings.DUCKDB_PATH)
+_db_path = Path(settings.SQLITE_PATH)
 _db_path.parent.mkdir(parents=True, exist_ok=True)
 
 # Singleton connection — DuckDB on Windows does NOT allow multiple
-# concurrent duckdb.connect() calls to the same file (even from the
+# concurrent sqlite3.connect() calls to the same file (even from the
 # same process).  We therefore keep exactly ONE connection open for
 # the entire lifetime of the application.
-_conn: duckdb.DuckDBPyConnection | None = None
+class DuckDBCompatConnection:
+    def __init__(self, sqlite_conn):
+        self.conn = sqlite_conn
+        self.description = None
+        self.rowcount = -1
+        
+    def execute(self, query, params=()):
+        cursor = self.conn.execute(query, params)
+        self.description = cursor.description
+        self.rowcount = cursor.rowcount
+        self.conn.commit() # Auto-commit for DML
+        return cursor
+        
+    def sql(self, query):
+        return self.execute(query)
+        
+    def close(self):
+        self.conn.close()
+        
+    def __getattr__(self, name):
+        return getattr(self.conn, name)
+
+_conn: DuckDBCompatConnection | None = None
 
 
-def get_connection() -> duckdb.DuckDBPyConnection:
-    """Return the singleton DuckDB connection, creating it on first call."""
+def get_connection() -> DuckDBCompatConnection:
+    """Return the singleton SQLite connection, creating it on first call."""
     global _conn
     if _conn is None:
-        _conn = duckdb.connect(str(_db_path))
+        raw_conn = sqlite3.connect(str(_db_path), check_same_thread=False)
+        _conn = DuckDBCompatConnection(raw_conn)
     return _conn
 
 
@@ -46,10 +69,7 @@ def close_connection():
 def init_database():
     """Initialize database schema — creates all tables if they don't exist."""
     conn = get_connection()
-    try:
-        conn.execute("INSTALL 'json'; LOAD 'json';")
-    except Exception:
-        pass  # Already installed
+    # SQLite doesn't need INSTALL JSON
     
     # ── Users & Auth ──
     conn.execute("""
@@ -64,40 +84,6 @@ def init_database():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
-    try:
-        conn.execute("ALTER TABLE users ADD COLUMN qa_lead_id VARCHAR")
-    except Exception:
-        pass  # Column might already exist
-
-    
-    # ── Cases ──
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS cases (
-            id VARCHAR PRIMARY KEY,
-            case_number VARCHAR UNIQUE NOT NULL,
-            patient_mrn VARCHAR NOT NULL,
-            patient_name VARCHAR,
-            patient_dob VARCHAR,
-            patient_age INTEGER,
-            primary_diagnosis_code VARCHAR NOT NULL,
-            primary_diagnosis_display VARCHAR NOT NULL,
-            secondary_diagnoses VARCHAR,
-            document_type VARCHAR DEFAULT 'PRIOR_AUTH',
-            structured_case JSON,
-            status VARCHAR NOT NULL DEFAULT 'PENDING_REVIEW',
-            submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            submitted_by VARCHAR REFERENCES users(id)
-        )
-    """)
-    try:
-        conn.execute("ALTER TABLE cases ADD COLUMN assigned_nurse_id VARCHAR REFERENCES users(id)")
-    except Exception:
-        pass  # Column already exists
-    # Migrate: copy submitted_by into assigned_nurse_id where NULL
-    try:
-        conn.execute("UPDATE cases SET assigned_nurse_id = submitted_by WHERE assigned_nurse_id IS NULL AND submitted_by IS NOT NULL")
-    except Exception:
-        pass
     
     # ── Documents ──
     conn.execute("""
@@ -182,19 +168,8 @@ def init_database():
     """)
     
     # ── Migrations for existing DB ──
-    conn.execute("ALTER TABLE audit_results ADD COLUMN IF NOT EXISTS original_ai_score INTEGER")
-    conn.execute("ALTER TABLE audit_results ADD COLUMN IF NOT EXISTS timeliness_score INTEGER")
-    conn.execute("ALTER TABLE audit_results ADD COLUMN IF NOT EXISTS timeliness_explanation TEXT")
-    conn.execute("ALTER TABLE audit_results ADD COLUMN IF NOT EXISTS qa_ai_explanation TEXT")
-    conn.execute("ALTER TABLE audit_results ADD COLUMN IF NOT EXISTS qa_override_score INTEGER")
-    conn.execute("ALTER TABLE audit_results ADD COLUMN IF NOT EXISTS qa_override_notes TEXT")
-    conn.execute("ALTER TABLE audit_results ADD COLUMN IF NOT EXISTS qa_override_by VARCHAR")
-    conn.execute("ALTER TABLE audit_results ADD COLUMN IF NOT EXISTS qa_override_at TIMESTAMP")
-    # ── QA Verification Gating ──
-    conn.execute("ALTER TABLE audit_results ADD COLUMN IF NOT EXISTS qa_verified BOOLEAN DEFAULT FALSE")
-    conn.execute("ALTER TABLE audit_results ADD COLUMN IF NOT EXISTS qa_verified_by VARCHAR")
-    conn.execute("ALTER TABLE audit_results ADD COLUMN IF NOT EXISTS qa_verified_at TIMESTAMP")
-    # ── Appeals ──
+                                    # ── QA Verification Gating ──
+                # ── Appeals ──
     conn.execute("""
         CREATE TABLE IF NOT EXISTS appeals (
             id VARCHAR PRIMARY KEY,
@@ -236,10 +211,6 @@ def init_database():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
-    try:
-        conn.execute("ALTER TABLE appeal_intake_cases ADD COLUMN original_nurse_id VARCHAR")
-    except Exception:
-        pass
     # ── Reviewer Stats ──
     conn.execute("""
         CREATE TABLE IF NOT EXISTS reviewer_stats (

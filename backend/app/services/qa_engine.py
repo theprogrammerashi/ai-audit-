@@ -205,6 +205,8 @@ def compute_qa_audit(
     if isinstance(submitted_at, str):
         try:
             submitted_at = datetime.fromisoformat(submitted_at.replace("Z", "+00:00"))
+            if submitted_at.tzinfo is None:
+                submitted_at = submitted_at.replace(tzinfo=timezone.utc)
         except Exception:
             submitted_at = datetime.now(timezone.utc)
     elif isinstance(submitted_at, datetime):

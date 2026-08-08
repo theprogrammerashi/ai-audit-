@@ -30,6 +30,7 @@ class AppealDashboardItem(BaseModel):
     top_risk_factors: List[str] = []
     appeal_recommendation: Optional[str] = None
     model_confidence: Optional[float] = None
+    actual_outcome: Optional[str] = None
 
 
 class AppealDashboardResponse(BaseModel):

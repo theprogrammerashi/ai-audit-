@@ -201,7 +201,7 @@ def build_cases():
             "labs": {"bnp": bnp, "creatinine": creat, "potassium": k, "troponin": trop, "ef": ef},
             "clinical_summary": f"{age}-year-old {'male' if i % 2 == 0 else 'female'} presenting with acute decompensated heart failure. EF {ef}% on echo. {'Severe dyspnea at rest' if o2 < 88 else 'Moderate dyspnea on exertion'}, bilateral crackles, {'3+' if bnp > 2000 else '2+'} peripheral edema. O2 sat {o2}% on room air. BNP {'critically' if bnp > 2000 else 'significantly'} elevated at {bnp:,}. {'IV Lasix initiated with inadequate response to oral diuretics' if bnp > 1500 else 'Oral diuretics with close monitoring'}.",
             "timeline": [
-                {"day": "Day 1", "event": "ER Presentation", "details": f"{'Severe' if o2 < 88 else 'Moderate'} dyspnea, O2 sat {o2}%, bilateral crackles"},
+                {"day": "Day 1", "event": "Emergency Room Arrival", "details": f"{'Severe' if o2 < 88 else 'Moderate'} dyspnea, O2 sat {o2}%, bilateral crackles"},
                 {"day": "Day 1", "event": "Labs & Imaging", "details": f"BNP {bnp:,}, CXR {'bilateral pleural effusions' if bnp > 1500 else 'mild congestion'}, Echo EF {ef}%"},
                 {"day": "Day 1", "event": "Treatment Initiated", "details": f"{'IV Lasix 80mg' if bnp > 1500 else 'Oral Lasix 40mg'}, O2 via NC, continuous monitoring"},
                 {"day": "Day 2", "event": "Ongoing Treatment", "details": "Diuretics continued, fluid restriction, daily weights"},
@@ -267,7 +267,7 @@ def build_cases():
             "labs": {"wbc": wbc, "ph": ph, "pco2": pco2, "procalcitonin": procal},
             "clinical_summary": f"{age}-year-old {'male' if i % 2 == 0 else 'female'} with {'severe' if ph < 7.32 else 'moderate'} COPD (GOLD Stage {'III' if ph < 7.32 else 'II'}) presenting with acute exacerbation. {'Failed outpatient prednisone and azithromycin course' if pco2 > 50 else 'Worsening symptoms despite bronchodilators'}. {'Hypoxic' if o2 < 88 else 'Borderline hypoxic'} (O2 sat {o2}%), {'tachypneic' if rr > 24 else 'mildly elevated RR'} (RR {rr}). ABG shows {'respiratory acidosis' if ph < 7.35 else 'near-normal pH'} with pH {ph} and pCO2 {pco2}. {'IV methylprednisolone and nebulizer treatments initiated' if ph < 7.35 else 'Oral steroids and nebulizers started'}.",
             "timeline": [
-                {"day": "Day 1", "event": "ER Presentation", "details": f"{'Severe' if o2 < 86 else 'Moderate'} dyspnea, O2 sat {o2}%"},
+                {"day": "Day 1", "event": "Emergency Room Arrival", "details": f"{'Severe' if o2 < 86 else 'Moderate'} dyspnea, O2 sat {o2}%"},
                 {"day": "Day 1", "event": "Labs & ABG", "details": f"pH {ph}, pCO2 {pco2}, WBC {wbc}"},
                 {"day": "Day 1", "event": "Treatment", "details": f"{'IV methylprednisolone' if ph < 7.35 else 'Oral prednisone'}, continuous nebulizers"},
                 {"day": "Day 2", "event": "Monitoring", "details": "Repeat ABG, respiratory therapy Q4H"},
@@ -328,7 +328,7 @@ def build_cases():
             "labs": {"wbc": wbc, "lactate": lact, "procalcitonin": procal, "creatinine": creat},
             "clinical_summary": f"{age}-year-old {'male' if i % 2 == 0 else 'female'} presenting with {'severe sepsis' if lact >= 4.0 else 'suspected sepsis'} secondary to {'UTI' if i % 3 == 0 else 'pneumonia' if i % 3 == 1 else 'abdominal source'}. {'Persistent hypotension' if int(bp.split('/')[0]) < 90 else 'Borderline hypotension'} (BP {bp}) {'despite 2L IV fluid resuscitation' if lact > 3 else 'responsive to initial fluids'}. Elevated lactate ({lact} mmol/L), procalcitonin {procal}, WBC {wbc}. {'Altered mental status — confused to time and situation' if lact > 4 else 'Alert and oriented'}. Broad-spectrum IV antibiotics initiated.",
             "timeline": [
-                {"day": "Day 1", "event": "ER Presentation", "details": f"Fever {temp}°F, {'hypotension' if int(bp.split('/')[0]) < 90 else 'low-normal BP'}, {'AMS' if lact > 4 else 'alert'}"},
+                {"day": "Day 1", "event": "Emergency Room Arrival", "details": f"Fever {temp}°F, {'hypotension' if int(bp.split('/')[0]) < 90 else 'low-normal BP'}, {'AMS' if lact > 4 else 'alert'}"},
                 {"day": "Day 1", "event": "Sepsis Workup", "details": f"Blood cultures x2, Lactate {lact}, PCT {procal}"},
                 {"day": "Day 1", "event": "Resuscitation", "details": f"{'2L NS bolus, persistent hypotension' if lact > 3 else '1L NS bolus, responsive'}, IV antibiotics started"},
                 {"day": "Day 2", "event": "ICU Monitoring", "details": "Serial lactate trending, vasopressors considered" if lact > 4 else "Floor monitoring, repeat labs"},
@@ -399,7 +399,7 @@ def build_cases():
             "labs": {"bnp": bnp, "creatinine": creat, "potassium": k, "troponin": trop, "ef": ef},
             "clinical_summary": f"{age}-year-old {'male' if i % 2 == 0 else 'female'} presenting with {dx_display.lower()}. Vitals {'borderline' if o2 < 93 else 'within normal limits'}. BNP {bnp} ({'mildly elevated' if bnp > 300 else 'normal range'}). EF {ef}% ({'preserved' if ef >= 50 else 'mildly reduced'}). This case represents a clinical grey zone between observation and inpatient status. {'Trending labs and serial troponins recommended.' if presentation == 'chest_pain' else 'Close monitoring recommended.'}",
             "timeline": [
-                {"day": "Day 1", "event": "ER Presentation", "details": f"{dx_display}, O2 sat {o2}%, vitals stable"},
+                {"day": "Day 1", "event": "Emergency Room Arrival", "details": f"{dx_display}, O2 sat {o2}%, vitals stable"},
                 {"day": "Day 1", "event": "Workup", "details": f"BNP {bnp}, troponin {trop}, EF {ef}% on echo"},
                 {"day": "Day 1", "event": "Initial Management", "details": "Monitoring, serial labs ordered"},
             ],
@@ -575,7 +575,7 @@ def build_decisions(cases):
         if i >= 20:
             break
         decision_type = decision_types[i % len(decision_types)]
-        reviewer_id = reviewers[i % len(reviewers)]
+        reviewer_id = c.get("submitted_by", "EXL-N009")
         structured = json.loads(c["structured_case"])
         vitals = structured.get("vitals", {})
         labs = structured.get("labs", {})

@@ -5,7 +5,7 @@ Uses DuckDB for real data retrieval and Groq LLM for natural language generation
 import json
 import re
 from groq import Groq
-import duckdb
+import sqlite3
 from app.config import settings
 
 def _get_groq_client():
@@ -70,7 +70,7 @@ def classify_intent(message: str) -> str:
 
     return "general"
 
-def retrieve_data(intent: str, db: duckdb.DuckDBPyConnection, message: str = "") -> dict:
+def retrieve_data(intent: str, db: sqlite3.Connection, message: str = "") -> dict:
     data = {}
     try:
         if intent == "specific_case_query":
@@ -846,7 +846,7 @@ I can drill down into any of these areas — just ask! For example:
 - **Trends** — "How have QA scores trended this quarter?"
 """
 
-def _get_semantic_context(message: str, db: duckdb.DuckDBPyConnection) -> str:
+def _get_semantic_context(message: str, db: sqlite3.Connection) -> str:
     """
     Use ClinicalBERT to find the most semantically relevant case summaries
     for the user's query. Returns a formatted context string for the LLM.
@@ -895,7 +895,7 @@ def _get_semantic_context(message: str, db: duckdb.DuckDBPyConnection) -> str:
         return ""
 
 
-def generate_chat_response(message: str, db: duckdb.DuckDBPyConnection) -> dict:
+def generate_chat_response(message: str, db: sqlite3.Connection) -> dict:
     """End-to-end chat generation process with ClinicalBERT semantic augmentation."""
     intent = classify_intent(message)
     data = retrieve_data(intent, db, message)

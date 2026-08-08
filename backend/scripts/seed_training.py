@@ -1,5 +1,5 @@
 import os
-import duckdb
+import sqlite3
 import uuid
 from datetime import datetime, timezone
 from app.config import settings

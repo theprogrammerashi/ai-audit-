@@ -1,3 +1,4 @@
+import sqlite3
 """
 CareAudit AI - Analytics API
 Scoped: QA_LEAD sees only their 5 nurses. NURSE gets 403. ADMIN sees all.
@@ -26,7 +27,7 @@ def _parse_reviewer_row(row, columns) -> dict:
 async def get_reviewer_stats(
     reviewer_id: str,
     user: dict = Depends(get_current_user),
-    db: duckdb.DuckDBPyConnection = Depends(get_db),
+    db: sqlite3.Connection = Depends(get_db),
 ):
     """Individual reviewer performance. NURSE can only see their own stats."""
     role = user.get("role", "NURSE")
@@ -57,7 +58,7 @@ async def get_reviewer_stats(
 @router.get("/team", response_model=TeamAnalytics)
 async def get_team_analytics(
     user: dict = Depends(get_current_user),
-    db: duckdb.DuckDBPyConnection = Depends(get_db),
+    db: sqlite3.Connection = Depends(get_db),
 ):
     """
     Team analytics — scoped.
@@ -101,7 +102,7 @@ async def get_team_analytics(
 async def get_reviewer_detail(
     reviewer_id: str,
     user: dict = Depends(get_current_user),
-    db: duckdb.DuckDBPyConnection = Depends(get_db),
+    db: sqlite3.Connection = Depends(get_db),
 ):
     """Detailed breakdown for a reviewer. Scoped — same rules as /reviewer/{id}."""
     role = user.get("role", "NURSE")
@@ -206,7 +207,7 @@ async def get_reviewer_detail(
 @router.get("/org", response_model=OrgAnalytics)
 async def get_org_analytics(
     user: dict = Depends(get_current_user),
-    db: duckdb.DuckDBPyConnection = Depends(get_db),
+    db: sqlite3.Connection = Depends(get_db),
 ):
     """Org-wide analytics — ADMIN/EXECUTIVE only."""
     if user.get("role") not in ("ADMIN", "EXECUTIVE"):

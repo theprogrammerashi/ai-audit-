@@ -5,7 +5,7 @@ Training modules and assessments, scoped by role.
 from fastapi import APIRouter, Depends, HTTPException
 import json
 import uuid
-import duckdb
+import sqlite3
 from datetime import datetime, timezone
 from app.database import get_db
 from app.api.deps import get_current_user, get_scoped_nurse_ids, require_qa_lead_or_admin
@@ -17,7 +17,7 @@ router = APIRouter(prefix="/training", tags=["Training"])
 async def get_training_modules(
     reviewer_id: str,
     user: dict = Depends(get_current_user),
-    db: duckdb.DuckDBPyConnection = Depends(get_db)
+    db: sqlite3.Connection = Depends(get_db)
 ):
     """Get assigned training modules for a reviewer. Scoped by role."""
     role = user.get("role", "NURSE")
@@ -47,7 +47,7 @@ async def get_training_modules(
 @router.get("/team-modules", response_model=list[dict])
 async def get_team_training_modules(
     user: dict = Depends(require_qa_lead_or_admin()),
-    db: duckdb.DuckDBPyConnection = Depends(get_db)
+    db: sqlite3.Connection = Depends(get_db)
 ):
     """QA Lead can see all training modules assigned to their team."""
     scoped = get_scoped_nurse_ids(user, db)
@@ -83,7 +83,7 @@ async def get_team_training_modules(
     return modules
 
 @router.post("/{module_id}/start")
-async def start_module(module_id: str, user: dict = Depends(get_current_user), db: duckdb.DuckDBPyConnection = Depends(get_db)):
+async def start_module(module_id: str, user: dict = Depends(get_current_user), db: sqlite3.Connection = Depends(get_db)):
     result = db.execute("SELECT * FROM training_modules WHERE module_id = ?", [module_id]).fetchone()
     if not result:
         raise HTTPException(status_code=404, detail=f"Module not found")
@@ -92,7 +92,7 @@ async def start_module(module_id: str, user: dict = Depends(get_current_user), d
     return {"message": "Module started", "module_id": module_id}
 
 @router.post("/{module_id}/submit-assessment")
-async def submit_assessment(module_id: str, body: dict, user: dict = Depends(get_current_user), db: duckdb.DuckDBPyConnection = Depends(get_db)):
+async def submit_assessment(module_id: str, body: dict, user: dict = Depends(get_current_user), db: sqlite3.Connection = Depends(get_db)):
     answers = body.get("answers", [])
     correct_answers_list = body.get("correct_answers", [])
     time_taken_seconds = body.get("time_taken_seconds", 0)
@@ -116,7 +116,7 @@ async def submit_assessment(module_id: str, body: dict, user: dict = Depends(get
     return {"assessment_id": assessment_id, "score": score, "total_questions": total_questions, "correct_answers": correct_count, "passed": passed, "time_taken_seconds": time_taken_seconds}
 
 @router.post("/{module_id}/complete")
-async def complete_module(module_id: str, user: dict = Depends(get_current_user), db: duckdb.DuckDBPyConnection = Depends(get_db)):
+async def complete_module(module_id: str, user: dict = Depends(get_current_user), db: sqlite3.Connection = Depends(get_db)):
     result = db.execute("SELECT * FROM training_modules WHERE module_id = ?", [module_id]).fetchone()
     if not result:
         raise HTTPException(status_code=404, detail="Module not found")

@@ -1,6 +1,6 @@
-import duckdb
+import sqlite3
 import json
-c = duckdb.connect('data/careaudit.db')
+c = sqlite3.connect('data/careaudit.db')
 r = c.execute("SELECT structured_case FROM cases WHERE case_number='CASE-EXC-2026-0128'").fetchone()
 if r and r[0]:
     try:

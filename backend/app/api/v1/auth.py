@@ -3,7 +3,7 @@ CareAudit AI - Auth API Endpoints
 Login, token refresh, logout.
 """
 from fastapi import APIRouter, Depends, HTTPException, status
-import duckdb
+import sqlite3
 from app.database import get_db
 from app.core.security import verify_password, create_access_token
 from app.schemas.auth import LoginRequest, TokenResponse, UserResponse
@@ -13,7 +13,7 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
 @router.post("/login", response_model=TokenResponse)
-async def login(request: LoginRequest, db: duckdb.DuckDBPyConnection = Depends(get_db)):
+async def login(request: LoginRequest, db: sqlite3.Connection = Depends(get_db)):
     """Authenticate user and return JWT token."""
     result = db.execute("SELECT * FROM users WHERE email = ?", [request.email]).fetchone()
     if not result:

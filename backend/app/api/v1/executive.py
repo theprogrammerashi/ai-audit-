@@ -4,7 +4,7 @@ Powered by real historical PA data (1,000 records).
 Scoped strictly to ADMIN/EXECUTIVE roles.
 """
 from fastapi import APIRouter, Depends, HTTPException
-import duckdb
+import sqlite3
 from app.database import get_db
 from app.api.deps import require_qa_lead_or_admin
 
@@ -14,7 +14,7 @@ router = APIRouter(prefix="/executive", tags=["Executive"])
 @router.get("/dashboard")
 async def get_executive_dashboard(
     user: dict = Depends(require_qa_lead_or_admin()),
-    db: duckdb.DuckDBPyConnection = Depends(get_db)
+    db: sqlite3.Connection = Depends(get_db)
 ):
     """Get executive dashboard with real aggregated data. Restricted to Admin/Executive."""
     data = {}

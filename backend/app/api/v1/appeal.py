@@ -4,7 +4,7 @@ Appeal risk predictions and dashboard, scoped by role.
 """
 from fastapi import APIRouter, Depends, HTTPException
 import json
-import duckdb
+import sqlite3
 from app.database import get_db
 from app.api.deps import get_current_user, get_scoped_nurse_ids, require_qa_lead_or_admin
 from typing import Optional, List
@@ -18,7 +18,7 @@ router = APIRouter(prefix="/appeal", tags=["Appeal Risk"])
 async def get_appeal_risk(
     case_id: str,
     user: dict = Depends(get_current_user),
-    db: duckdb.DuckDBPyConnection = Depends(get_db)
+    db: sqlite3.Connection = Depends(get_db)
 ):
     """Get appeal risk prediction for a specific case."""
     result = db.execute("SELECT * FROM appeals WHERE case_id = ? ORDER BY created_at DESC LIMIT 1", [case_id]).fetchone()
@@ -55,7 +55,7 @@ async def get_appeal_risk(
 @router.get("/dashboard", response_model=AppealDashboardResponse)
 async def get_appeal_dashboard(
     user: dict = Depends(get_current_user),
-    db: duckdb.DuckDBPyConnection = Depends(get_db)
+    db: sqlite3.Connection = Depends(get_db)
 ):
     """Get appeal risk dashboard — nurses see own cases, QA Leads see team."""
     role = user.get("role", "NURSE")
@@ -69,11 +69,13 @@ async def get_appeal_dashboard(
                    nd.decision, a.overturn_probability, a.risk_category,
                    a.financial_exposure_estimate as financial_exposure,
                    u.full_name as reviewer_name, nd.decision_timestamp as decision_date,
-                   a.top_risk_factors, a.recommendation as appeal_recommendation, a.model_confidence
+                   a.top_risk_factors, a.recommendation as appeal_recommendation, a.model_confidence,
+                   aic.appeal_outcome as actual_outcome
             FROM appeals a
             JOIN cases c ON a.case_id = c.id
             LEFT JOIN nurse_decisions nd ON a.decision_id = nd.id
             LEFT JOIN users u ON nd.reviewer_id = u.id
+            LEFT JOIN appeal_intake_cases aic ON c.id = aic.case_id
             WHERE nd.reviewer_id = ?
             ORDER BY a.overturn_probability DESC
         """, [uid]).fetchall()
@@ -89,11 +91,13 @@ async def get_appeal_dashboard(
                    nd.decision, a.overturn_probability, a.risk_category,
                    a.financial_exposure_estimate as financial_exposure,
                    u.full_name as reviewer_name, nd.decision_timestamp as decision_date,
-                   a.top_risk_factors, a.recommendation as appeal_recommendation, a.model_confidence
+                   a.top_risk_factors, a.recommendation as appeal_recommendation, a.model_confidence,
+                   aic.appeal_outcome as actual_outcome
             FROM appeals a
             JOIN cases c ON a.case_id = c.id
             LEFT JOIN nurse_decisions nd ON a.decision_id = nd.id
             LEFT JOIN users u ON nd.reviewer_id = u.id
+            LEFT JOIN appeal_intake_cases aic ON c.id = aic.case_id
             WHERE nd.reviewer_id IN ({placeholders})
             ORDER BY a.overturn_probability DESC
         """, nurse_ids).fetchall()

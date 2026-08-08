@@ -5,7 +5,7 @@ Now includes scoped team helpers for QA Lead / Nurse data isolation.
 """
 from fastapi import Depends, Header
 from typing import Optional
-import duckdb
+import sqlite3
 from app.database import get_db, get_connection
 from app.core.security import decode_access_token
 from app.core.exceptions import UnauthorizedError, ForbiddenError
@@ -13,7 +13,7 @@ from app.core.exceptions import UnauthorizedError, ForbiddenError
 
 async def get_current_user(
     authorization: Optional[str] = Header(None),
-    db: duckdb.DuckDBPyConnection = Depends(get_db)
+    db: sqlite3.Connection = Depends(get_db)
 ):
     """Extract and validate the current user from the JWT token."""
     if not authorization or not authorization.startswith("Bearer "):
@@ -39,7 +39,7 @@ async def get_current_user(
 
 async def get_optional_user(
     authorization: Optional[str] = Header(None),
-    db: duckdb.DuckDBPyConnection = Depends(get_db)
+    db: sqlite3.Connection = Depends(get_db)
 ):
     """Get current user if authenticated, None otherwise."""
     if not authorization or not authorization.startswith("Bearer "):
@@ -77,7 +77,7 @@ def require_admin():
     return require_role("ADMIN", "EXECUTIVE")
 
 
-def get_scoped_nurse_ids(user: dict, db: duckdb.DuckDBPyConnection) -> list[str]:
+def get_scoped_nurse_ids(user: dict, db: sqlite3.Connection) -> list[str]:
     """
     Returns the list of nurse user-IDs that the current user may see.
     - NURSE      → only their own ID

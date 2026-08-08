@@ -136,7 +136,7 @@ export default function HomePage() {
       setIsLoggedIn(true);
       try { const u = JSON.parse(localStorage.getItem("careaudit_user") || "{}"); setUserName(u.full_name || u.username || ""); } catch { }
     }
-    fetch("http://localhost:8000/api/v1/stats/public")
+    fetch("http://127.0.0.1:8000/api/v1/stats/public")
       .then(r => r.json()).then(d => setStats(d)).catch(() => { });
     const onScroll = () => setScrolled(window.scrollY > 40);
     window.addEventListener("scroll", onScroll);

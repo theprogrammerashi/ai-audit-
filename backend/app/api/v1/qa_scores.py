@@ -2,7 +2,7 @@
 CareAudit AI - QA Scores API Endpoints
 """
 from fastapi import APIRouter, Depends
-import duckdb
+import sqlite3
 from app.database import get_db
 from app.api.deps import get_current_user
 
@@ -12,7 +12,7 @@ router = APIRouter(prefix="/qa-scores", tags=["QA Scores"])
 @router.get("/summary")
 async def get_qa_summary(
     user: dict = Depends(get_current_user),
-    db: duckdb.DuckDBPyConnection = Depends(get_db)
+    db: sqlite3.Connection = Depends(get_db)
 ):
     """Get QA score summary statistics."""
     result = db.execute("""

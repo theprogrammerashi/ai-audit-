@@ -3,7 +3,7 @@ import sys
 import uuid
 import json
 import pandas as pd
-import duckdb
+import sqlite3
 from datetime import datetime
 
 # Add backend dir to PYTHONPATH to allow absolute imports

@@ -25,9 +25,9 @@ cd careaudit-ai
 
 ---
 
-### Step 2: Backend Setup (Python & DuckDB)
+### Step 2: Backend Setup (Python & SQLite)
 
-The backend is built with FastAPI and uses an in-memory/file-based DuckDB database. We have included a pre-seeded database (`data/careaudit.duckdb`) so you don't need to run the seeding scripts unless you want to start fresh.
+The backend is built with FastAPI and uses an in-memory/file-based SQLite database. We have included a pre-seeded database (`data/careaudit.sqlite`) so you don't need to run the seeding scripts unless you want to start fresh.
 
 1. **Navigate to the backend directory:**
    ```bash
@@ -96,7 +96,7 @@ The frontend is a modern, responsive dashboard built with Next.js and Tailwind C
 ### 🗄️ Database Reset & Seeding (Optional)
 
 If you ever need to reset the data and start from a clean slate, you can run the full seeder script.
-*Warning: This will delete all current data in the DuckDB file.*
+*Warning: This will delete all current data in the SQLite file.*
 
 ```bash
 # Ensure the backend server is stopped first to release file locks!
@@ -110,6 +110,6 @@ This will regenerate 30 cases, 1000 historical PA records, and fully re-populate
 ### 🛡️ Core Technologies & Architecture
 - **Frontend:** Next.js, React, Tailwind CSS
 - **Backend:** FastAPI, Python, LangGraph
-- **Database:** DuckDB (In-Memory Analytics), SQLAlchemy
+- **Database:** SQLite (In-Memory Analytics), SQLAlchemy
 - **Security:** End-to-End Encryption, RBAC (Role-Based Access Control)
 - **AI Core:** 6-Agent Pipeline (Intake, Policy, QA, Reviewer Assistant, Appeal Risk, Executive/Training).

@@ -60,7 +60,7 @@ export default function WorkspaceAppealPage() {
   }
 
   const handleSubmitDecision = async (decision: string) => {
-    if (!rationale || rationale.length < 10) {
+    if (!rationale || rationale.trim().length === 0) {
       alert("Please provide a rationale before submitting.");
       return;
     }

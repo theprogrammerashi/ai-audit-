@@ -1,3 +1,4 @@
+import sqlite3
 """
 CareAudit AI - Nurse Workspace API
 Scoped: NURSE sees only their assigned cases. QA_LEAD sees all.
@@ -22,7 +23,7 @@ router = APIRouter(prefix="/workspace", tags=["Nurse Workspace"])
 @router.get("/queue", response_model=list[WorkspaceQueueItem])
 async def get_review_queue(
     user: dict = Depends(get_current_user),
-    db: duckdb.DuckDBPyConnection = Depends(get_db),
+    db: sqlite3.Connection = Depends(get_db),
 ):
     """Get the review queue — NURSE sees only their assigned cases."""
     role = user.get("role", "NURSE")
@@ -94,7 +95,7 @@ async def get_review_queue(
 @router.get("/qa-overview", response_model=dict)
 async def get_qa_workspace_overview(
     user: dict = Depends(get_current_user),
-    db: duckdb.DuckDBPyConnection = Depends(get_db),
+    db: sqlite3.Connection = Depends(get_db),
 ):
     """Get aggregated stats and cases for QA Lead's workspace."""
     if user.get("role") not in ["QA_LEAD", "ADMIN", "EXECUTIVE"]:
@@ -112,11 +113,11 @@ async def get_qa_workspace_overview(
             u.id, u.full_name as name, u.npi as employee_id,
             (SELECT COUNT(*) FROM cases WHERE submitted_by = u.id AND status = 'DECIDED') as pending_cases,
             COALESCE(
-                (SELECT AVG(nd.decision_timestamp::TIMESTAMP - c2.submitted_at::TIMESTAMP) 
+                (SELECT AVG(((julianday(nd.decision_timestamp) - julianday(c2.submitted_at)) * 86400)) 
                  FROM nurse_decisions nd 
                  JOIN cases c2 ON nd.case_id = c2.id 
-                 WHERE nd.reviewer_id = u.id AND nd.decision_timestamp > CURRENT_DATE - INTERVAL '30 days'),
-                INTERVAL '0 hours'
+                 WHERE nd.reviewer_id = u.id AND nd.decision_timestamp > date('now', '-30 days')),
+                0
             ) as avg_turnaround
         FROM users u
         WHERE u.id IN ({placeholders}) AND u.role = 'NURSE'
@@ -126,13 +127,17 @@ async def get_qa_workspace_overview(
     nurses_list = []
     for r in nurses:
         nd = dict(zip(nurse_cols, r))
-        # simplify timedelta object to string/hours
-        if nd["avg_turnaround"]:
-            total_secs = nd["avg_turnaround"].total_seconds()
-            nd["avg_turnaround_hours"] = round(total_secs / 3600, 1)
+        # simplify turnaround seconds/timedelta to hours
+        avg_turnaround = nd.get("avg_turnaround", 0) or 0
+        if isinstance(avg_turnaround, (int, float)):
+            nd["avg_turnaround_hours"] = round(avg_turnaround / 3600, 1)
+        elif hasattr(avg_turnaround, "total_seconds"):
+            nd["avg_turnaround_hours"] = round(avg_turnaround.total_seconds() / 3600, 1)
         else:
             nd["avg_turnaround_hours"] = 0
-        del nd["avg_turnaround"]
+            
+        if "avg_turnaround" in nd:
+            del nd["avg_turnaround"]
         nurses_list.append(nd)
 
     # Get cases queue for the nurses
@@ -167,7 +172,7 @@ async def get_qa_workspace_overview(
 @router.get("/history", response_model=list[dict])
 async def get_decision_history(
     user: dict = Depends(get_current_user),
-    db: duckdb.DuckDBPyConnection = Depends(get_db),
+    db: sqlite3.Connection = Depends(get_db),
 ):
     """Get recently decided cases — NURSE sees only their own decisions."""
     nurse_ids = get_scoped_nurse_ids(user, db)
@@ -201,7 +206,7 @@ async def get_decision_history(
 @router.get("/qa-reports")
 async def get_nurse_qa_reports(
     user: dict = Depends(get_current_user),
-    db: duckdb.DuckDBPyConnection = Depends(get_db),
+    db: sqlite3.Connection = Depends(get_db),
 ):
     """Get QA audit reports for the nurse's cases.
     Nurses see only their own cases.
@@ -276,7 +281,7 @@ async def get_nurse_qa_reports(
 async def get_workspace_data(
     case_id: str,
     user: dict = Depends(get_current_user),
-    db: duckdb.DuckDBPyConnection = Depends(get_db),
+    db: sqlite3.Connection = Depends(get_db),
 ):
     """Load full case workspace data. NURSE must be assigned to the case."""
     case_result = db.execute("SELECT * FROM cases WHERE id = ?", [case_id]).fetchone()
@@ -594,7 +599,7 @@ async def submit_decision(
     case_id: str,
     decision: DecisionSubmit,
     user: dict = Depends(get_current_user),
-    db: duckdb.DuckDBPyConnection = Depends(get_db),
+    db: sqlite3.Connection = Depends(get_db),
 ):
     """Submit nurse decision — auto-triggers QA audit + appeal risk computation."""
     case_result = db.execute("SELECT * FROM cases WHERE id = ?", [case_id]).fetchone()
@@ -626,9 +631,20 @@ async def submit_decision(
         VALUES (?, ?, ?, ?, ?, ?, ?)
     """, [decision_id, case_id, user["id"], decision.decision,
           decision.rationale, decision.policy_cited, criteria_str])
+    # Determine case priority to route appropriately
+    primary_code = case_dict.get("primary_diagnosis_code", "")
+    primary_display = case_dict.get("primary_diagnosis_display", "")
+    
+    if primary_code.startswith("A41") or "Sepsis" in primary_display:
+        urgency = "URGENT"
+    elif primary_code.startswith("I50") or "Heart Failure" in primary_display:
+        urgency = "HIGH"
+    else:
+        urgency = "STANDARD"
 
-    db.execute("UPDATE cases SET status = 'DECIDED' WHERE id = ?", [case_id])
-
+    # Route Urgent/High to QA Lead (DECIDED), bypass for Standard (AUDITED)
+    new_status = "DECIDED" if urgency in ["URGENT", "HIGH"] else "AUDITED"
+    db.execute("UPDATE cases SET status = ? WHERE id = ?", [new_status, case_id])
     policy_result = db.execute("""
         SELECT * FROM policy_matches WHERE case_id = ? ORDER BY created_at DESC LIMIT 1
     """, [case_id]).fetchone()

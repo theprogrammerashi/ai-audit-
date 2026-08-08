@@ -1,9 +1,9 @@
-import duckdb
+import sqlite3
 import sys
 sys.path.append('d:/AI Nurse QA & Audit/careaudit-ai/backend')
 from app.services.qa_engine import compute_qa_audit
 
-db = duckdb.connect('d:/AI Nurse QA & Audit/careaudit-ai/data/careaudit.duckdb')
+db = sqlite3.connect('d:/AI Nurse QA & Audit/careaudit-ai/data/careaudit.duckdb')
 cases = db.execute("SELECT c.*, nd.decision, nd.rationale, nd.policy_cited, nd.id as decision_id FROM cases c JOIN nurse_decisions nd ON c.id = nd.case_id LEFT JOIN audit_results ar ON c.id = ar.case_id WHERE c.status='DECIDED' AND ar.id IS NULL").fetchall()
 cols = [desc[0] for desc in db.description]
 

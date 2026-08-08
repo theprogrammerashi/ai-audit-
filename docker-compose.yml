@@ -9,7 +9,7 @@ services:
     build: ./backend
     ports: ["8000:8000"]
     environment:
-      DUCKDB_PATH: /app/data/careaudit.duckdb
+      DUCKDB_PATH: /app/data/careaudit.sqlite
       CHROMA_HOST: chromadb
       CHROMA_PORT: 8000
       GROQ_API_KEY: ${GROQ_API_KEY}

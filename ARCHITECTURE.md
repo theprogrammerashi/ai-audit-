@@ -14,7 +14,7 @@ The architecture is built on a Human-in-the-Loop (HITL) AI workflow. Here is the
 ### Phase 1: Data Ingestion & Pre-computation (AI Prepares)
 1. **Document Upload & Case Creation (`POST /api/v1/cases/`)**
    - **Frontend:** A user (or automated system) uploads a patient's medical record (PDFs, EMR extracts).
-   - **Backend:** The `cases.py` router receives the request. It inserts a new record into the DuckDB `cases` table with status `PENDING_REVIEW`.
+   - **Backend:** The `cases.py` router receives the request. It inserts a new record into the SQLite `cases` table with status `PENDING_REVIEW`.
 2. **Pipeline Trigger (`POST /api/v1/cases/{id}/trigger-pipeline`)**
    - **Backend:** The API triggers the LangGraph pipeline defined in `app/agents/graph.py`. The `AgentState` object is initialized.
 3. **Agent 1: Clinical Intake (`clinical_intake_agent.py`)**
@@ -23,7 +23,7 @@ The architecture is built on a Human-in-the-Loop (HITL) AI workflow. Here is the
 4. **Agent 2: Policy Retrieval / RAG (`policy_agent.py`)**
    - **Action:** Uses the primary diagnosis (e.g., CHF) to query the vector database (ChromaDB). It retrieves chunks of clinical guidelines.
    - **Action:** Prompts the LLM to map the exact clinical evidence found by Agent 1 against the specific criteria sections of the policy.
-   - **Output:** Saves a `policy_matches` JSON object to the DuckDB `policy_matches` table, flagging which criteria are "MET" or "UNMET".
+   - **Output:** Saves a `policy_matches` JSON object to the SQLite `policy_matches` table, flagging which criteria are "MET" or "UNMET".
 5. **Agent 3: Reviewer Assistant (`reviewer_assistant_agent.py`)**
    - **Action:** Generates a short, conversational "AI Copilot Observation" (e.g., "Patient meets 3 of 4 inpatient criteria...").
    - **Output:** Pauses the graph. The system waits for human intervention.
@@ -52,8 +52,8 @@ The architecture is built on a Human-in-the-Loop (HITL) AI workflow. Here is the
 ## 2. Directory Structure & File Breakdown
 
 ### Backend (`backend/`)
-* **`app/main.py`:** The FastAPI entrypoint. Mounts the CORS middleware to allow localhost:3001, mounts the `AuditLogMiddleware` (which intercepts every click/request and logs it for HIPAA), initializes the DuckDB connection on startup, and registers the `/api/v1` router.
-* **`app/database.py`:** Manages the DuckDB connection (`get_connection()`). Contains the massive `init_database()` function that creates all 12 SQL tables (users, cases, policies, policy_matches, nurse_decisions, audit_results, appeals, reviewer_stats, training_modules, conversations, messages, audit_log).
+* **`app/main.py`:** The FastAPI entrypoint. Mounts the CORS middleware to allow localhost:3001, mounts the `AuditLogMiddleware` (which intercepts every click/request and logs it for HIPAA), initializes the SQLite connection on startup, and registers the `/api/v1` router.
+* **`app/database.py`:** Manages the SQLite connection (`get_connection()`). Contains the massive `init_database()` function that creates all 12 SQL tables (users, cases, policies, policy_matches, nurse_decisions, audit_results, appeals, reviewer_stats, training_modules, conversations, messages, audit_log).
 * **`app/config.py`:** Uses Pydantic `BaseSettings` to load environment variables (Groq Key, JWT Secret).
 * **`app/core/security.py`:** Implements `bcrypt` for password hashing (verifying user logins) and `python-jose` for creating JWT access tokens.
 * **`app/core/middleware.py`:** Contains `AuditLogMiddleware`. Every time a user clicks anything that triggers an API call, this file intercepts the request, grabs the user's IP and JWT ID, and writes an immutable record to the `audit_log` table.
@@ -86,7 +86,7 @@ The architecture is built on a Human-in-the-Loop (HITL) AI workflow. Here is the
   1. Prevents default form submission.
   2. Calls `login(email, password)` in `authStore.ts`.
   3. The store uses Axios (`api.ts`) to send a `POST` request to `http://localhost:8000/api/v1/auth/login`.
-  4. Backend `auth.py` hashes the password using `bcrypt` and compares it to the DuckDB `users` table.
+  4. Backend `auth.py` hashes the password using `bcrypt` and compares it to the SQLite `users` table.
   5. Returns a JWT. Frontend saves it to `localStorage`.
   6. Router redirects the user to `/chat`.
 

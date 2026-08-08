@@ -4,7 +4,7 @@ Returns agent metadata, stats, and recent cases processed.
 """
 from fastapi import APIRouter, Depends
 import json
-import duckdb
+import sqlite3
 from app.database import get_db
 from app.api.deps import get_current_user
 
@@ -65,7 +65,7 @@ AGENTS_META = [
 @router.get("/agents")
 async def get_agents(
     user: dict = Depends(get_current_user),
-    db: duckdb.DuckDBPyConnection = Depends(get_db)
+    db: sqlite3.Connection = Depends(get_db)
 ):
     """Get all agents with their metadata and live stats."""
     agents = []
@@ -106,7 +106,7 @@ async def get_agents(
 async def get_recent_cases(
     agent_id: str,
     user: dict = Depends(get_current_user),
-    db: duckdb.DuckDBPyConnection = Depends(get_db)
+    db: sqlite3.Connection = Depends(get_db)
 ):
     """Get the last 5 cases processed by a specific agent."""
     cases = []

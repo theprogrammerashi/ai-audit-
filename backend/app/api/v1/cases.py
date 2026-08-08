@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from typing import Optional
 import uuid
 import json
-import duckdb
+import sqlite3
 from datetime import datetime
 from app.database import get_db
 from app.api.deps import get_current_user, get_scoped_nurse_ids
@@ -25,7 +25,7 @@ async def parse_uploaded_document(file: UploadFile = File(...), user: dict = Dep
     return parse_document(file_bytes, file.filename or "unknown")
 
 @router.post("/", response_model=CaseResponse, status_code=status.HTTP_201_CREATED)
-async def create_case(case: CaseCreate, user: dict = Depends(get_current_user), db: duckdb.DuckDBPyConnection = Depends(get_db)):
+async def create_case(case: CaseCreate, user: dict = Depends(get_current_user), db: sqlite3.Connection = Depends(get_db)):
     case_id = str(uuid.uuid4())
     count = db.execute("SELECT COUNT(*) FROM cases").fetchone()[0]
     case_number = f"CASE-{datetime.now().year}-{str(count + 1).zfill(3)}"
@@ -64,7 +64,7 @@ async def create_case(case: CaseCreate, user: dict = Depends(get_current_user), 
     )
 
 @router.get("/", response_model=CaseListResponse)
-async def list_cases(status_filter: Optional[str] = None, user: dict = Depends(get_current_user), db: duckdb.DuckDBPyConnection = Depends(get_db)):
+async def list_cases(status_filter: Optional[str] = None, user: dict = Depends(get_current_user), db: sqlite3.Connection = Depends(get_db)):
     # Nurses see only their own, others see all
     role = user.get("role", "NURSE")
     where_clauses = []
@@ -110,7 +110,7 @@ async def list_cases(status_filter: Optional[str] = None, user: dict = Depends(g
     return CaseListResponse(cases=cases, total=total, pending=pending, completed=completed)
 
 @router.get("/{case_id}", response_model=CaseFullResponse)
-async def get_case(case_id: str, user: dict = Depends(get_current_user), db: duckdb.DuckDBPyConnection = Depends(get_db)):
+async def get_case(case_id: str, user: dict = Depends(get_current_user), db: sqlite3.Connection = Depends(get_db)):
     result = db.execute("SELECT * FROM cases WHERE id = ?", [case_id]).fetchone()
     if not result:
         raise HTTPException(status_code=404, detail=f"Case {case_id} not found")

@@ -440,6 +440,7 @@ export default function AppealPage() {
                             </td>
                             <td style={{ fontWeight: 600 }}>${c.financial_exposure.toLocaleString()}</td>
                             <td><span className={`badge ${riskBadge[c.risk_category] || "badge-info"}`}>{c.risk_category}</span></td>
+
                             <td style={{ color: "var(--text-secondary)" }}>{c.reviewer_name}</td>
                             <td>
                               {isExpanded ? <ChevronUp size={16} style={{ color: "var(--primary)" }} /> : <ChevronDown size={16} style={{ color: "var(--text-tertiary)" }} />}

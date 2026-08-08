@@ -42,16 +42,16 @@ echo [2/6] Checking/Installing Python dependencies...
 pip install -r requirements.txt
 echo Python dependencies ready.
 
-:: -- Step 5: Initialize Database and Seed Data --
-echo [3/6] Initializing DuckDB database...
+:: -- Step 5: Initialize Database --
+echo [3/6] Initializing SQLite database...
 set PYTHONIOENCODING=utf-8
 python -c "from app.database import init_database; init_database()"
 echo.
-echo [4/6] Seeding demo data...
-cd /d "%~dp0"
-set PYTHONIOENCODING=utf-8
-python backend\scripts\seed_full.py
-echo.
+:: echo [4/6] Seeding demo data... (Disabled to preserve migrated V2 data)
+:: cd /d "%~dp0"
+:: set PYTHONIOENCODING=utf-8
+:: python backend\scripts\seed_full.py
+:: echo.
 
 :: -- Step 6: Install Frontend Dependencies --
 echo [5/6] Installing frontend dependencies...

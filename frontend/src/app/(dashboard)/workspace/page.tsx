@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { LayoutDashboard, Clock, ChevronRight, AlertTriangle, Loader2, CheckCircle, History, Users, FileText, FolderOpen, ShieldCheck, XCircle, Eye } from "lucide-react";
+import { LayoutDashboard, Clock, ChevronRight, AlertTriangle, Loader2, CheckCircle, History, Users, FileText, FolderOpen, ShieldCheck, XCircle, Eye, Search, X, ArrowUp, ArrowDown } from "lucide-react";
 import api from "@/lib/api";
 import CustomDropdown from "@/components/shared/CustomDropdown";
 
@@ -25,6 +25,49 @@ export default function WorkspacePage() {
   const [userRole, setUserRole] = useState<string>("NURSE");
   const [qaOverview, setQaOverview] = useState<any>(null);
   const [filterNurse, setFilterNurse] = useState<string>("ALL");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc" | null>(null);
+
+  const priorityWeight: Record<string, number> = { URGENT: 3, HIGH: 2, STANDARD: 1 };
+
+  const filteredAndSortedCases = useMemo(() => {
+    let result = cases.filter(c => 
+      (filterNurse === "ALL" || c.assigned_nurse_id === filterNurse) && 
+      (caseTypeTab === 'prior_auth' ? !c.is_appeal : !!c.is_appeal)
+    );
+    
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(c => 
+        c.case_number?.toLowerCase().includes(q) || 
+        c.patient_name?.toLowerCase().includes(q) || 
+        c.primary_diagnosis_display?.toLowerCase().includes(q)
+      );
+    }
+    
+    if (sortOrder) {
+      result = [...result].sort((a, b) => {
+        const wA = priorityWeight[a.urgency] || 1;
+        const wB = priorityWeight[b.urgency] || 1;
+        return sortOrder === "desc" ? wB - wA : wA - wB;
+      });
+    }
+    
+    return result;
+  }, [cases, filterNurse, caseTypeTab, searchQuery, sortOrder]);
+
+  const avgQueueTime = useMemo(() => {
+    const queueCases = cases.filter(c => caseTypeTab === 'prior_auth' ? !c.is_appeal : !!c.is_appeal);
+    if (queueCases.length === 0) return "0h 0m";
+    const now = new Date().getTime();
+    const totalMs = queueCases.reduce((acc, c) => {
+      return acc + (now - new Date(c.submitted_at).getTime());
+    }, 0);
+    const avgMs = totalMs / queueCases.length;
+    const hrs = Math.floor(avgMs / (1000 * 60 * 60));
+    const mins = Math.floor((avgMs % (1000 * 60 * 60)) / (1000 * 60));
+    return `${hrs}h ${mins}m`;
+  }, [cases, caseTypeTab]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -223,7 +266,7 @@ export default function WorkspacePage() {
                   {[
                     { label: "Pending Review", value: cases.filter(c => caseTypeTab === 'prior_auth' ? !c.is_appeal : !!c.is_appeal).length, color: "var(--warning)", icon: Clock, bg: "var(--warning-light)" },
                     { label: "Urgent Priority", value: cases.filter((c) => c.urgency === "URGENT" && (caseTypeTab === 'prior_auth' ? !c.is_appeal : !!c.is_appeal)).length, color: "var(--danger)", icon: AlertTriangle, bg: "var(--danger-light)" },
-                    { label: "Avg. Queue Time", value: cases.filter(c => caseTypeTab === 'prior_auth' ? !c.is_appeal : !!c.is_appeal).length ? "2h 50m" : "0h 0m", color: "var(--primary)", icon: Clock, bg: "var(--primary-light)" },
+                    { label: "Avg. Queue Time", value: avgQueueTime, color: "var(--primary)", icon: Clock, bg: "var(--primary-light)" },
                   ].map((m) => {
                     const Icon = m.icon;
                     return (
@@ -267,17 +310,55 @@ export default function WorkspacePage() {
                 </div>
               )}
 
-              <h3 style={{ marginBottom: "16px" }}>{userRole !== "NURSE" ? "Pending QA Reviews" : "Your Queue"}</h3>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+                <h3 style={{ margin: 0 }}>{userRole !== "NURSE" ? "Pending QA Reviews" : "Your Queue"}</h3>
+                <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+                  <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+                    <Search size={16} style={{ position: "absolute", left: "10px", color: "var(--text-tertiary)" }} />
+                    <input 
+                      type="text" 
+                      placeholder="Search cases..." 
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      style={{ padding: "8px 32px", borderRadius: "var(--radius-md)", border: "1px solid var(--border-default)", fontSize: "0.85rem", width: "250px", background: "var(--bg-surface)", color: "var(--text-primary)" }}
+                    />
+                    {searchQuery && (
+                      <button 
+                        onClick={() => setSearchQuery("")}
+                        style={{ position: "absolute", right: "8px", background: "none", border: "none", cursor: "pointer", display: "flex", color: "var(--text-tertiary)" }}
+                      >
+                        <X size={14} />
+                      </button>
+                    )}
+                  </div>
+                  <div style={{ display: "flex", background: "var(--bg-surface)", border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", padding: "2px" }}>
+                    <button 
+                      onClick={() => setSortOrder(sortOrder === "desc" ? null : "desc")}
+                      style={{ padding: "4px 8px", background: sortOrder === "desc" ? "var(--primary-light)" : "transparent", color: sortOrder === "desc" ? "var(--primary)" : "var(--text-secondary)", border: "none", borderRadius: "var(--radius-sm)", cursor: "pointer", display: "flex", alignItems: "center", gap: "4px", fontSize: "0.8rem", fontWeight: 500 }}
+                      title="Sort Highest Priority First"
+                    >
+                      <ArrowDown size={14} /> High
+                    </button>
+                    <button 
+                      onClick={() => setSortOrder(sortOrder === "asc" ? null : "asc")}
+                      style={{ padding: "4px 8px", background: sortOrder === "asc" ? "var(--primary-light)" : "transparent", color: sortOrder === "asc" ? "var(--primary)" : "var(--text-secondary)", border: "none", borderRadius: "var(--radius-sm)", cursor: "pointer", display: "flex", alignItems: "center", gap: "4px", fontSize: "0.8rem", fontWeight: 500 }}
+                      title="Sort Lowest Priority First"
+                    >
+                      <ArrowUp size={14} /> Low
+                    </button>
+                  </div>
+                </div>
+              </div>
               {/* Cases Queue */}
-              {cases.filter(c => (filterNurse === "ALL" || c.assigned_nurse_id === filterNurse) && (caseTypeTab === 'prior_auth' ? !c.is_appeal : !!c.is_appeal)).length === 0 ? (
+              {filteredAndSortedCases.length === 0 ? (
                 <div className="card" style={{ textAlign: "center", padding: "48px 24px" }}>
                   <CheckCircle size={48} style={{ color: "var(--success)", margin: "0 auto 16px" }} />
                   <h3>{caseTypeTab === 'appeals' ? 'No appeal cases in queue' : 'All caught up!'}</h3>
-                  <p style={{ color: "var(--text-secondary)", marginTop: "8px" }}>{caseTypeTab === 'appeals' ? 'There are no appeal cases pending in this queue.' : 'There are no cases pending in this queue.'}</p>
+                  <p style={{ color: "var(--text-secondary)", marginTop: "8px" }}>{searchQuery ? 'No cases match your search criteria.' : (caseTypeTab === 'appeals' ? 'There are no appeal cases pending in this queue.' : 'There are no cases pending in this queue.')}</p>
                 </div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                  {cases.filter(c => (filterNurse === "ALL" || c.assigned_nurse_id === filterNurse) && (caseTypeTab === 'prior_auth' ? !c.is_appeal : !!c.is_appeal)).map((c) => {
+                  {filteredAndSortedCases.map((c) => {
                     const ps = priorityStyles[c.urgency] || priorityStyles["STANDARD"];
                     
                     const submittedAt = new Date(c.submitted_at);

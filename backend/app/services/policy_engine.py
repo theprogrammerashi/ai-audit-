@@ -6,12 +6,12 @@ import uuid
 import json
 import logging
 from datetime import datetime
-import duckdb
+import sqlite3
 
 logger = logging.getLogger(__name__)
 
 
-def run_policy_match(case_id: str, diagnosis: str, structured: dict = None, db: duckdb.DuckDBPyConnection = None) -> dict:
+def run_policy_match(case_id: str, diagnosis: str, structured: dict = None, db: sqlite3.Connection = None) -> dict:
     """
     Evaluates the case against policies and inserts a policy match record.
     Args:

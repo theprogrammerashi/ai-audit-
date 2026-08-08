@@ -659,7 +659,7 @@ def seed_appeal_intake():
     # ── PART 1: Historical Resolved Cases (original 20) ──────────────────────
     for i, case_data in enumerate(APPEAL_CASES):
         appeal_id = f"app-seed-{i+1:03d}"
-        case_id = f"appeal-case-{i+1:03d}"
+        case_id = f"case-{i+11:03d}"
         
         # Round-robin across all nurses
         assigned_nurse = nurse_ids[i % len(nurse_ids)]
@@ -740,7 +740,7 @@ def seed_appeal_intake():
             cases_inserted += 1
             pending_count += 1
     
-    conn.execute("COMMIT")
+    # conn.execute("COMMIT")  # DuckDBCompatConnection auto-commits
     print(f"[OK] Seeded {cases_inserted} realistic appeal intake cases.")
     print(f"     Historical (resolved): {len(APPEAL_CASES)} cases")
     print(f"     Pending (demo-ready):  {pending_count} cases ({num_per_nurse} per nurse)")

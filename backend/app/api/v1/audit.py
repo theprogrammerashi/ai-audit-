@@ -6,7 +6,7 @@ QA Lead can override QA score with notes.
 from fastapi import APIRouter, Depends, HTTPException
 import json
 import uuid
-import duckdb
+import sqlite3
 from datetime import datetime, timezone
 from app.database import get_db
 from app.api.deps import get_current_user, get_scoped_nurse_ids, require_qa_lead_or_admin
@@ -18,7 +18,7 @@ router = APIRouter(prefix="/audit", tags=["Audit"])
 @router.get("/queue", response_model=list[AuditQueueItem])
 async def get_audit_queue(
     user: dict = Depends(get_current_user),
-    db: duckdb.DuckDBPyConnection = Depends(get_db),
+    db: sqlite3.Connection = Depends(get_db),
 ):
     """
     Get the QA audit queue — scoped by role.
@@ -55,7 +55,7 @@ async def get_audit_queue(
 async def get_audit_result(
     case_id: str,
     user: dict = Depends(get_current_user),
-    db: duckdb.DuckDBPyConnection = Depends(get_db),
+    db: sqlite3.Connection = Depends(get_db),
 ):
     """
     Get audit result for a specific case.
@@ -117,7 +117,7 @@ async def get_audit_result(
 
     return AuditResultResponse(**audit_dict)
 
-def get_reviewer_id_for_case(db: duckdb.DuckDBPyConnection, case_id: str) -> str | None:
+def get_reviewer_id_for_case(db: sqlite3.Connection, case_id: str) -> str | None:
     row = db.execute("""
         SELECT nd.reviewer_id
         FROM audit_results ar
@@ -127,7 +127,7 @@ def get_reviewer_id_for_case(db: duckdb.DuckDBPyConnection, case_id: str) -> str
     """, [case_id]).fetchone()
     return row[0] if row else None
 
-def recalculate_reviewer_stats(db: duckdb.DuckDBPyConnection, reviewer_id: str):
+def recalculate_reviewer_stats(db: sqlite3.Connection, reviewer_id: str):
     """
     Dynamically recalculate a reviewer's stats based on all verified or audited
     cases in the past 30 days, and update the reviewer_stats table.
@@ -147,7 +147,7 @@ def recalculate_reviewer_stats(db: duckdb.DuckDBPyConnection, reviewer_id: str):
         JOIN nurse_decisions nd ON ar.decision_id = nd.id
         WHERE nd.reviewer_id = ?
           AND (ar.qa_verified = TRUE OR ar.qa_override_score IS NOT NULL OR ar.audit_result IS NOT NULL)
-          AND ar.audited_at >= CURRENT_DATE - INTERVAL '30 days'
+          AND ar.audited_at >= date('now', '-30 days')
     """, [reviewer_id]).fetchone()
 
     if not stats or stats[0] is None:
@@ -162,7 +162,7 @@ def recalculate_reviewer_stats(db: duckdb.DuckDBPyConnection, reviewer_id: str):
             SUM(CASE WHEN decision = 'APPROVED' THEN 1 ELSE 0 END) as approved_count,
             SUM(CASE WHEN decision = 'DENIED' THEN 1 ELSE 0 END) as denied_count
         FROM nurse_decisions
-        WHERE reviewer_id = ? AND decision_timestamp >= CURRENT_DATE - INTERVAL '30 days'
+        WHERE reviewer_id = ? AND decision_timestamp >= date('now', '-30 days')
     """, [reviewer_id]).fetchone()
 
     if decisions and decisions[0] > 0:
@@ -202,7 +202,7 @@ async def override_qa_score(
     case_id: str,
     body: dict,
     user: dict = Depends(require_qa_lead_or_admin()),
-    db: duckdb.DuckDBPyConnection = Depends(get_db),
+    db: sqlite3.Connection = Depends(get_db),
 ):
     """
     QA Lead overrides the AI-generated QA score for a case.
@@ -262,7 +262,7 @@ async def override_qa_score(
 async def complete_qa_audit_review(
     case_id: str,
     user: dict = Depends(require_qa_lead_or_admin()),
-    db: duckdb.DuckDBPyConnection = Depends(get_db),
+    db: sqlite3.Connection = Depends(get_db),
 ):
     """
     QA Lead marks the QA review as complete.
@@ -288,7 +288,7 @@ async def element_score_override(
     case_id: str,
     body: dict,
     user: dict = Depends(require_qa_lead_or_admin()),
-    db: duckdb.DuckDBPyConnection = Depends(get_db),
+    db: sqlite3.Connection = Depends(get_db),
 ):
     """
     QA Lead overrides individual dimension scores.
@@ -368,7 +368,7 @@ async def element_score_override(
 async def verify_qa_audit(
     case_id: str,
     user: dict = Depends(require_qa_lead_or_admin()),
-    db: duckdb.DuckDBPyConnection = Depends(get_db),
+    db: sqlite3.Connection = Depends(get_db),
 ):
     """
     QA Lead verifies the AI-generated QA score without changing it.
@@ -402,7 +402,7 @@ async def verify_qa_audit(
 @router.get("/nurses/list")
 async def list_nurses(
     user: dict = Depends(get_current_user),
-    db: duckdb.DuckDBPyConnection = Depends(get_db),
+    db: sqlite3.Connection = Depends(get_db),
 ):
     """List reviewers for peer review. QA Lead sees other QA Leads. Nurses see their scoped nurses."""
     if user.get("role") == "QA_LEAD":
@@ -432,7 +432,7 @@ async def request_peer_review(
     case_id: str,
     body: dict,
     user: dict = Depends(get_current_user),
-    db: duckdb.DuckDBPyConnection = Depends(get_db),
+    db: sqlite3.Connection = Depends(get_db),
 ):
     assigned_to = body.get("assigned_to")
     message = body.get("message", "")
@@ -452,7 +452,7 @@ async def request_peer_review(
 @router.get("/peer-reviews/assigned")
 async def get_assigned_peer_reviews(
     user: dict = Depends(get_current_user),
-    db: duckdb.DuckDBPyConnection = Depends(get_db),
+    db: sqlite3.Connection = Depends(get_db),
 ):
     rows = db.execute("""
         SELECT pr.id, pr.case_id, c.case_number, c.patient_name,
@@ -473,7 +473,7 @@ async def complete_peer_review(
     review_id: str,
     body: dict,
     user: dict = Depends(get_current_user),
-    db: duckdb.DuckDBPyConnection = Depends(get_db),
+    db: sqlite3.Connection = Depends(get_db),
 ):
     findings = body.get("findings", "")
     db.execute("""
@@ -487,7 +487,7 @@ async def override_finding(
     case_id: str,
     body: dict,
     user: dict = Depends(get_current_user),
-    db: duckdb.DuckDBPyConnection = Depends(get_db),
+    db: sqlite3.Connection = Depends(get_db),
 ):
     finding_index = body.get("finding_index", 0)
     rationale = body.get("rationale", "")

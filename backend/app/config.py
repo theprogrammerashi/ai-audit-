@@ -19,8 +19,8 @@ class Settings(BaseSettings):
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = True
     
-    # Database (DuckDB)
-    DUCKDB_PATH: str = os.path.join(ROOT_DIR, "data", "careaudit.duckdb")
+    # Database (SQLite)
+    SQLITE_PATH: str = os.path.join(ROOT_DIR, "data", "careaudit.sqlite")
     
     # Groq API
     GROQ_API_KEY: str = ""
@@ -38,7 +38,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 480
     
     # CORS
-    CORS_ORIGINS: str = "http://localhost:3000"
+    CORS_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001"
     
     class Config:
         env_file = ".env"

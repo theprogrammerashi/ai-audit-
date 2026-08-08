@@ -4,7 +4,7 @@ Returns aggregated metrics derived from the 1,000-case historical dataset.
 No authentication required (public landing-page data).
 """
 from fastapi import APIRouter, Depends
-import duckdb
+import sqlite3
 from app.database import get_db
 
 router = APIRouter(prefix="/stats", tags=["Public Stats"])
@@ -46,7 +46,7 @@ async def get_public_stats():
 
 
 @router.get("/live")
-async def get_live_stats(db: duckdb.DuckDBPyConnection = Depends(get_db)):
+async def get_live_stats(db: sqlite3.Connection = Depends(get_db)):
     """
     Live stats from the active DuckDB database.
     Returns real-time case counts, QA averages, etc.

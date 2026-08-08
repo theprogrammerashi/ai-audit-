@@ -5,7 +5,7 @@ Chat interface with RAG-powered responses.
 from fastapi import APIRouter, Depends, HTTPException
 import uuid
 import json
-import duckdb
+import sqlite3
 from datetime import datetime
 from app.database import get_db
 from app.api.deps import get_current_user, get_optional_user
@@ -18,7 +18,7 @@ router = APIRouter(prefix="/chat", tags=["Chat"])
 async def send_message(
     body: dict,
     user: dict = Depends(get_current_user),
-    db: duckdb.DuckDBPyConnection = Depends(get_db)
+    db: sqlite3.Connection = Depends(get_db)
 ):
     """Send a message to the conversational AI assistant."""
     message = body.get("message", "")
@@ -68,7 +68,7 @@ async def send_message(
 @router.get("/history")
 async def get_chat_history(
     user: dict = Depends(get_current_user),
-    db: duckdb.DuckDBPyConnection = Depends(get_db)
+    db: sqlite3.Connection = Depends(get_db)
 ):
     """Get conversation history for current user."""
     results = db.execute("""
@@ -86,7 +86,7 @@ async def get_chat_history(
 async def get_conversation_messages(
     conversation_id: str,
     user: dict = Depends(get_current_user),
-    db: duckdb.DuckDBPyConnection = Depends(get_db)
+    db: sqlite3.Connection = Depends(get_db)
 ):
     """Get all messages in a conversation."""
     results = db.execute("""
@@ -111,7 +111,7 @@ async def get_conversation_messages(
 async def delete_conversation(
     conversation_id: str,
     user: dict = Depends(get_current_user),
-    db: duckdb.DuckDBPyConnection = Depends(get_db)
+    db: sqlite3.Connection = Depends(get_db)
 ):
     """Delete a conversation."""
     db.execute("DELETE FROM messages WHERE conversation_id = ?", [conversation_id])

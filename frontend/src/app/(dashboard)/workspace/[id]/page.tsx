@@ -259,7 +259,7 @@ export default function WorkspaceDetailPage() {
                     display: "flex", alignItems: "center", gap: "6px"
                   }}>
                     <AlertTriangle size={13} />
-                    Key Risk Signals
+                    Key Clinical Findings
                   </div>
                   <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
                     {d.risk_signals.map((s: string) => (
@@ -269,7 +269,7 @@ export default function WorkspaceDetailPage() {
                         background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)",
                         color: "var(--danger)", fontSize: "0.78rem", fontWeight: 500
                       }}>
-                        <AlertTriangle size={11} /> {s.replace(/_/g, " ")}
+                        <AlertTriangle size={11} /> {s.replace(/_/g, " ").replace(/\bbnp\b/ig, "BNP").replace(/\bef\b/ig, "EF")}
                       </span>
                     ))}
                   </div>
