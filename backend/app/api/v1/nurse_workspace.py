@@ -35,6 +35,8 @@ async def get_review_queue(
                    c.primary_diagnosis_display, c.status, c.submitted_at,
                    c.submitted_by AS assigned_nurse_id, u.full_name AS assigned_to,
                    CASE
+                     WHEN COALESCE(json_array_length(json_extract(c.structured_case, '$.risk_signals')), 0) >= 3 THEN 'URGENT'
+                     WHEN COALESCE(json_array_length(json_extract(c.structured_case, '$.risk_signals')), 0) > 0 THEN 'HIGH'
                      WHEN c.primary_diagnosis_code LIKE 'A41%' OR c.primary_diagnosis_display LIKE '%Sepsis%' THEN 'URGENT'
                      WHEN c.primary_diagnosis_code LIKE 'I50%' OR c.primary_diagnosis_display LIKE '%Heart Failure%' THEN 'HIGH'
                      ELSE 'STANDARD'
@@ -63,6 +65,8 @@ async def get_review_queue(
                    c.primary_diagnosis_display, c.status, c.submitted_at,
                    c.submitted_by AS assigned_nurse_id, u.full_name AS assigned_to,
                    CASE
+                     WHEN COALESCE(json_array_length(json_extract(c.structured_case, '$.risk_signals')), 0) >= 3 THEN 'URGENT'
+                     WHEN COALESCE(json_array_length(json_extract(c.structured_case, '$.risk_signals')), 0) > 0 THEN 'HIGH'
                      WHEN c.primary_diagnosis_code LIKE 'A41%' OR c.primary_diagnosis_display LIKE '%Sepsis%' THEN 'URGENT'
                      WHEN c.primary_diagnosis_code LIKE 'I50%' OR c.primary_diagnosis_display LIKE '%Heart Failure%' THEN 'HIGH'
                      ELSE 'STANDARD'
@@ -146,6 +150,8 @@ async def get_qa_workspace_overview(
                c.primary_diagnosis_display, c.status, c.submitted_at,
                u.full_name as assigned_to, u.id as assigned_nurse_id,
                CASE
+                 WHEN COALESCE(json_array_length(json_extract(c.structured_case, '$.risk_signals')), 0) >= 3 THEN 'URGENT'
+                 WHEN COALESCE(json_array_length(json_extract(c.structured_case, '$.risk_signals')), 0) > 0 THEN 'HIGH'
                  WHEN c.primary_diagnosis_code LIKE 'A41%' OR c.primary_diagnosis_display LIKE '%Sepsis%' THEN 'URGENT'
                  WHEN c.primary_diagnosis_code LIKE 'I50%' OR c.primary_diagnosis_display LIKE '%Heart Failure%' THEN 'HIGH'
                  ELSE 'STANDARD'

@@ -196,16 +196,16 @@ def _search(pattern: str, text: str, flags=re.IGNORECASE) -> Optional[str]:
 def extract_patient_name(text: str) -> Tuple[Optional[str], float]:
     """Extract patient name from clinical text."""
     patterns = [
-        r"patient\s*(?:name)?[:\s]+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)",
-        r"name[:\s]+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)",
-        r"pt[:\s]+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)",
-        r"patient[:\s]+([A-Z][a-z]+\s+[A-Z][a-z]+)",
-        r"(?:Mr|Mrs|Ms|Dr)\.?\s+([A-Z][a-z]+\s+[A-Z][a-z]+)",
+        r"patient\s*(?:name)?[:\s]+([A-Z][a-z]+(?:[ \t]+[A-Z][a-z]+)+)",
+        r"name[:\s]+([A-Z][a-z]+(?:[ \t]+[A-Z][a-z]+)+)",
+        r"pt[:\s]+([A-Z][a-z]+(?:[ \t]+[A-Z][a-z]+)+)",
+        r"patient[:\s]+([A-Z][a-z]+[ \t]+[A-Z][a-z]+)",
+        r"(?:Mr|Mrs|Ms|Dr)\.?\s+([A-Z][a-z]+[ \t]+[A-Z][a-z]+)",
         # Fallback: NAME field in structured docs
-        r"(?:Patient|NAME)[:\s]*([A-Za-z]+[\s,]+[A-Za-z]+)",
+        r"(?:Patient|NAME)[:\s]*([A-Z][a-z]+[ \t,]+[A-Z][a-z]+)",
     ]
     for p in patterns:
-        m = re.search(p, text)
+        m = re.search(p, text, re.IGNORECASE)
         if m:
             name = m.group(1).strip()
             # Filter out common false positives
@@ -260,10 +260,23 @@ def extract_age(text: str) -> Tuple[Optional[int], float]:
 def extract_gender(text: str) -> Optional[str]:
     """Extract patient gender."""
     text_lower = text.lower()
-    if re.search(r"\b(female|woman|she\b|her\b|f\b)", text_lower):
+    # Check explicit mentions first
+    if re.search(r"\b(female|woman)\b", text_lower):
         return "Female"
-    if re.search(r"\b(male|man|he\b|his\b|m\b)", text_lower):
+    if re.search(r"\b(male|man)\b", text_lower):
         return "Male"
+        
+    # Check Sex: M/F
+    sex_match = re.search(r"\b(?:sex|gender)\s*:\s*(m|f)\b", text_lower)
+    if sex_match:
+        return "Male" if sex_match.group(1) == 'm' else "Female"
+        
+    # Fallback to pronouns
+    if re.search(r"\b(she|her)\b", text_lower):
+        return "Female"
+    if re.search(r"\b(he|his)\b", text_lower):
+        return "Male"
+        
     return None
 
 
@@ -300,6 +313,7 @@ def extract_diagnoses(text: str) -> Tuple[Optional[ExtractedDiagnosis], list]:
         r"(?:primary\s*)?diagnosis[:\s]+([^\n,]+)",
         r"admitting\s*diagnosis[:\s]+([^\n,]+)",
         r"principal\s*diagnosis[:\s]+([^\n,]+)",
+        r"(?:assessment(?:\s*(?:and|&)?\s*plan)?)[:\s]+([^\n,]+)",
     ]
     primary_display = None
     for p in primary_patterns:
@@ -422,19 +436,31 @@ def extract_labs(text: str) -> Optional[ExtractedLabs]:
 def extract_clinical_summary(text: str) -> Tuple[Optional[str], float]:
     """Extract a clinical summary or HPI from the text."""
     patterns = [
-        r"(?:clinical\s*summary|summary)[:\s]*(.{50,500}?)(?:\n\n|\n[A-Z])",
-        r"(?:HPI|history\s*of\s*present\s*illness)[:\s]*(.{50,500}?)(?:\n\n|\n[A-Z])",
-        r"(?:chief\s*complaint|cc)[:\s]*(.{20,300}?)(?:\n\n|\n[A-Z])",
-        r"(?:assessment\s*(?:and|&)\s*plan|a/?p)[:\s]*(.{50,500}?)(?:\n\n|\n[A-Z])",
-        r"(?:hospital\s*course)[:\s]*(.{50,500}?)(?:\n\n|\n[A-Z])",
-        r"(?:reason\s*for\s*(?:admission|visit|consultation))[:\s]*(.{30,300}?)(?:\n\n|\n[A-Z])",
+        r"(?:clinical\s*summary|summary|HPI|history\s*of\s*present\s*illness|chief\s*complaint|cc|assessment\s*(?:and|&)\s*plan|a/?p|hospital\s*course|reason\s*for\s*(?:admission|visit|consultation|review))[\s:]+(.*)",
     ]
     for p in patterns:
         m = re.search(p, text, re.IGNORECASE | re.DOTALL)
         if m:
-            summary = m.group(1).strip()
-            summary = re.sub(r'\s+', ' ', summary)
-            return summary, 0.80
+            raw = m.group(1).strip()
+            lines = raw.split('\n')
+            summary_lines = []
+            for line in lines:
+                line_stripped = line.strip()
+                if not line_stripped and summary_lines:
+                    break # Blank line means end of section
+                # Stop if it looks like a new header or field
+                if summary_lines and (line_stripped.isupper() or line_stripped.endswith(':') or line_stripped.startswith('Key ') or line_stripped.startswith('SECTION ') or (':' in line_stripped[:30] and len(line_stripped.split()) < 8)):
+                    break
+                summary_lines.append(line_stripped)
+            
+            summary = " ".join(summary_lines)
+            summary = re.sub(r'={3,}', '', summary)
+            summary = re.sub(r'\s+', ' ', summary).strip()
+            
+            if len(summary) > 30:
+                if len(summary) > 1000:
+                    summary = summary[:997] + "..."
+                return summary, 0.80
     
     # Fallback: use first substantial paragraph
     paragraphs = [p.strip() for p in text.split("\n\n") if len(p.strip()) > 80]
@@ -461,10 +487,16 @@ def extract_timeline(text: str) -> list:
     if not events:
         date_pattern = r"(\d{1,2}/\d{1,2}(?:/\d{2,4})?)[:\s\-]+([^\n]{10,})"
         for m in re.finditer(date_pattern, text):
+            event_text = m.group(2).strip()
+            # Ignore common false positives from headers/metadata
+            lower_evt = event_text.lower()
+            if any(bad in lower_evt for bad in ["age:", "page", "***", "collection time", "dob:", "mrn:"]):
+                continue
+                
             events.append(ExtractedTimelineEvent(
                 day=m.group(1),
-                event=m.group(2).strip()[:60],
-                details=m.group(2).strip()
+                event=event_text[:60],
+                details=event_text
             ))
 
     return events[:10]  # Max 10 events
@@ -483,6 +515,13 @@ def extract_risk_signals(text: str, vitals: Optional[ExtractedVitals], labs: Opt
             signals.append("TACHYPNEA")
         if vitals.temp and vitals.temp > 100.4:
             signals.append("FEVER")
+        if vitals.bp and "/" in vitals.bp:
+            try:
+                systolic = int(vitals.bp.split("/")[0])
+                if systolic < 90:
+                    signals.append("HYPOTENSION")
+            except (ValueError, IndexError):
+                pass
 
     if labs:
         if labs.lactate and labs.lactate >= 2.0:

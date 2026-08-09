@@ -44,8 +44,14 @@ async def create_case(case: CaseCreate, user: dict = Depends(get_current_user), 
         structured_json, user["id"]
     ])
     
-    # Auto-assign case to the least loaded nurse
-    assign_single_case(case_id, db)
+    # Auto-assign case to the least loaded nurse (or to the uploading nurse)
+    if user.get("role") == "NURSE":
+        db.execute(
+            "UPDATE cases SET assigned_nurse_id = ? WHERE id = ?",
+            [user["id"], case_id]
+        )
+    else:
+        assign_single_case(case_id, db)
 
     # Trigger policy engine
     try:

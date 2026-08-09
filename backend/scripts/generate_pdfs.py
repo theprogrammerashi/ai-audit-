@@ -138,6 +138,39 @@ def main():
         os.path.join(output_dir, "Case3_OBS_ED_Note.pdf"), 
         "Alice Williams", "28374910", "1968-04-15", "2026-08-08", "ED Provider Note", obs_lines
     )
+    
+    # PDF 4: Standard Routine Case
+    std_lines = [
+        "CHIEF COMPLAINT: Routine follow-up for Type 2 Diabetes.",
+        "",
+        "HISTORY OF PRESENT ILLNESS:",
+        "60-year-old male presenting for a 6-month routine follow-up of his Type 2 Diabetes.",
+        "He reports good compliance with his Metformin. No acute complaints. No vision changes,",
+        "no numbness in feet, no chest pain, and no shortness of breath.",
+        "",
+        "PHYSICAL EXAM:",
+        "Vitals: BP 122/78, HR 72, RR 16, O2 Sat 99% on room air. Temp 98.6 F.",
+        "General: Well-appearing, in no acute distress.",
+        "CV: Regular rate and rhythm. No murmurs.",
+        "Lungs: Clear to auscultation bilaterally.",
+        "Extremities: No edema. Sensation intact bilaterally in feet.",
+        "",
+        "LABORATORY & IMAGING:",
+        "A1C: 6.8% (Improved from 7.4% last visit)",
+        "Creatinine: 0.9 mg/dL (Normal)",
+        "Glucose: 110 mg/dL",
+        "",
+        "ASSESSMENT & PLAN:",
+        "Type 2 Diabetes Mellitus, well controlled without complications.",
+        "Essential Hypertension, well controlled.",
+        "- Continue current dose of Metformin.",
+        "- Encourage continued diet and exercise.",
+        "- Return to clinic in 6 months for routine labs and follow-up."
+    ]
+    create_clinical_note_pdf(
+        os.path.join(output_dir, "Case4_Standard_Routine.pdf"), 
+        "Robert Clark", "55667788", "1966-02-10", "2026-08-08", "Outpatient Clinic Note", std_lines
+    )
 
 if __name__ == "__main__":
     main()

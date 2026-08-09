@@ -197,10 +197,14 @@ def suggest_icd10_codes(
             merged[code]["confidence"] = round(min(1.0, existing_conf * 0.7 + s["confidence"] * 0.3), 3)
             merged[code]["source"] = "Groq+BioBERT"
 
-    result_list = sorted(merged.values(), key=lambda x: x["confidence"], reverse=True)
+    regex_results = suggest_icd10_regex_fallback(clinical_text)
+    for s in regex_results:
+        code = s["code"]
+        if code not in merged:
+            merged[code] = s
+        else:
+            merged[code]["confidence"] = round(min(1.0, merged[code]["confidence"] + 0.15), 3)
 
-    # If completely empty, use keyword fallback
-    if not result_list:
-        result_list = suggest_icd10_regex_fallback(clinical_text)
+    result_list = sorted(merged.values(), key=lambda x: x["confidence"], reverse=True)
 
     return result_list[:top_k]

@@ -13,13 +13,12 @@ import FloatingAIBot from "@/components/shared/FloatingAIBot";
 import { useAuthStore } from "@/store/authStore";
 
 const NAV_ITEMS = [
-  { label: "Chat", href: "/chat", icon: MessageSquare, roles: ["NURSE", "QA_LEAD", "ADMIN", "EXECUTIVE"] },
   { label: "Cases", href: "/cases", icon: FolderOpen, roles: ["NURSE", "QA_LEAD", "ADMIN", "EXECUTIVE"] },
   { label: "Workspace", href: "/workspace", icon: LayoutDashboard, roles: ["NURSE", "QA_LEAD", "ADMIN", "EXECUTIVE"] },
   { label: "Audit", href: "/audit", icon: ShieldCheck, roles: ["NURSE", "QA_LEAD", "ADMIN", "EXECUTIVE"] },
   { label: "Analytics", href: "/analytics", icon: BarChart3, roles: ["QA_LEAD", "ADMIN", "EXECUTIVE"] },
   { label: "Appeal Risk", href: "/appeal", icon: AlertTriangle, roles: ["NURSE", "QA_LEAD", "ADMIN", "EXECUTIVE"] },
-  { label: "Training", href: "/training", icon: GraduationCap, roles: ["NURSE", "QA_LEAD", "ADMIN", "EXECUTIVE"] },
+  { label: "Chat", href: "/chat", icon: MessageSquare, roles: ["NURSE", "QA_LEAD", "ADMIN", "EXECUTIVE"] },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {

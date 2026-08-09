@@ -20,7 +20,7 @@ export default function LoginPage() {
     setError("");
     try {
       await login(email, password);
-      router.push("/chat");
+      router.push("/cases");
     } catch {
       setError("Invalid email or password. Make sure the backend is running.");
     }

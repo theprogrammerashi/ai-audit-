@@ -89,9 +89,14 @@ const RISK_SIGNAL_EXPLANATIONS: Record<string, {
     meaning: "The patient's vital signs and core cardiac lab values are stable or in the normal range. Full inpatient severity thresholds are not met.",
     significance: "An inpatient stay is highly likely to be audited and denied by insurance reviewers. Placing the patient in Observation status for 24-48 hours is appropriate to monitor progress without financial denial risk."
   },
+  tachypnea: {
+    title: "Risk Signal: Tachypnea",
+    meaning: "Rapid respiratory rate (often > 24 breaths per minute).",
+    significance: "Another core SIRS criterion, suggesting metabolic compensation or acute respiratory compromise."
+  },
   elevated_bnp: {
     title: "Risk Signal: Elevated BNP",
-    meaning: "Brain Natriuretic Peptide (BNP) levels are elevated, signaling high myocardial wall stress, typical of decompensated heart failure.",
+    meaning: "Brain Natriuretic Peptide (BNP) levels are significantly elevated (> 400 pg/mL), signaling high myocardial wall stress, typical of decompensated heart failure.",
     significance: "Crucial objective evidence to justify full Inpatient necessity. High BNP suggests severe fluid overload requiring continuous intravenous (IV) diuresis and intensive nursing care."
   },
   reduced_ef: {
@@ -106,7 +111,7 @@ const RISK_SIGNAL_EXPLANATIONS: Record<string, {
   },
   severe_hypoxemia: {
     title: "Risk Signal: Severe Hypoxemia",
-    meaning: "Oxygen saturation (O2 Sat) is critically low (typically < 88% on room air), indicating poor blood oxygenation.",
+    meaning: "Oxygen saturation (O2 Sat) is critically low (typically < 90% on room air), indicating poor blood oxygenation.",
     significance: "A high-severity trigger that immediately supports inpatient admission. Requires continuous monitoring, high-flow supplemental oxygen, and frequent arterial blood gas evaluation."
   },
   failed_oral_diuretics: {
@@ -116,7 +121,7 @@ const RISK_SIGNAL_EXPLANATIONS: Record<string, {
   },
   hyperkalemia: {
     title: "Risk Signal: Hyperkalemia",
-    meaning: "Blood potassium level is critically elevated (> 5.0 mEq/L), presenting a direct risk of cardiac arrest or arrhythmias.",
+    meaning: "Blood potassium level is critically elevated (> 5.5 mEq/L), presenting a direct risk of cardiac arrest or arrhythmias.",
     significance: "A critical clinical condition requiring immediate treatment (e.g., insulin/dextrose, Kayexalate, or calcium gluconate) and continuous EKG tracking in an inpatient setting."
   },
   hypercapnic_respiratory_failure: {
@@ -131,27 +136,37 @@ const RISK_SIGNAL_EXPLANATIONS: Record<string, {
   },
   respiratory_acidosis: {
     title: "Risk Signal: Respiratory Acidosis",
-    meaning: "Abnormally acidic blood pH (<7.35) caused by retention of carbon dioxide due to hypoventilation.",
+    meaning: "Abnormally acidic blood pH (< 7.30) caused by retention of carbon dioxide due to hypoventilation.",
     significance: "Signals severe respiratory distress. Requires active mechanical or non-invasive breathing support, fully justifying acute care admission."
   },
   leukocytosis: {
     title: "Risk Signal: Leukocytosis",
-    meaning: "An abnormally high white blood cell (WBC) count, indicating a systemic response to infection or inflammation.",
+    meaning: "An abnormally high white blood cell (WBC) count (> 12.0 x 10^9/L), indicating a systemic response to infection or inflammation.",
     significance: "Supports the diagnosis of acute infectious processes (like pneumonia or cellulitis) requiring diagnostic cultures and IV antibiotic therapies."
+  },
+  hypotension: {
+    title: "Risk Signal: Hypotension",
+    meaning: "Low blood pressure (systolic < 90 mmHg), indicating poor systemic perfusion.",
+    significance: "A strong marker of clinical instability that can quickly progress to shock if unmanaged."
   },
   persistent_hypotension: {
     title: "Risk Signal: Persistent Hypotension",
-    meaning: "Low blood pressure (systolic <90 mmHg) that does not respond to initial intravenous fluid boluses.",
+    meaning: "Low blood pressure (systolic < 90 mmHg or MAP < 65 mmHg) that does not respond to initial intravenous fluid boluses.",
     significance: "Indicates hypovolemic, cardiogenic, or septic shock. Requires ICU admission, continuous arterial line monitoring, and vasopressor infusions."
   },
   elevated_lactate: {
     title: "Risk Signal: Elevated Lactate",
-    meaning: "Serum lactate level is elevated (>= 2.0 mmol/L), demonstrating cellular hypoperfusion and anaerobic metabolism.",
+    meaning: "Serum lactate level is elevated (> 2.0 mmol/L), demonstrating cellular hypoperfusion and anaerobic metabolism.",
     significance: "Key sepsis indicator. Urgently mandates immediate fluid resuscitation, broad-spectrum IV antibiotics, and serial lactate clearance checks."
+  },
+  elevated_creatinine: {
+    title: "Risk Signal: Elevated Creatinine",
+    meaning: "A sudden rise in serum creatinine (> 1.5 mg/dL) indicating acute kidney injury (AKI).",
+    significance: "Demonstrates acute organ dysfunction caused by hypoperfusion/shock. A major criterion for severe sepsis inpatient necessity."
   },
   altered_mental_status: {
     title: "Risk Signal: Altered Mental Status (AMS)",
-    meaning: "Confusion, lethargy, or acute encephalopathy resulting from infection, metabolic imbalance, or hypoperfusion.",
+    meaning: "Confusion, lethargy, or acute encephalopathy resulting from infection, metabolic imbalance, or hypoperfusion (often GCS score < 15).",
     significance: "Represents severe systemic organ dysfunction. Strongly justifies acute admission to prevent neurological complications and aspiration."
   },
   sepsis_criteria_met: {
@@ -168,6 +183,31 @@ const RISK_SIGNAL_EXPLANATIONS: Record<string, {
     title: "Risk Signal: Borderline Vitals",
     meaning: "Vital signs are on the threshold of instability (e.g., borderline hypoxia or tachycardia).",
     significance: "Represents a high risk for quick deterioration. Supports placing the patient under short-term observation to monitor safety."
+  },
+  hypoxemia: {
+    title: "Risk Signal: Hypoxemia",
+    meaning: "Oxygen saturation (O2 Sat) is below normal (< 90%), indicating inadequate blood oxygenation.",
+    significance: "Supports inpatient admission as the patient requires continuous pulse oximetry monitoring and supplemental oxygen therapy."
+  },
+  elevated_troponin: {
+    title: "Risk Signal: Elevated Troponin",
+    meaning: "Troponin levels are elevated (> 0.04 ng/mL), indicating myocardial injury or acute coronary syndrome.",
+    significance: "A critical cardiac biomarker. Elevated troponin mandates urgent cardiac evaluation, serial monitoring, and typically justifies inpatient admission for acute coronary workup."
+  },
+  ventilator_dependent: {
+    title: "Risk Signal: Ventilator Dependent",
+    meaning: "The patient requires mechanical ventilation or intubation for respiratory support.",
+    significance: "An absolute indicator of critical illness requiring ICU-level care. Fully justifies inpatient admission."
+  },
+  tachycardia: {
+    title: "Risk Signal: Tachycardia",
+    meaning: "Resting heart rate consistently above 100 beats per minute.",
+    significance: "A hallmark of Systemic Inflammatory Response Syndrome (SIRS) in sepsis. Used as a core vital sign criterion to justify acute level of care."
+  },
+  fever: {
+    title: "Risk Signal: Fever",
+    meaning: "Elevated core body temperature (> 100.4°F or 38°C).",
+    significance: "A primary indicator of active systemic infection and one of the four main SIRS criteria."
   }
 };
 
@@ -425,6 +465,23 @@ export default function CaseDetailPage() {
           meaning: `This case was flagged with the clinical risk signal: "${formatRiskSignal(selectedRiskSignal)}".`,
           significance: "This signal highlights clinical severity, prompting utilization review to evaluate inpatient admission necessity under standard guidelines."
         };
+        const getPatientValue = (k: string) => {
+          if (!vitals && !labs) return null;
+          if (k === "hypotension" || k === "persistent_hypotension") return vitals?.bp;
+          if (k === "tachycardia") return vitals?.hr;
+          if (k === "tachypnea") return vitals?.rr;
+          if (k === "fever") return vitals?.temp;
+          if (k === "severe_hypoxemia") return vitals?.o2_sat;
+          if (k === "elevated_creatinine") return labs?.creatinine;
+          if (k === "elevated_lactate") return labs?.lactate;
+          if (k === "leukocytosis") return labs?.wbc;
+          if (k === "elevated_bnp") return labs?.bnp;
+          if (k === "reduced_ef" || k === "mildly_reduced_ef") return labs?.ef;
+          if (k === "hyperkalemia") return labs?.potassium;
+          return null;
+        };
+        const patientValue = getPatientValue(key);
+        
         return (
           <div style={{
             position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
@@ -452,6 +509,15 @@ export default function CaseDetailPage() {
                 </button>
               </div>
               <div style={{ padding: "20px 24px 24px", fontSize: "0.88rem", lineHeight: 1.6, color: "var(--text-secondary)" }}>
+                {patientValue !== undefined && patientValue !== null && (
+                  <div style={{ 
+                    marginBottom: "16px", padding: "12px", background: "rgba(239,68,68,0.06)", 
+                    borderRadius: "var(--radius-md)", borderLeft: "3px solid var(--danger)" 
+                  }}>
+                    <div style={{ fontSize: "0.75rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--danger)", marginBottom: "4px" }}>Current Patient Value</div>
+                    <div style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--text-primary)" }}>{String(patientValue)}</div>
+                  </div>
+                )}
                 <h4 style={{ color: "var(--text-primary)", fontSize: "0.9rem", fontWeight: 600, marginBottom: "6px" }}>Clinical Meaning:</h4>
                 <p style={{ margin: 0 }}>{explanation.meaning}</p>
               </div>
@@ -569,7 +635,7 @@ export default function CaseDetailPage() {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px", marginBottom: "16px" }}>
               {Object.keys(vitals).length > 0 ? Object.entries(vitals).map(([key, val]) => {
                 if (val === null) return null;
-                const isAbnormal = (key === "o2_sat" && Number(val) < 90) || (key === "hr" && Number(val) > 100) || (key === "rr" && Number(val) > 24) || (key === "temp" && Number(val) > 100.4);
+                const isAbnormal = (key === "o2_sat" && Number(val) < 90) || (key === "hr" && Number(val) > 100) || (key === "rr" && Number(val) > 24) || (key === "temp" && Number(val) > 100.4) || (key === "bp" && typeof val === "string" && Number(val.split('/')[0]) < 90);
                 return (
                   <div key={key} style={{ textAlign: "center", padding: "8px", background: isAbnormal ? "rgba(239,68,68,0.06)" : "var(--bg-body)", borderRadius: "var(--radius-md)" }}>
                     <div className="label">{key.replace("_", " ")}</div>
@@ -586,10 +652,11 @@ export default function CaseDetailPage() {
                 const labName = (lowerKey === "bnp" || lowerKey === "ef" || lowerKey === "wbc") 
                   ? lowerKey.toUpperCase() 
                   : key.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
+                const isLabAbnormal = (lowerKey === "bnp" && Number(val) > 500) || (lowerKey === "wbc" && (Number(val) > 12 || Number(val) < 4)) || (lowerKey === "lactate" && Number(val) >= 2.0) || (lowerKey === "creatinine" && Number(val) > 1.5) || (lowerKey === "troponin" && Number(val) > 0.04) || (lowerKey === "potassium" && Number(val) > 5.5) || (lowerKey === "ef" && Number(val) < 40);
                 return (
                   <div key={key} style={{ display: "flex", justifyContent: "space-between", padding: "6px 8px", borderBottom: "1px solid var(--border-default)" }}>
                     <span style={{ fontSize: "0.8rem" }}>{labName}</span>
-                    <span style={{ fontWeight: 600, fontSize: "0.85rem", color: "var(--danger)" }}>{String(val)}</span>
+                    <span style={{ fontWeight: 600, fontSize: "0.85rem", color: isLabAbnormal ? "var(--danger)" : "var(--text-primary)" }}>{String(val)}</span>
                   </div>
                 );
               }) : <div style={{ color: "var(--text-tertiary)", fontSize: "0.85rem", fontStyle: "italic", gridColumn: "span 2" }}>No lab results recorded.</div>}
@@ -629,11 +696,11 @@ export default function CaseDetailPage() {
           </div>
 
           {/* Timeline */}
-          <div className="card">
-            <h3 style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.9rem", marginBottom: "16px" }}>
-              <Clock size={16} style={{ color: "var(--primary)" }} /> Clinical Timeline
-            </h3>
-            {timeline.length > 0 ? (
+          {timeline.length > 0 && (
+            <div className="card">
+              <h3 style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.9rem", marginBottom: "16px" }}>
+                <Clock size={16} style={{ color: "var(--primary)" }} /> Clinical Timeline
+              </h3>
               <ul style={{ paddingLeft: "20px", margin: 0, listStyleType: "disc", color: "var(--primary)" }}>
                 {timeline.map((t: any, i: number) => (
                   <li key={i} style={{ marginBottom: "12px" }}>
@@ -655,8 +722,8 @@ export default function CaseDetailPage() {
                   </li>
                 ))}
               </ul>
-            ) : <p style={{ color: "var(--text-tertiary)", fontSize: "0.85rem", fontStyle: "italic" }}>No timeline events recorded.</p>}
-          </div>
+            </div>
+          )}
         </div>
 
         {/* Attached Documents — Only show when real uploaded documents exist */}

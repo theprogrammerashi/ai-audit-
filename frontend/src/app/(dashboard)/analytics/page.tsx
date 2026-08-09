@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BarChart3, TrendingUp, TrendingDown, AlertTriangle, ArrowRight, X, Activity, CheckCircle, ShieldAlert, Users, Percent, BookOpen, ArrowUp, ArrowDown, Search } from "lucide-react";
+import { BarChart3, TrendingUp, TrendingDown, AlertTriangle, ArrowRight, X, Activity, CheckCircle, ShieldAlert, Users, Percent, BookOpen, ArrowUp, ArrowDown, Search, FileText, Clock } from "lucide-react";
 import UserAvatar from "@/components/shared/UserAvatar";
+import MetricCard from "@/components/shared/MetricCard";
 import api from "@/lib/api";
 import CustomDropdown from "@/components/shared/CustomDropdown";
 import { LineChart, Line, ResponsiveContainer, YAxis, PieChart, Pie, Cell, Tooltip, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from "recharts";
@@ -41,6 +42,9 @@ export default function AnalyticsPage() {
   const [sortMetric, setSortMetric] = useState("qa_score_30d");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [searchQuery, setSearchQuery] = useState("");
+  const [activeTab, setActiveTab] = useState("nurse-analytics");
+  const [analyticsData, setAnalyticsData] = useState<any>(null);
+  const [intakeData, setIntakeData] = useState<any[]>([]);
 
   useEffect(() => {
     fetchTeamStats();
@@ -49,13 +53,19 @@ export default function AnalyticsPage() {
   const fetchTeamStats = async () => {
     try {
       setLoading(true);
-      const res = await api.get("/analytics/team");
+      const [res, analyticsRes, intakeRes] = await Promise.all([
+        api.get("/analytics/team"),
+        api.get("/appeal/analytics"),
+        api.get("/appeal/intake-cases")
+      ]);
       setReviewers(res.data.reviewers || []);
       setTeamStats({
         team_avg_qa_score: res.data.team_avg_qa_score,
         team_avg_approval_rate: res.data.team_avg_approval_rate,
         total_cases: res.data.total_cases
       });
+      setAnalyticsData(analyticsRes.data);
+      setIntakeData(intakeRes.data);
     } catch (err) {
       console.error("Failed to fetch team analytics:", err);
     } finally {
@@ -101,14 +111,54 @@ export default function AnalyticsPage() {
     );
   }
 
+  // Compute intake stats for Outcomes tab
+  const intake = intakeData || [];
+  const openAppeals = intake.filter((c: any) => !c.appeal_outcome).length;
+  const resolvedAppeals = intake.filter((c: any) => c.appeal_outcome).length;
+  const overturnedCount = intake.filter((c: any) => c.appeal_outcome && c.appeal_outcome.includes("Overturned")).length;
+  const upheldCount = intake.filter((c: any) => c.appeal_outcome === "Upheld").length;
+  const overturnRate = resolvedAppeals > 0 ? Math.round((overturnedCount / resolvedAppeals) * 100) : 0;
+  const avgResolutionDays = intake.filter((c: any) => c.turnaround_days).reduce((sum: number, c: any) => sum + (c.turnaround_days || 0), 0) / (resolvedAppeals || 1);
+
+  // Outcome distribution from analytics
+  const outcomeDist = analyticsData?.outcome_distribution || {};
+  const totalOutcome = (outcomeDist.overturned || 0) + (outcomeDist.upheld || 0) + (outcomeDist.pending || 0);
+
   return (
     <div className="animate-fade-in" style={{ padding: "32px", display: "flex", gap: "24px", height: "100%" }}>
       {/* Main List */}
       <div style={{ flex: selectedReviewer ? "1" : "1", transition: "all 0.3s ease", display: "flex", flexDirection: "column" }}>
-        <div className="page-header">
+        <div className="page-header" style={{ marginBottom: "24px" }}>
           <h1 style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "6px" }}>
-            <BarChart3 size={28} style={{ color: "var(--primary)" }} /> Reviewer Analytics</h1><p style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>Individual and team performance intelligence</p>
+            <BarChart3 size={28} style={{ color: "var(--primary)" }} /> Analytics</h1>
+          <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>Individual and team performance intelligence</p>
         </div>
+
+        {/* Tab Navigation */}
+        <div style={{ display: "flex", gap: "4px", borderBottom: "1px solid var(--border-default)", marginBottom: "32px", paddingBottom: "0" }}>
+          {[
+            { id: "nurse-analytics", label: "Nurse Analytics", icon: Users },
+            { id: "analytics-outcomes", label: "Analytics & Outcomes", icon: BarChart3 },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              style={{
+                padding: "10px 20px", border: "none", background: "none", cursor: "pointer",
+                fontWeight: 600, fontSize: "0.85rem",
+                color: activeTab === tab.id ? "var(--primary)" : "var(--text-tertiary)",
+                borderBottom: activeTab === tab.id ? "2px solid var(--primary)" : "2px solid transparent",
+                transition: "all 0.2s", display: "flex", alignItems: "center", gap: "6px",
+                marginBottom: "-1px"
+              }}
+            >
+              <tab.icon size={16} /> {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {activeTab === "nurse-analytics" && (
+          <>
 
         {/* Team KPI Header */}
         {teamStats && (
@@ -248,6 +298,7 @@ export default function AnalyticsPage() {
 
                 return (
                   <div
+
                     key={r.reviewer_id}
                     className="card"
                     style={{
@@ -303,7 +354,8 @@ export default function AnalyticsPage() {
             </div>
           );
         })()}
-      </div>
+        </>
+      )}
 
       {/* Drill-down Modal */}
       {selectedReviewer && (
@@ -466,6 +518,204 @@ export default function AnalyticsPage() {
           </div>
         </div>
       )}
+
+        {activeTab === "analytics-outcomes" && analyticsData && (
+          <div>
+            {/* Financial Impact */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "16px", marginBottom: "28px" }}>
+              <MetricCard label="Appeal Volume" value={intake.length.toString()} accentColor="var(--info)" icon={<FileText size={13} />} />
+            </div>
+
+            {/* Outcome Distribution Chart */}
+            <div className="card" style={{ marginBottom: "24px" }}>
+              <h3 style={{ marginBottom: "20px", fontSize: "1rem", display: "flex", alignItems: "center", gap: "8px" }}>
+                <BarChart3 size={18} style={{ color: "var(--primary)" }} /> Appeal Outcome Distribution
+              </h3>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px", alignItems: "center" }}>
+                {/* Visual bar chart */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                  {[
+                    { label: "Overturned", count: outcomeDist.overturned || 0, color: "var(--danger)", bg: "rgba(239,68,68,0.08)" },
+                    { label: "Upheld", count: outcomeDist.upheld || 0, color: "var(--success)", bg: "rgba(22,163,74,0.08)" },
+                    { label: "Pending", count: outcomeDist.pending || 0, color: "var(--warning)", bg: "rgba(245,158,11,0.08)" },
+                  ].map((item) => {
+                    const pct = totalOutcome > 0 ? Math.round((item.count / totalOutcome) * 100) : 0;
+                    return (
+                      <div key={item.label}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            <div style={{ width: "12px", height: "12px", borderRadius: "3px", background: item.color }} />
+                            <span style={{ fontWeight: 500, fontSize: "0.9rem" }}>{item.label}</span>
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            <span style={{ fontWeight: 700, fontSize: "1.1rem", color: item.color }}>{item.count}</span>
+                            <span style={{ fontSize: "0.78rem", color: "var(--text-tertiary)" }}>({pct}%)</span>
+                          </div>
+                        </div>
+                        <div style={{ width: "100%", height: "28px", background: item.bg, borderRadius: "var(--radius-sm)", overflow: "hidden", position: "relative" }}>
+                          <div style={{
+                            height: "100%", width: `${pct}%`, background: item.color,
+                            borderRadius: "var(--radius-sm)", transition: "width 0.8s ease-out",
+                            minWidth: item.count > 0 ? "4px" : "0",
+                            display: "flex", alignItems: "center", justifyContent: "flex-end", paddingRight: "8px"
+                          }}>
+                            {pct > 15 && <span style={{ color: "white", fontSize: "0.72rem", fontWeight: 600 }}>{pct}%</span>}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Donut-style summary */}
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "16px" }}>
+                  <div style={{
+                    width: "160px", height: "160px", borderRadius: "50%", position: "relative",
+                    background: totalOutcome > 0
+                      ? `conic-gradient(
+                          var(--danger) 0deg ${(outcomeDist.overturned || 0) / totalOutcome * 360}deg,
+                          var(--success) ${(outcomeDist.overturned || 0) / totalOutcome * 360}deg ${((outcomeDist.overturned || 0) + (outcomeDist.upheld || 0)) / totalOutcome * 360}deg,
+                          var(--warning) ${((outcomeDist.overturned || 0) + (outcomeDist.upheld || 0)) / totalOutcome * 360}deg 360deg
+                        )`
+                      : "var(--border-default)",
+                    display: "flex", alignItems: "center", justifyContent: "center"
+                  }}>
+                    <div style={{
+                      width: "110px", height: "110px", borderRadius: "50%", background: "var(--bg-surface)",
+                      display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center"
+                    }}>
+                      <div style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--text-primary)" }}>{totalOutcome}</div>
+                      <div style={{ fontSize: "0.72rem", color: "var(--text-tertiary)" }}>Total Appeals</div>
+                    </div>
+                  </div>
+                  <div style={{ textAlign: "center", fontSize: "0.82rem", color: "var(--text-secondary)" }}>
+                    {overturnRate > 0 ? `${overturnRate}% overturn rate` : "No resolved appeals yet"}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px", marginBottom: "24px" }}>
+              {/* Overturn Rate by Denial Reason */}
+              <div className="card">
+                <h3 style={{ marginBottom: "16px", fontSize: "1rem", display: "flex", alignItems: "center", gap: "8px" }}>
+                  <BarChart3 size={18} style={{ color: "var(--primary)" }} /> Overturn Rate by Denial Reason
+                </h3>
+                <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                  {Object.entries(analyticsData.overturn_rate_by_denial_reason || {}).length === 0 ? (
+                    <div style={{ padding: "24px", textAlign: "center", color: "var(--text-tertiary)", fontSize: "0.85rem" }}>No denial data available yet.</div>
+                  ) : (
+                    Object.entries(analyticsData.overturn_rate_by_denial_reason || {}).map(([reason, rate]: [string, any]) => (
+                      <div key={reason}>
+                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", marginBottom: "6px" }}>
+                          <span style={{ fontWeight: 500 }}>{reason}</span>
+                          <span style={{ fontWeight: 600, color: rate > 0.5 ? "var(--danger)" : rate > 0.3 ? "var(--warning)" : "var(--success)" }}>{Math.round(rate * 100)}%</span>
+                        </div>
+                        <div style={{ width: "100%", height: "8px", background: "var(--bg-secondary)", borderRadius: "4px" }}>
+                          <div style={{ width: `${rate * 100}%`, height: "100%", background: rate > 0.5 ? "var(--danger)" : rate > 0.3 ? "var(--warning)" : "var(--success)", borderRadius: "4px", transition: "width 0.5s" }} />
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Overturn Rate by Diagnosis */}
+              <div className="card">
+                <h3 style={{ marginBottom: "16px", fontSize: "1rem", display: "flex", alignItems: "center", gap: "8px" }}>
+                  <Activity size={18} style={{ color: "var(--primary)" }} /> Overturn Rate by Diagnosis
+                </h3>
+                <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                  {Object.entries(analyticsData.overturn_rate_by_diagnosis || {}).length === 0 ? (
+                    <div style={{ padding: "24px", textAlign: "center", color: "var(--text-tertiary)", fontSize: "0.85rem" }}>No diagnosis data available yet.</div>
+                  ) : (
+                    Object.entries(analyticsData.overturn_rate_by_diagnosis || {}).map(([dx, rate]: [string, any]) => (
+                      <div key={dx}>
+                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", marginBottom: "6px" }}>
+                          <span style={{ fontWeight: 500 }}>{dx}</span>
+                          <span style={{ fontWeight: 600, color: rate > 0.5 ? "var(--danger)" : rate > 0.3 ? "var(--warning)" : "var(--success)" }}>{Math.round(rate * 100)}%</span>
+                        </div>
+                        <div style={{ width: "100%", height: "8px", background: "var(--bg-secondary)", borderRadius: "4px" }}>
+                          <div style={{ width: `${rate * 100}%`, height: "100%", background: "var(--primary)", borderRadius: "4px", transition: "width 0.5s" }} />
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Turnaround Time & Top Reasons */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
+              <div className="card">
+                <h3 style={{ marginBottom: "16px", fontSize: "1rem", display: "flex", alignItems: "center", gap: "8px" }}>
+                  <Clock size={18} style={{ color: "var(--warning)" }} /> Avg Turnaround by Appeal Level
+                </h3>
+                <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                  {Object.entries(analyticsData.avg_turnaround_time_by_level || {}).length === 0 ? (
+                    <div style={{ padding: "24px", textAlign: "center", color: "var(--text-tertiary)", fontSize: "0.85rem" }}>No turnaround data yet.</div>
+                  ) : (
+                    Object.entries(analyticsData.avg_turnaround_time_by_level || {}).map(([level, days]: [string, any]) => {
+                      const maxDays = level.includes("Expedited") ? 3 : level.includes("Level 2") || level.includes("2nd") ? 60 : 30;
+                      const isOverdue = days > maxDays;
+                      const pctUsed = Math.min((days / maxDays) * 100, 100);
+                      return (
+                        <div key={level} style={{
+                          padding: "12px 14px", borderRadius: "var(--radius-sm)",
+                          background: isOverdue ? "rgba(239,68,68,0.06)" : "rgba(22,163,74,0.04)",
+                          border: `1px solid ${isOverdue ? "rgba(239,68,68,0.15)" : "rgba(22,163,74,0.1)"}`
+                        }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                            <span style={{ fontSize: "0.88rem", fontWeight: 500 }}>{level}</span>
+                            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                              <span style={{ fontWeight: 600, color: isOverdue ? "var(--danger)" : "var(--success)" }}>{Math.round(days)} days</span>
+                              <span style={{ fontSize: "0.75rem", color: "var(--text-tertiary)" }}>/ {maxDays}d limit</span>
+                            </div>
+                          </div>
+                          <div style={{ width: "100%", height: "4px", background: "var(--border-default)", borderRadius: "2px" }}>
+                            <div style={{ height: "100%", width: `${pctUsed}%`, background: isOverdue ? "var(--danger)" : "var(--success)", borderRadius: "2px", transition: "width 0.5s" }} />
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+
+              {/* Dynamic Top Reasons for Overturn (from DB, not hardcoded) */}
+              <div className="card">
+                <h3 style={{ marginBottom: "16px", fontSize: "1rem", display: "flex", alignItems: "center", gap: "8px" }}>
+                  <AlertTriangle size={18} style={{ color: "var(--danger)" }} /> Top Reasons for Overturn
+                </h3>
+                <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                  {(analyticsData.top_reasons_for_overturn || []).length === 0 ? (
+                    <div style={{ padding: "24px", textAlign: "center", color: "var(--text-tertiary)", fontSize: "0.85rem" }}>
+                      <CheckCircle size={20} style={{ marginBottom: "8px", color: "var(--success)" }} />
+                      <div>No overturned cases — no overturn reasons to display.</div>
+                    </div>
+                  ) : (
+                    (analyticsData.top_reasons_for_overturn || []).map((reason: string, i: number) => (
+                      <div key={i} style={{
+                        display: "flex", gap: "10px", fontSize: "0.88rem", color: "var(--text-secondary)",
+                        padding: "10px 14px", borderRadius: "var(--radius-sm)",
+                        background: "var(--bg-secondary)", border: "1px solid var(--border-default)"
+                      }}>
+                        <span style={{ 
+                          color: "white", fontWeight: 600, flexShrink: 0,
+                          width: "22px", height: "22px", borderRadius: "50%",
+                          background: "var(--danger)", display: "flex", alignItems: "center", justifyContent: "center",
+                          fontSize: "0.72rem"
+                        }}>{i + 1}</span>
+                        <span>{reason}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

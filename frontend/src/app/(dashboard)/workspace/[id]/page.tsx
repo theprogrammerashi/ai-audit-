@@ -5,10 +5,128 @@ import { useParams, useRouter } from "next/navigation";
 import {
   LayoutDashboard, CheckCircle, XCircle, AlertTriangle,
   Shield, Clock, Bot, ArrowLeft, Send, Loader2, FileText, Check, AlertCircle, FileSearch, Edit3,
-  Brain, Sparkles, ChevronRight, Activity, Stethoscope, ClipboardCheck
+  Brain, Sparkles, ChevronRight, ChevronLeft, Activity, Stethoscope, ClipboardCheck, Info
 } from "lucide-react";
 import api from "@/lib/api";
 
+const RISK_SIGNAL_EXPLANATIONS: Record<string, {
+  title: string;
+  meaning: string;
+  significance: string;
+}> = {
+  observation_candidate: {
+    title: "Risk Signal: Observation Candidate",
+    meaning: "The patient's vital signs and core cardiac lab values are stable or in the normal range. Full inpatient severity thresholds are not met.",
+    significance: "An inpatient stay is highly likely to be audited and denied by insurance reviewers. Placing the patient in Observation status for 24-48 hours is appropriate to monitor progress without financial denial risk."
+  },
+  elevated_bnp: {
+    title: "Risk Signal: Elevated BNP",
+    meaning: "Brain Natriuretic Peptide (BNP) levels are elevated, signaling high myocardial wall stress, typical of decompensated heart failure.",
+    significance: "Crucial objective evidence to justify full Inpatient necessity. High BNP suggests severe fluid overload requiring continuous intravenous (IV) diuresis and intensive nursing care."
+  },
+  reduced_ef: {
+    title: "Risk Signal: Reduced Ejection Fraction (EF)",
+    meaning: "Ejection fraction is below 40%, indicating severe systolic dysfunction of the left ventricle.",
+    significance: "Indicates serious heart failure severity. Supports acute care necessity as it presents high risk for lethal ventricular arrhythmias and sudden cardiac decompensation."
+  },
+  mildly_reduced_ef: {
+    title: "Risk Signal: Mildly Reduced Ejection Fraction (EF)",
+    meaning: "The heart's ejection fraction is between 40% and 50%, reflecting early or moderate impairment of cardiac output.",
+    significance: "Presents a clinical grey zone. It requires close charting of associated clinical symptoms (like dyspnea, edema) to establish whether observation or full inpatient status is warranted."
+  },
+  severe_hypoxemia: {
+    title: "Risk Signal: Severe Hypoxemia",
+    meaning: "Oxygen saturation (O2 Sat) is critically low (typically < 90% on room air), indicating poor blood oxygenation.",
+    significance: "A high-severity trigger that immediately supports inpatient admission. Requires continuous monitoring, high-flow supplemental oxygen, and frequent arterial blood gas evaluation."
+  },
+  failed_oral_diuretics: {
+    title: "Risk Signal: Failed Oral Diuretics",
+    meaning: "The patient did not respond to outpatient oral loop diuretics, presenting with refractory peripheral or pulmonary edema.",
+    significance: "Justifies acute inpatient admission. Outpatient management has failed, requiring transition to aggressive intravenous (IV) diuretic infusions and daily electrolyte/fluid tracking."
+  },
+  hyperkalemia: {
+    title: "Risk Signal: Hyperkalemia",
+    meaning: "Blood potassium level is critically elevated (> 5.0 mEq/L), presenting a direct risk of cardiac arrest or arrhythmias.",
+    significance: "A critical clinical condition requiring immediate treatment (e.g., insulin/dextrose, Kayexalate, or calcium gluconate) and continuous EKG tracking in an inpatient setting."
+  },
+  hypercapnic_respiratory_failure: {
+    title: "Risk Signal: Hypercapnic Respiratory Failure",
+    meaning: "Hypoventilation causing dangerously high carbon dioxide levels (pCO2 > 55 mmHg) and systemic acid buildup.",
+    significance: "A severe condition requiring positive pressure ventilation (BiPAP/CPAP) or intubation. Strongly justifies inpatient/ICU placement."
+  },
+  failed_outpatient_treatment: {
+    title: "Risk Signal: Failed Outpatient Treatment",
+    meaning: "The patient's acute exacerbation (e.g. COPD flare-up) worsened despite taking standard outpatient prescriptions.",
+    significance: "Indicates failure of standard medical regimens, demonstrating the clinical need for admission and transition to continuous IV therapies."
+  },
+  respiratory_acidosis: {
+    title: "Risk Signal: Respiratory Acidosis",
+    meaning: "Abnormally acidic blood pH (<7.35) caused by retention of carbon dioxide due to hypoventilation.",
+    significance: "Signals severe respiratory distress. Requires active mechanical or non-invasive breathing support, fully justifying acute care admission."
+  },
+  leukocytosis: {
+    title: "Risk Signal: Leukocytosis",
+    meaning: "An abnormally high white blood cell (WBC) count (> 12.0 or < 4.0), indicating a systemic response to infection or inflammation.",
+    significance: "Supports the diagnosis of acute infectious processes (like pneumonia or cellulitis) requiring diagnostic cultures and IV antibiotic therapies."
+  },
+  persistent_hypotension: {
+    title: "Risk Signal: Persistent Hypotension",
+    meaning: "Low blood pressure (systolic < 90 mmHg) that does not respond to initial intravenous fluid boluses.",
+    significance: "Indicates hypovolemic, cardiogenic, or septic shock. Requires ICU admission, continuous arterial line monitoring, and vasopressor infusions."
+  },
+  elevated_lactate: {
+    title: "Risk Signal: Elevated Lactate",
+    meaning: "Serum lactate level is elevated (>= 2.0 mmol/L), demonstrating cellular hypoperfusion and anaerobic metabolism.",
+    significance: "Key sepsis indicator. Urgently mandates immediate fluid resuscitation, broad-spectrum IV antibiotics, and serial lactate clearance checks."
+  },
+  tachycardia: {
+    title: "Risk Signal: Tachycardia",
+    meaning: "Resting heart rate consistently above 100 beats per minute.",
+    significance: "A hallmark of Systemic Inflammatory Response Syndrome (SIRS) in sepsis. Used as a core vital sign criterion to justify acute level of care."
+  },
+  tachypnea: {
+    title: "Risk Signal: Tachypnea",
+    meaning: "Rapid respiratory rate (often > 24 breaths per minute).",
+    significance: "Another core SIRS criterion, suggesting metabolic compensation or acute respiratory compromise."
+  },
+  altered_mental_status: {
+    title: "Risk Signal: Altered Mental Status",
+    meaning: "Acute changes in consciousness, cognition, or arousal (e.g., confusion, lethargy, encephalopathy).",
+    significance: "A critical indicator of end-organ dysfunction (brain) in severe sepsis, heavily supporting inpatient admission."
+  },
+  elevated_creatinine: {
+    title: "Risk Signal: Elevated Creatinine",
+    meaning: "A sudden rise in serum creatinine (> 1.5 mg/dL) indicating acute kidney injury (AKI).",
+    significance: "Demonstrates acute organ dysfunction caused by hypoperfusion/shock. A major criterion for severe sepsis inpatient necessity."
+  },
+  fever: {
+    title: "Risk Signal: Fever",
+    meaning: "Elevated core body temperature (> 100.4°F or 38°C).",
+    significance: "A primary indicator of active systemic infection and one of the four main SIRS criteria."
+  },
+  hypotension: {
+    title: "Risk Signal: Hypotension",
+    meaning: "Low blood pressure (systolic < 90 mmHg), indicating poor systemic perfusion.",
+    significance: "A strong marker of clinical instability that can quickly progress to shock if unmanaged."
+  },
+  hypoxemia: {
+    title: "Risk Signal: Hypoxemia",
+    meaning: "Oxygen saturation (O2 Sat) is below normal (< 90%), indicating inadequate blood oxygenation.",
+    significance: "Supports inpatient admission as the patient requires continuous pulse oximetry monitoring and supplemental oxygen therapy."
+  },
+  elevated_troponin: {
+    title: "Risk Signal: Elevated Troponin",
+    meaning: "Troponin levels are elevated (> 0.04 ng/mL), indicating myocardial injury or acute coronary syndrome.",
+    significance: "A critical cardiac biomarker. Elevated troponin mandates urgent cardiac evaluation, serial monitoring, and typically justifies inpatient admission for acute coronary workup."
+  },
+  ventilator_dependent: {
+    title: "Risk Signal: Ventilator Dependent",
+    meaning: "The patient requires mechanical ventilation or intubation for respiratory support.",
+    significance: "An absolute indicator of critical illness requiring ICU-level care. Fully justifies inpatient admission."
+  }
+};
+
+export const formatRiskSignal = (s: string) => s.replace(/_/g, " ").replace(/\bbnp\b/ig, "BNP").replace(/\bef\b/ig, "EF");
 
 export default function WorkspaceDetailPage() {
   const params = useParams();
@@ -22,10 +140,14 @@ export default function WorkspaceDetailPage() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [selectedRiskSignal, setSelectedRiskSignal] = useState<string | null>(null);
 
 
   // New Rationale State
   const [rationale, setRationale] = useState("");
+  const [showAnalysisPopup, setShowAnalysisPopup] = useState(false);
+  const [activeRiskTab, setActiveRiskTab] = useState<"APPROVED" | "DENIED">("APPROVED");
+  const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(true);
 
   useEffect(() => {
     const fetchCaseData = async () => {
@@ -184,42 +306,80 @@ export default function WorkspaceDetailPage() {
       </div>
 
       {/* 2-Panel Layout */}
-      <div style={{ flex: 1, display: "grid", gridTemplateColumns: "300px 1fr", overflow: "hidden", background: "var(--bg-body)" }}>
+      <div style={{ flex: 1, display: "flex", overflow: "hidden", background: "var(--bg-body)", position: "relative" }}>
         
         {/* LEFT PANEL: Demographics / Auth */}
-        <div style={{ borderRight: "1px solid var(--border-default)", overflowY: "auto", padding: "20px", background: "var(--bg-surface)" }}>
-          <h4 style={{ marginBottom: "16px", fontSize: "0.85rem", textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-secondary)" }}>Demographics</h4>
-          {[["Patient Name", c.patient_name], ["Date of Birth", c.patient_dob], ["Age", `${c.patient_age} yrs`], ["MRN", c.patient_mrn]].map(([label, val]) => (
-            <div key={label} style={{ marginBottom: "12px" }}>
-              <div style={{ fontSize: "0.75rem", color: "var(--text-tertiary)", marginBottom: "2px" }}>{label}</div>
-              <div style={{ fontSize: "0.9rem", fontWeight: 500, color: "var(--text-primary)" }}>{val || "N/A"}</div>
+        <div style={{ 
+          width: isLeftPanelOpen ? "300px" : "0px",
+          borderRight: isLeftPanelOpen ? "1px solid var(--border-default)" : "none", 
+          overflowY: "auto", overflowX: "hidden", 
+          background: "var(--bg-surface)",
+          transition: "width 0.3s ease",
+          flexShrink: 0,
+          position: "relative"
+        }}>
+          <div style={{ padding: "20px", width: "300px" }}>
+            <h4 style={{ marginBottom: "16px", fontSize: "0.85rem", textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-secondary)" }}>Demographics</h4>
+            {[["Patient Name", c.patient_name], ["Date of Birth", c.patient_dob], ["Age", `${c.patient_age} yrs`], ["MRN", c.patient_mrn]].map(([label, val]) => (
+              <div key={label} style={{ marginBottom: "12px" }}>
+                <div style={{ fontSize: "0.75rem", color: "var(--text-tertiary)", marginBottom: "2px" }}>{label}</div>
+                <div style={{ fontSize: "0.9rem", fontWeight: 500, color: "var(--text-primary)" }}>{val || "N/A"}</div>
+              </div>
+            ))}
+
+            <div style={{ borderTop: "1px solid var(--border-default)", margin: "20px 0" }} />
+
+            <h4 style={{ marginBottom: "16px", fontSize: "0.85rem", textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-secondary)" }}>Diagnosis & Service</h4>
+            <div style={{ marginBottom: "12px" }}>
+              <div style={{ fontSize: "0.75rem", color: "var(--text-tertiary)", marginBottom: "2px" }}>Primary Diagnosis</div>
+              <div style={{ fontSize: "0.9rem", fontWeight: 600, color: "var(--text-primary)" }}>{c.primary_diagnosis_display}</div>
+              <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginTop: "2px" }}>ICD-10: {c.primary_diagnosis_code}</div>
             </div>
-          ))}
+            <div style={{ marginBottom: "12px" }}>
+              <div style={{ fontSize: "0.75rem", color: "var(--text-tertiary)", marginBottom: "2px" }}>Requested Service</div>
+              <div style={{ fontSize: "0.9rem", fontWeight: 500, color: "var(--text-primary)" }}>{c.procedure_code ? `Procedure: ${c.procedure_code}` : "Inpatient Admission"}</div>
+            </div>
 
-          <div style={{ borderTop: "1px solid var(--border-default)", margin: "20px 0" }} />
+            <div style={{ borderTop: "1px solid var(--border-default)", margin: "20px 0" }} />
 
-          <h4 style={{ marginBottom: "16px", fontSize: "0.85rem", textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-secondary)" }}>Diagnosis & Service</h4>
-          <div style={{ marginBottom: "12px" }}>
-            <div style={{ fontSize: "0.75rem", color: "var(--text-tertiary)", marginBottom: "2px" }}>Primary Diagnosis</div>
-            <div style={{ fontSize: "0.9rem", fontWeight: 600, color: "var(--text-primary)" }}>{c.primary_diagnosis_display}</div>
-            <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginTop: "2px" }}>ICD-10: {c.primary_diagnosis_code}</div>
-          </div>
-          <div style={{ marginBottom: "12px" }}>
-            <div style={{ fontSize: "0.75rem", color: "var(--text-tertiary)", marginBottom: "2px" }}>Requested Service</div>
-            <div style={{ fontSize: "0.9rem", fontWeight: 500, color: "var(--text-primary)" }}>{c.procedure_code ? `Procedure: ${c.procedure_code}` : "Inpatient Admission"}</div>
-          </div>
-
-          <div style={{ borderTop: "1px solid var(--border-default)", margin: "20px 0" }} />
-
-          <h4 style={{ marginBottom: "16px", fontSize: "0.85rem", textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-secondary)" }}>Auth History</h4>
-          <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)", padding: "12px", background: "rgba(15,14,12,0.03)", borderRadius: "8px" }}>
-            <p style={{ marginBottom: "8px" }}><strong>04/12/2025:</strong> Inpatient Stay (APPROVED)</p>
-            <p><strong>01/05/2025:</strong> Outpatient MRI (DENIED)</p>
+            <h4 style={{ marginBottom: "16px", fontSize: "0.85rem", textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-secondary)" }}>Auth History</h4>
+            <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)", padding: "12px", background: "rgba(15,14,12,0.03)", borderRadius: "8px" }}>
+              <p style={{ marginBottom: "8px" }}><strong>04/12/2025:</strong> Inpatient Stay (APPROVED)</p>
+              <p><strong>01/05/2025:</strong> Outpatient MRI (DENIED)</p>
+            </div>
           </div>
         </div>
 
+        {/* Toggle Button */}
+        <button
+          onClick={() => setIsLeftPanelOpen(!isLeftPanelOpen)}
+          style={{
+            position: "absolute",
+            left: isLeftPanelOpen ? "288px" : "0px",
+            top: "20px",
+            zIndex: 10,
+            background: "var(--bg-surface)",
+            border: "1px solid var(--border-default)",
+            borderLeft: isLeftPanelOpen ? "none" : "1px solid var(--border-default)",
+            borderRadius: "0 6px 6px 0",
+            width: "24px",
+            height: "48px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            transition: "left 0.3s ease",
+            boxShadow: "3px 0 8px rgba(0,0,0,0.05)",
+            color: "var(--text-tertiary)",
+            padding: 0
+          }}
+          title={isLeftPanelOpen ? "Collapse sidebar" : "Expand sidebar"}
+        >
+          {isLeftPanelOpen ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
+        </button>
+
         {/* CENTER WORKSPACE: Cards */}
-        <div style={{ overflowY: "auto", padding: "32px", display: "flex", flexDirection: "column", gap: "24px", maxWidth: "900px", margin: "0 auto", width: "100%", height: "100%" }}>
+        <div style={{ overflowY: "auto", padding: "32px", display: "flex", flexDirection: "column", gap: "24px", maxWidth: "900px", margin: "0 auto", width: "100%", height: "100%", flex: 1 }}>
           
           {/* ═══ Card 1: Clinical Summary (Enhanced) ═══ */}
           <div className="card" style={{ padding: "0", overflow: "hidden" }}>
@@ -269,7 +429,18 @@ export default function WorkspaceDetailPage() {
                         background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)",
                         color: "var(--danger)", fontSize: "0.78rem", fontWeight: 500
                       }}>
-                        <AlertTriangle size={11} /> {s.replace(/_/g, " ").replace(/\bbnp\b/ig, "BNP").replace(/\bef\b/ig, "EF")}
+                        <AlertTriangle size={11} /> {formatRiskSignal(s)}
+                        <button 
+                          onClick={() => setSelectedRiskSignal(s)}
+                          style={{
+                            background: "none", border: "none", padding: "0", cursor: "pointer", 
+                            color: "inherit", display: "inline-flex", alignItems: "center",
+                            opacity: 0.85, marginLeft: "2px"
+                          }}
+                          title={`Explain ${formatRiskSignal(s)} risk signal`}
+                        >
+                          <Info size={11} />
+                        </button>
                       </span>
                     ))}
                   </div>
@@ -312,6 +483,59 @@ export default function WorkspaceDetailPage() {
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+
+          {/* ═══ Card 1.5: Vitals & Labs ═══ */}
+          <div className="card" style={{ padding: "0", overflow: "hidden" }}>
+            <div style={{ 
+              padding: "16px 20px", 
+              borderBottom: "1px solid var(--border-default)",
+              background: "linear-gradient(135deg, rgba(239,68,68,0.06) 0%, rgba(239,68,68,0.02) 100%)",
+              display: "flex", alignItems: "center", gap: "10px"
+            }}>
+              <div style={{
+                width: "32px", height: "32px", borderRadius: "var(--radius-md)",
+                background: "linear-gradient(135deg, rgba(239,68,68,0.15), rgba(239,68,68,0.08))",
+                display: "flex", alignItems: "center", justifyContent: "center"
+              }}>
+                <Activity size={17} style={{ color: "#EF4444" }} />
+              </div>
+              <h3 style={{ fontSize: "1rem", fontWeight: 600, color: "var(--text-primary)", margin: 0 }}>Vitals & Labs</h3>
+            </div>
+
+            <div style={{ padding: "20px" }}>
+              <div className="label" style={{ marginBottom: "12px", fontSize: "0.78rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-secondary)" }}>Vital Signs</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px", marginBottom: "24px" }}>
+                {d.vitals && Object.keys(d.vitals).length > 0 ? Object.entries(d.vitals).map(([key, val]) => {
+                  if (val === null) return null;
+                  const isAbnormal = (key === "o2_sat" && Number(val) < 90) || (key === "hr" && Number(val) > 100) || (key === "rr" && Number(val) > 24) || (key === "temp" && Number(val) > 100.4) || (key === "bp" && typeof val === "string" && Number(val.split('/')[0]) < 90);
+                  return (
+                    <div key={key} style={{ textAlign: "center", padding: "12px 8px", background: isAbnormal ? "rgba(239,68,68,0.06)" : "rgba(15,14,12,0.02)", borderRadius: "var(--radius-md)", border: "1px solid var(--border-default)" }}>
+                      <div className="label" style={{ marginBottom: "6px" }}>{key.replace("_", " ").toUpperCase()}</div>
+                      <div style={{ fontWeight: 600, fontSize: "1.05rem", color: isAbnormal ? "var(--danger)" : "var(--text-primary)" }}>{String(val)}{key === "temp" ? "°F" : key === "o2_sat" ? "%" : ""}</div>
+                    </div>
+                  );
+                }) : <div style={{ color: "var(--text-tertiary)", fontSize: "0.85rem", fontStyle: "italic" }}>No vitals recorded.</div>}
+              </div>
+              
+              <div className="label" style={{ marginBottom: "12px", fontSize: "0.78rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-secondary)" }}>Lab Results</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                {d.labs && Object.keys(d.labs).length > 0 ? Object.entries(d.labs).map(([key, val]) => {
+                  if (val === null) return null;
+                  const lowerKey = key.toLowerCase();
+                  const labName = (lowerKey === "bnp" || lowerKey === "ef" || lowerKey === "wbc") 
+                    ? lowerKey.toUpperCase() 
+                    : key.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
+                  const isLabAbnormal = (lowerKey === "bnp" && Number(val) > 500) || (lowerKey === "wbc" && (Number(val) > 12 || Number(val) < 4)) || (lowerKey === "lactate" && Number(val) >= 2.0) || (lowerKey === "creatinine" && Number(val) > 1.5) || (lowerKey === "troponin" && Number(val) > 0.04) || (lowerKey === "potassium" && Number(val) > 5.5) || (lowerKey === "ef" && Number(val) < 40);
+                  return (
+                    <div key={key} style={{ display: "flex", justifyContent: "space-between", padding: "10px 14px", borderBottom: "1px solid var(--border-default)", background: isLabAbnormal ? "rgba(239,68,68,0.04)" : "rgba(15,14,12,0.01)", borderRadius: "var(--radius-sm)" }}>
+                      <span style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>{labName}</span>
+                      <span style={{ fontWeight: 600, fontSize: "0.9rem", color: isLabAbnormal ? "var(--danger)" : "var(--text-primary)" }}>{String(val)}</span>
+                    </div>
+                  );
+                }) : <div style={{ color: "var(--text-tertiary)", fontSize: "0.85rem", fontStyle: "italic", gridColumn: "span 2" }}>No lab results recorded.</div>}
+              </div>
             </div>
           </div>
 
@@ -391,6 +615,12 @@ export default function WorkspaceDetailPage() {
                     display: "flex", alignItems: "center", gap: "6px"
                   }}>
                     ✅ Criteria Met ({(p.matched_criteria || []).length})
+                    <div 
+                      onClick={() => setShowAnalysisPopup(true)}
+                      style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", position: "relative" }}
+                    >
+                      <Info size={15} style={{ color: "var(--primary)" }} />
+                    </div>
                   </div>
                   <div style={{ 
                     display: "flex", flexDirection: "column", gap: "8px",
@@ -582,155 +812,74 @@ export default function WorkspaceDetailPage() {
             </div>
           )}
 
-          {/* ═══ Card 4: AI Deep Analysis & Recommendation ═══ */}
-          <div className="card" style={{ padding: "0", overflow: "hidden" }}>
-            {/* Header */}
-            <div style={{ 
-              padding: "16px 20px", 
-              borderBottom: "1px solid var(--border-default)",
-              background: "linear-gradient(135deg, rgba(232,82,26,0.07) 0%, rgba(232,82,26,0.02) 100%)",
-              display: "flex", alignItems: "center", gap: "10px"
-            }}>
-              <div style={{
-                width: "32px", height: "32px", borderRadius: "var(--radius-md)",
-                background: "linear-gradient(135deg, rgba(232,82,26,0.18), rgba(232,82,26,0.08))",
-                display: "flex", alignItems: "center", justifyContent: "center"
-              }}>
-                <Sparkles size={17} style={{ color: "var(--primary)" }} />
-              </div>
-              <h3 style={{ fontSize: "1rem", fontWeight: 600, color: "var(--text-primary)", margin: 0 }}>AI Analysis & Recommendation</h3>
-            </div>
 
-            <div style={{ padding: "20px" }}>
-              {deepAnalysis ? (
-                <>
-                  {/* Recommendation banner */}
-                  {deepAnalysis.recommendation && (
-                    <div style={{ 
-                      padding: "14px 18px", borderRadius: "var(--radius-md)", marginBottom: "20px",
-                      background: deepAnalysis.recommendation === "APPROVE" ? "rgba(22,163,74,0.08)" : "rgba(239,68,68,0.08)",
-                      border: `1px solid ${deepAnalysis.recommendation === "APPROVE" ? "rgba(22,163,74,0.2)" : "rgba(239,68,68,0.2)"}`,
-                      textAlign: "center"
-                    }}>
-                      <div style={{ 
-                        fontSize: "0.75rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em",
-                        color: deepAnalysis.recommendation === "APPROVE" ? "var(--success)" : "var(--danger)",
-                        marginBottom: "4px"
-                      }}>
-                        AI Recommendation
-                      </div>
-                      <div style={{ 
-                        fontSize: "1.1rem", fontWeight: 700,
-                        color: deepAnalysis.recommendation === "APPROVE" ? "var(--success)" : "var(--danger)"
-                      }}>
-                        {deepAnalysis.recommendation === "APPROVE" ? "APPROVE" : "DENY"}
-                      </div>
-                    </div>
-                  )}
 
-                  {/* Clinical Analysis */}
-                  {deepAnalysis.clinical_analysis && (
-                    <div style={{ marginBottom: "20px" }}>
-                      <div style={{ 
-                        fontSize: "0.78rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em",
-                        color: "var(--text-secondary)", marginBottom: "10px"
-                      }}>
-                        Clinical Analysis
-                      </div>
-                      <div style={{ 
-                        fontSize: "0.88rem", lineHeight: 1.7, color: "var(--text-secondary)",
-                        padding: "14px 16px", background: "rgba(15,14,12,0.02)", 
-                        borderRadius: "var(--radius-md)", borderLeft: "3px solid var(--primary)"
-                      }}>
-                        {deepAnalysis.clinical_analysis.split('\n').map((para: string, i: number) => (
-                          para.trim() ? <p key={i} style={{ margin: i > 0 ? "10px 0 0" : "0" }}>{para}</p> : null
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Nurse Action Items */}
-                  <div style={{ 
-                    padding: "16px", borderRadius: "var(--radius-md)",
-                    background: "rgba(59,130,246,0.04)", border: "1px solid rgba(59,130,246,0.12)",
-                    marginBottom: "20px"
-                  }}>
-                    <div style={{ 
-                      fontSize: "0.82rem", fontWeight: 600, color: "#3B82F6", marginBottom: "12px",
-                      display: "flex", alignItems: "center", gap: "6px"
-                    }}>
-                      <Stethoscope size={14} style={{ color: "#3B82F6" }} /> Nurse Action Items
-                    </div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                      {(deepAnalysis.nurse_actions || []).map((action: string, i: number) => (
-                        <div key={i} style={{ display: "flex", gap: "8px", fontSize: "0.82rem", color: "var(--text-secondary)", lineHeight: 1.5 }}>
-                          <span style={{ color: "#3B82F6", flexShrink: 0, marginTop: "1px" }}>•</span>
-                          <span>{action}</span>
-                        </div>
-                      ))}
-                      {(!deepAnalysis.nurse_actions || deepAnalysis.nurse_actions.length === 0) && (
-                        <div style={{ fontSize: "0.82rem", color: "var(--text-tertiary)", fontStyle: "italic" }}>No specific actions identified</div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Risk Summary */}
-                  {(deepAnalysis.risk_if_approved || deepAnalysis.risk_if_denied) && (
-                    <div style={{ 
-                      padding: "16px", borderRadius: "var(--radius-md)",
-                      background: "rgba(15,14,12,0.03)", border: "1px solid var(--border-default)"
-                    }}>
-                      <div style={{ 
-                        fontSize: "0.78rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em",
-                        color: "var(--text-secondary)", marginBottom: "12px"
-                      }}>
-                        Risk Assessment
-                      </div>
-                      {deepAnalysis.risk_if_approved && (
-                        <div style={{ display: "flex", gap: "10px", marginBottom: deepAnalysis.risk_if_denied ? "10px" : "0" }}>
-                          <span style={{ 
-                            padding: "3px 8px", borderRadius: "var(--radius-sm)", flexShrink: 0,
-                            background: "rgba(22,163,74,0.1)", color: "var(--success)",
-                            fontSize: "0.72rem", fontWeight: 600, height: "fit-content", marginTop: "1px"
-                          }}>IF APPROVED</span>
-                          <span style={{ fontSize: "0.84rem", color: "var(--text-secondary)", lineHeight: 1.5 }}>
-                            {deepAnalysis.risk_if_approved}
-                          </span>
-                        </div>
-                      )}
-                      {deepAnalysis.risk_if_denied && (
-                        <div style={{ display: "flex", gap: "10px" }}>
-                          <span style={{ 
-                            padding: "3px 8px", borderRadius: "var(--radius-sm)", flexShrink: 0,
-                            background: "rgba(239,68,68,0.1)", color: "var(--danger)",
-                            fontSize: "0.72rem", fontWeight: 600, height: "fit-content", marginTop: "1px"
-                          }}>IF DENIED</span>
-                          <span style={{ fontSize: "0.84rem", color: "var(--text-secondary)", lineHeight: 1.5 }}>
-                            {deepAnalysis.risk_if_denied}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </>
-              ) : (
-                /* Fallback when no deep analysis */
+          {/* ═══ Card 4: Risk Assessment ═══ */}
+          {userRole === "NURSE" && c.status !== "DECIDED" && c.status !== "AUDITED" && deepAnalysis && (deepAnalysis.risk_if_approved || deepAnalysis.risk_if_denied) && (
+            <div className="card" style={{ padding: "0", overflow: "hidden", marginBottom: "24px" }}>
+              <div style={{ padding: "20px" }}>
                 <div style={{ 
-                  padding: "20px", borderRadius: "var(--radius-md)",
-                  background: "rgba(15,14,12,0.02)", border: "1px dashed var(--border-default)",
-                  textAlign: "center"
+                  fontSize: "0.78rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em",
+                  color: "var(--text-secondary)", marginBottom: "12px",
+                  display: "flex", justifyContent: "space-between", alignItems: "center"
                 }}>
-                  <Bot size={28} style={{ color: "var(--text-tertiary)", marginBottom: "10px" }} />
-                  <div style={{ fontSize: "0.85rem", fontWeight: 500, color: "var(--text-secondary)", marginBottom: "8px" }}>
-                    AI Copilot Observation
+                  Risk Assessment
+                  
+                  {/* Tabs */}
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    {deepAnalysis.risk_if_approved && (
+                      <button 
+                        onClick={() => setActiveRiskTab("APPROVED")}
+                        style={{ 
+                          padding: "4px 10px", borderRadius: "var(--radius-sm)", border: "none",
+                          background: activeRiskTab === "APPROVED" ? "rgba(22,163,74,0.15)" : "rgba(15,14,12,0.05)", 
+                          color: activeRiskTab === "APPROVED" ? "var(--success)" : "var(--text-tertiary)",
+                          fontSize: "0.72rem", fontWeight: 600, cursor: "pointer",
+                          transition: "all 0.2s ease"
+                        }}
+                      >
+                        IF APPROVED
+                      </button>
+                    )}
+                    {deepAnalysis.risk_if_denied && (
+                      <button 
+                        onClick={() => setActiveRiskTab("DENIED")}
+                        style={{ 
+                          padding: "4px 10px", borderRadius: "var(--radius-sm)", border: "none",
+                          background: activeRiskTab === "DENIED" ? "rgba(239,68,68,0.15)" : "rgba(15,14,12,0.05)", 
+                          color: activeRiskTab === "DENIED" ? "var(--danger)" : "var(--text-tertiary)",
+                          fontSize: "0.72rem", fontWeight: 600, cursor: "pointer",
+                          transition: "all 0.2s ease"
+                        }}
+                      >
+                        IF DENIED
+                      </button>
+                    )}
                   </div>
-                  <p style={{ fontSize: "0.88rem", color: "var(--text-secondary)", lineHeight: 1.7, margin: 0 }}>
-                    {data.ai_copilot_observation || "No AI analysis is available for this case. Please review the clinical summary and policy match above to make your determination."}
-                  </p>
                 </div>
-              )}
+
+                {/* Tab Content */}
+                <div style={{
+                  padding: "16px",
+                  background: "var(--bg-body)",
+                  borderRadius: "var(--radius-md)",
+                  border: "1px solid var(--border-default)",
+                  marginTop: "8px"
+                }}>
+                  {activeRiskTab === "APPROVED" && deepAnalysis.risk_if_approved && (
+                    <div style={{ fontSize: "0.88rem", color: "var(--text-secondary)", lineHeight: 1.6 }}>
+                      {deepAnalysis.risk_if_approved}
+                    </div>
+                  )}
+                  {activeRiskTab === "DENIED" && deepAnalysis.risk_if_denied && (
+                    <div style={{ fontSize: "0.88rem", color: "var(--text-secondary)", lineHeight: 1.6 }}>
+                      {deepAnalysis.risk_if_denied}
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* ═══ Card 5: AI Recommendation & Decision (Nurse only, undecided cases) ═══ */}
           {userRole === "NURSE" && c.status !== "DECIDED" && c.status !== "AUDITED" && (
@@ -793,7 +942,124 @@ export default function WorkspaceDetailPage() {
         </div>
       </div>
 
+      {/* Full Screen Modal Popup for Clinical Analysis */}
+      {showAnalysisPopup && (
+        <div style={{
+          position: "fixed",
+          top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: "rgba(0,0,0,0.5)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          zIndex: 9999
+        }} onClick={() => setShowAnalysisPopup(false)}>
+          <div 
+            style={{
+              background: "var(--bg-body)",
+              padding: "24px",
+              borderRadius: "var(--radius-lg)",
+              maxWidth: "600px",
+              width: "90%",
+              boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)",
+              maxHeight: "80vh",
+              overflowY: "auto"
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+              <h2 style={{ margin: 0, fontSize: "1.25rem", color: "var(--text-primary)", display: "flex", alignItems: "center", gap: "8px" }}>
+                <Sparkles size={18} style={{ color: "var(--primary)" }} />
+                AI Clinical Analysis
+              </h2>
+              <button 
+                onClick={() => setShowAnalysisPopup(false)}
+                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-tertiary)" }}
+              >
+                <XCircle size={24} />
+              </button>
+            </div>
+            
+            <div style={{ fontSize: "0.95rem", color: "var(--text-secondary)", lineHeight: 1.6 }}>
+              {(deepAnalysis?.clinical_analysis || data.ai_copilot_observation || "No AI Analysis available").split('\n').map((para: string, i: number) => (
+                para.trim() ? <p key={i} style={{ margin: i > 0 ? "12px 0 0" : "0" }}>{para}</p> : null
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
+      {/* Risk Signal Explanation Modal */}
+      {selectedRiskSignal && (() => {
+        const key = selectedRiskSignal.toLowerCase().replace(/ /g, "_");
+        const explanation = RISK_SIGNAL_EXPLANATIONS[key] || {
+          title: `Risk Signal: ${formatRiskSignal(selectedRiskSignal)}`,
+          meaning: `This case was flagged with the clinical risk signal: "${formatRiskSignal(selectedRiskSignal)}".`,
+          significance: "This signal highlights clinical severity, prompting utilization review to evaluate inpatient admission necessity under standard guidelines."
+        };
+        const getPatientValue = (k: string) => {
+          if (!d) return null;
+          if (k === "hypotension" || k === "persistent_hypotension") return d.vitals?.bp;
+          if (k === "tachycardia") return d.vitals?.hr;
+          if (k === "tachypnea") return d.vitals?.rr;
+          if (k === "fever") return d.vitals?.temp;
+          if (k === "severe_hypoxemia") return d.vitals?.o2_sat;
+          if (k === "elevated_creatinine") return d.labs?.creatinine;
+          if (k === "elevated_lactate") return d.labs?.lactate;
+          if (k === "leukocytosis") return d.labs?.wbc;
+          if (k === "elevated_bnp") return d.labs?.bnp;
+          if (k === "reduced_ef" || k === "mildly_reduced_ef") return d.labs?.ef;
+          if (k === "hyperkalemia") return d.labs?.potassium;
+          return null;
+        };
+        const patientValue = getPatientValue(key);
+
+        return (
+          <div style={{
+            position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+            background: "rgba(0,0,0,0.5)", zIndex: 9999,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            backdropFilter: "blur(2px)"
+          }} onClick={() => setSelectedRiskSignal(null)}>
+            <div style={{
+              background: "var(--bg-surface)", borderRadius: "var(--radius-lg)",
+              width: "90%", maxWidth: "500px", display: "flex", flexDirection: "column",
+              boxShadow: "var(--shadow-xl)", overflow: "hidden"
+            }} onClick={(e) => e.stopPropagation()}>
+              <div style={{
+                padding: "16px 20px", borderBottom: "1px solid var(--border-default)",
+                display: "flex", justifyContent: "space-between", alignItems: "center"
+              }}>
+                <span style={{ fontWeight: 600, fontSize: "0.95rem", display: "flex", alignItems: "center", gap: "8px" }}>
+                  <AlertTriangle size={18} style={{ color: "var(--danger)" }} /> {explanation.title.replace(/^Risk Signal:\s*/i, "")}
+                </span>
+                <button onClick={() => setSelectedRiskSignal(null)} style={{
+                  background: "none", border: "none", cursor: "pointer", padding: "4px",
+                  color: "var(--text-tertiary)", borderRadius: "var(--radius-sm)"
+                }}>
+                  <XCircle size={20} />
+                </button>
+              </div>
+              <div style={{ padding: "24px", fontSize: "0.9rem", lineHeight: 1.6, color: "var(--text-secondary)" }}>
+                {patientValue !== undefined && patientValue !== null && (
+                  <div style={{ 
+                    marginBottom: "16px", padding: "12px", background: "rgba(239,68,68,0.06)", 
+                    borderRadius: "var(--radius-md)", borderLeft: "3px solid var(--danger)" 
+                  }}>
+                    <div style={{ fontSize: "0.75rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--danger)", marginBottom: "4px" }}>Current Patient Value</div>
+                    <div style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--text-primary)" }}>{String(patientValue)}</div>
+                  </div>
+                )}
+                <div style={{ marginBottom: "16px" }}>
+                  <h4 style={{ color: "var(--text-primary)", fontSize: "0.85rem", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "6px" }}>Clinical Meaning</h4>
+                  <p style={{ margin: 0 }}>{explanation.meaning}</p>
+                </div>
+                <div>
+                  <h4 style={{ color: "var(--text-primary)", fontSize: "0.85rem", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "6px" }}>Impact on Policy Review</h4>
+                  <p style={{ margin: 0 }}>{explanation.significance}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

@@ -111,17 +111,13 @@ function ICD10Chips({ suggestions, onSelect, currentCode }: ICD10ChipsProps) {
 
 const DOC_TYPES = [
   { value: "PRIOR_AUTH", label: "Prior Authorization" },
-  { value: "CLINICAL_NOTE", label: "Clinical Note" },
-  { value: "DISCHARGE_SUMMARY", label: "Discharge Summary" },
   { value: "APPEAL_DOCUMENT", label: "Appeal Document" },
-  { value: "CLAIMS_DATA", label: "Claims Data" },
-  { value: "LAB_REPORT", label: "Lab Report" },
 ];
 
 // Fields that can be auto-filled
 type AutoFillField = "patient_name" | "mrn" | "dob" | "age" | "gender" | "primary_diagnosis_code" | "primary_diagnosis_display" | "secondary_diagnoses" | "clinical_notes";
 
-export default function NewCasePage() {
+export default function NewCasePage() { // force rebuild
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -178,14 +174,26 @@ export default function NewCasePage() {
     setParseError(null);
     setAutoFilled(false);
 
-    let newForm = { ...form };
-    let newConfidences = { ...confidences };
-    let mergedVitals = { ...extractedVitals };
-    let mergedLabs = { ...extractedLabs };
-    let mergedTimeline = [...extractedTimeline];
-    let mergedRiskSignals = new Set(riskSignals);
-    let mergedSuggestions: ICD10Suggestion[] = [...icd10Suggestions];
-    let newUploadedFiles = [];
+    let newForm = {
+      patient_name: "",
+      mrn: "",
+      dob: "",
+      age: "",
+      gender: "",
+      document_type: "CLINICAL_NOTE",
+      primary_diagnosis_code: "",
+      primary_diagnosis_display: "",
+      secondary_diagnoses: "",
+      clinical_notes: "",
+      priority: "STANDARD",
+    };
+    let newConfidences: Record<string, number> = {};
+    let mergedVitals: any = {};
+    let mergedLabs: any = {};
+    let mergedTimeline: any[] = [];
+    let mergedRiskSignals = new Set<string>();
+    let mergedSuggestions: ICD10Suggestion[] = [];
+    let newUploadedFiles: any[] = [];
     const filledFields: AutoFillField[] = [];
 
     for (const file of files) {
@@ -248,7 +256,7 @@ export default function NewCasePage() {
           newConfidences.clinical_notes = Math.max(newConfidences.clinical_notes || 0, data.clinical_summary_confidence || 0);
           filledFields.push("clinical_notes");
         }
-        if (data.detected_document_type && !newForm.document_type) {
+        if (data.detected_document_type) {
           newForm.document_type = data.detected_document_type;
           newConfidences.document_type = data.parse_confidence;
         }
@@ -285,6 +293,12 @@ export default function NewCasePage() {
       }
     }
 
+    // Auto-set priority based on risk signals
+    if (mergedRiskSignals.size >= 3) {
+      newForm.priority = "URGENT";
+    } else if (mergedRiskSignals.size > 0) {
+      newForm.priority = "HIGH";
+    }
     setForm(newForm);
     setConfidences(newConfidences);
     setExtractedVitals(Object.keys(mergedVitals).length > 0 ? mergedVitals : null);
@@ -293,7 +307,7 @@ export default function NewCasePage() {
     setRiskSignals(Array.from(mergedRiskSignals));
     setIcd10Suggestions(mergedSuggestions.slice(0, 5));
     setAutoFilled(true);
-    setUploadedFiles((prev) => [...prev, ...newUploadedFiles]);
+    setUploadedFiles(newUploadedFiles);
     setIsParsing(false);
     if (fileInputRef.current) fileInputRef.current.value = "";
 
@@ -611,14 +625,6 @@ export default function NewCasePage() {
               </div>
             </div>
 
-            {/* AI ICD-10 Suggestions */}
-            <ICD10Chips
-              suggestions={icd10Suggestions}
-              currentCode={form.primary_diagnosis_code}
-              onSelect={(code, display) => {
-                setForm({ ...form, primary_diagnosis_code: code, primary_diagnosis_display: display });
-              }}
-            />
 
             <div style={{ marginTop: "16px" }}>
               <label className="label" style={{ marginBottom: "6px", display: "block" }}>Secondary Diagnoses (comma-separated ICD-10)</label>

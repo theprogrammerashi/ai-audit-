@@ -369,16 +369,7 @@ export default function HomePage() {
                   </div>
                 </div>
               </div>
-              <div className="hero-c1" style={{ position: "absolute", top: "-20px", right: "-24px", zIndex: 3, background: "#fff", borderRadius: "12px", border: "1px solid rgba(15,14,12,.08)", boxShadow: "0 8px 32px rgba(0,0,0,.10)", padding: "14px 18px", minWidth: "180px" }}>
-                <div style={{ fontFamily: "'Outfit',sans-serif", fontSize: ".68rem", fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "rgba(15,14,12,.4)", marginBottom: "6px" }}>30-DAY QA SCORE</div>
-                <div style={{ fontFamily: "'Playfair Display',serif", fontSize: "2rem", fontWeight: 700, color: "#0F0E0C", lineHeight: 1.1 }}>96.9%</div>
-                <div style={{ fontFamily: "'Outfit',sans-serif", fontSize: ".72rem", fontWeight: 600, color: "#1A7A4A", marginTop: "4px" }}>↑ +2.1% vs last quarter</div>
-              </div>
-              <div className="hero-c2" style={{ position: "absolute", bottom: "20px", left: "-24px", zIndex: 3, background: "#E8521A", borderRadius: "12px", boxShadow: "0 8px 32px rgba(232,82,26,.35)", padding: "14px 18px", minWidth: "160px" }}>
-                <div style={{ fontFamily: "'Outfit',sans-serif", fontSize: ".68rem", fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "rgba(255,255,255,.7)", marginBottom: "6px" }}>TOTAL SAVINGS</div>
-                <div style={{ fontFamily: "'Playfair Display',serif", fontSize: "2rem", fontWeight: 700, color: "#fff", lineHeight: 1.1 }}>${stats.total_savings_m}M</div>
-                <div style={{ fontFamily: "'Outfit',sans-serif", fontSize: ".72rem", color: "rgba(255,255,255,.75)", marginTop: "4px" }}>Documented · FY 2025</div>
-              </div>
+
             </div>
           </div>
         </section>
