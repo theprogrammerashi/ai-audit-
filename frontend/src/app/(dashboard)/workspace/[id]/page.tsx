@@ -126,6 +126,84 @@ const RISK_SIGNAL_EXPLANATIONS: Record<string, {
   }
 };
 
+const ABNORMAL_EXPLANATIONS: Record<string, { title: string; range: string; meaning: string; significance: string }> = {
+  // Vitals
+  temp: {
+    title: "Abnormal Vital: Temperature (Fever)",
+    range: "97.0°F - 100.4°F",
+    meaning: "Elevated core body temperature (> 100.4°F or 38°C).",
+    significance: "Indicates active systemic inflammatory response (SIRS) or infection."
+  },
+  bp: {
+    title: "Abnormal Vital: Blood Pressure (Hypotension)",
+    range: "90/60 - 120/80 mmHg",
+    meaning: "Low blood pressure (systolic < 90 mmHg).",
+    significance: "Indicates reduced tissue perfusion and potential hemodynamic instability or shock."
+  },
+  hr: {
+    title: "Abnormal Vital: Heart Rate (Tachycardia)",
+    range: "60 - 100 bpm",
+    meaning: "Elevated heart rate (> 100 beats per minute).",
+    significance: "Reflects physiological stress, compensatory mechanism for fever, hypovolemia, or hypoperfusion."
+  },
+  rr: {
+    title: "Abnormal Vital: Respiratory Rate (Tachypnea)",
+    range: "12 - 20 breaths/min",
+    meaning: "Elevated respiratory rate (> 24 breaths per minute).",
+    significance: "Indicates respiratory distress, hypoxemia, or metabolic acidosis compensation."
+  },
+  o2_sat: {
+    title: "Abnormal Vital: Oxygen Saturation (Hypoxemia)",
+    range: "95% - 100%",
+    meaning: "Low arterial blood oxygen saturation (< 90%).",
+    significance: "Reflects impaired gas exchange in lungs, requiring immediate oxygen supplementation."
+  },
+  
+  // Labs
+  wbc: {
+    title: "Abnormal Lab: WBC (Leukocytosis)",
+    range: "4.0 - 11.0 K/uL",
+    meaning: "Elevated White Blood Cell count (> 12.0 K/uL).",
+    significance: "Strong marker of active infection, systemic inflammation, or leukemoid reaction."
+  },
+  lactate: {
+    title: "Abnormal Lab: Lactate (Hyperlactatemia)",
+    range: "< 2.0 mmol/L",
+    meaning: "Elevated blood lactate levels (>= 2.0 mmol/L).",
+    significance: "Indicates anaerobic metabolism due to systemic hypoperfusion, tissue hypoxia, or sepsis."
+  },
+  creatinine: {
+    title: "Abnormal Lab: Creatinine",
+    range: "0.6 - 1.2 mg/dL",
+    meaning: "Elevated serum creatinine level (> 1.5 mg/dL).",
+    significance: "Indicates acute kidney injury (AKI) or renal dysfunction due to hypoperfusion or nephrotoxicity."
+  },
+  bnp: {
+    title: "Abnormal Lab: BNP",
+    range: "< 100 pg/mL",
+    meaning: "Elevated Brain Natriuretic Peptide (> 500 pg/mL).",
+    significance: "Indicates myocardial wall stretch, typical of acute decompensated heart failure."
+  },
+  troponin: {
+    title: "Abnormal Lab: Troponin",
+    range: "< 0.04 ng/mL",
+    meaning: "Elevated troponin level (> 0.04 ng/mL).",
+    significance: "Specific marker of myocardial injury, suggesting acute coronary syndrome or cardiac strain."
+  },
+  potassium: {
+    title: "Abnormal Lab: Potassium (Hyperkalemia)",
+    range: "3.5 - 5.0 mEq/L",
+    meaning: "Elevated serum potassium level (> 5.5 mEq/L).",
+    significance: "Can cause severe cardiac conduction abnormalities or arrhythmias."
+  },
+  ef: {
+    title: "Abnormal Lab: Ejection Fraction (Reduced EF)",
+    range: "55% - 70%",
+    meaning: "Reduced left ventricular ejection fraction (< 40%).",
+    significance: "Indicates systolic heart failure with high risk for clinical instability."
+  }
+};
+
 export const formatRiskSignal = (s: string) => s.replace(/_/g, " ").replace(/\bbnp\b/ig, "BNP").replace(/\bef\b/ig, "EF");
 
 export default function WorkspaceDetailPage() {
@@ -141,6 +219,7 @@ export default function WorkspaceDetailPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [selectedRiskSignal, setSelectedRiskSignal] = useState<string | null>(null);
+  const [abnormalExplanation, setAbnormalExplanation] = useState<any | null>(null);
 
 
   // New Rationale State
@@ -228,6 +307,49 @@ export default function WorkspaceDetailPage() {
   const unmetCount = (p.unmet_criteria || []).length;
   const totalCount = metCount + unmetCount;
   const deepAnalysis = data.ai_deep_analysis;
+
+  // --- Calculate missing/undocumented vitals & labs (if genuine) ---
+  const expectedVitals = {
+    temp: "Temperature",
+    bp: "Blood Pressure",
+    hr: "Heart Rate",
+    rr: "Respiratory Rate",
+    o2_sat: "Oxygen Saturation"
+  };
+  const missingVitals: string[] = [];
+  const vitalsObj = d.vitals || {};
+  Object.entries(expectedVitals).forEach(([key, name]) => {
+    if (vitalsObj[key] === undefined || vitalsObj[key] === null || vitalsObj[key] === "") {
+      missingVitals.push(name);
+    }
+  });
+
+  const missingLabs: string[] = [];
+  const labsObj = d.labs || {};
+  const policyCode = (p.applicable_policy || "").toUpperCase();
+  
+  if (policyCode.includes("SEPSIS")) {
+    const sepsisLabs = { wbc: "WBC", lactate: "Lactate", creatinine: "Creatinine" };
+    Object.entries(sepsisLabs).forEach(([key, name]) => {
+      if (labsObj[key] === undefined || labsObj[key] === null || labsObj[key] === "") {
+        missingLabs.push(name);
+      }
+    });
+  } else if (policyCode.includes("CHF") || policyCode.includes("HEART")) {
+    const chfLabs = { bnp: "BNP", troponin: "Troponin", creatinine: "Creatinine", potassium: "Potassium", ef: "Ejection Fraction (EF)" };
+    Object.entries(chfLabs).forEach(([key, name]) => {
+      if (labsObj[key] === undefined || labsObj[key] === null || labsObj[key] === "") {
+        missingLabs.push(name);
+      }
+    });
+  } else if (policyCode.includes("COPD")) {
+    const copdLabs = { wbc: "WBC", pco2: "pCO2" };
+    Object.entries(copdLabs).forEach(([key, name]) => {
+      if (labsObj[key] === undefined || labsObj[key] === null || labsObj[key] === "") {
+        missingLabs.push(name);
+      }
+    });
+  }
 
   const handleSubmitDecision = async (decision: string) => {
     if (!rationale || rationale.length < 20) {
@@ -410,42 +532,38 @@ export default function WorkspaceDetailPage() {
                 {d.clinical_summary || "No clinical summary available for this case."}
               </p>
 
-              {/* Key Risk Signals */}
-              {d.risk_signals && d.risk_signals.length > 0 && (
-                <div style={{ marginTop: "20px" }}>
-                  <div style={{ 
-                    fontSize: "0.78rem", fontWeight: 600, textTransform: "uppercase", 
-                    letterSpacing: "0.06em", color: "var(--danger)", marginBottom: "10px",
-                    display: "flex", alignItems: "center", gap: "6px"
-                  }}>
-                    <AlertTriangle size={13} />
-                    Key Clinical Findings
+              {/* Documentation Gap warning if vitals or labs are missing */}
+              {(missingVitals.length > 0 || missingLabs.length > 0) && (
+                <div style={{ 
+                  marginTop: "16px", 
+                  padding: "12px 16px", 
+                  background: "rgba(245,158,11,0.06)", 
+                  border: "1px solid rgba(245,158,11,0.25)", 
+                  borderRadius: "var(--radius-md)",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "6px"
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--warning)", fontWeight: 600, fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                    <AlertTriangle size={14} style={{ color: "var(--warning)" }} />
+                    Incomplete Documentation Detected
                   </div>
-                  <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                    {d.risk_signals.map((s: string) => (
-                      <span key={s} style={{ 
-                        display: "inline-flex", alignItems: "center", gap: "5px",
-                        padding: "5px 12px", borderRadius: "var(--radius-full)",
-                        background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)",
-                        color: "var(--danger)", fontSize: "0.78rem", fontWeight: 500
-                      }}>
-                        <AlertTriangle size={11} /> {formatRiskSignal(s)}
-                        <button 
-                          onClick={() => setSelectedRiskSignal(s)}
-                          style={{
-                            background: "none", border: "none", padding: "0", cursor: "pointer", 
-                            color: "inherit", display: "inline-flex", alignItems: "center",
-                            opacity: 0.85, marginLeft: "2px"
-                          }}
-                          title={`Explain ${formatRiskSignal(s)} risk signal`}
-                        >
-                          <Info size={11} />
-                        </button>
-                      </span>
-                    ))}
+                  <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)", lineHeight: 1.5 }}>
+                    {missingVitals.length > 0 && (
+                      <div>
+                        <strong>Missing Vitals:</strong> {missingVitals.join(", ")}
+                      </div>
+                    )}
+                    {missingLabs.length > 0 && (
+                      <div style={{ marginTop: missingVitals.length > 0 ? "4px" : "0" }}>
+                        <strong>Missing Labs:</strong> {missingLabs.join(", ")}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
+
+
 
               {/* Timeline */}
               {d.timeline && d.timeline.length > 0 && (
@@ -507,13 +625,56 @@ export default function WorkspaceDetailPage() {
             <div style={{ padding: "20px" }}>
               <div className="label" style={{ marginBottom: "12px", fontSize: "0.78rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-secondary)" }}>Vital Signs</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px", marginBottom: "24px" }}>
-                {d.vitals && Object.keys(d.vitals).length > 0 ? Object.entries(d.vitals).map(([key, val]) => {
+                 {d.vitals && Object.keys(d.vitals).length > 0 ? Object.entries(d.vitals).map(([key, val]) => {
                   if (val === null) return null;
                   const isAbnormal = (key === "o2_sat" && Number(val) < 90) || (key === "hr" && Number(val) > 100) || (key === "rr" && Number(val) > 24) || (key === "temp" && Number(val) > 100.4) || (key === "bp" && typeof val === "string" && Number(val.split('/')[0]) < 90);
+                  
+                  const handleBoxClick = () => {
+                    if (!isAbnormal) return;
+                    const info = ABNORMAL_EXPLANATIONS[key] || {
+                      title: `Abnormal Vital: ${key.replace("_", " ").toUpperCase()}`,
+                      range: "Standard reference range",
+                      meaning: "This value is flagged as abnormal.",
+                      significance: "Clinical review is required to evaluate this vital sign."
+                    };
+                    setAbnormalExplanation({
+                      ...info,
+                      key,
+                      val: `${String(val)}${key === "temp" ? "°F" : key === "o2_sat" ? "%" : ""}`
+                    });
+                  };
+
                   return (
-                    <div key={key} style={{ textAlign: "center", padding: "12px 8px", background: isAbnormal ? "rgba(239,68,68,0.06)" : "rgba(15,14,12,0.02)", borderRadius: "var(--radius-md)", border: "1px solid var(--border-default)" }}>
+                    <div 
+                      key={key} 
+                      onClick={handleBoxClick}
+                      onMouseEnter={(e) => {
+                        if (!isAbnormal) return;
+                        (e.currentTarget as HTMLDivElement).style.transform = "translateY(-3px) scale(1.03)";
+                        (e.currentTarget as HTMLDivElement).style.boxShadow = "0 6px 16px rgba(239,68,68,0.15)";
+                        (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(239,68,68,0.45)";
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isAbnormal) return;
+                        (e.currentTarget as HTMLDivElement).style.transform = "none";
+                        (e.currentTarget as HTMLDivElement).style.boxShadow = "none";
+                        (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(239,68,68,0.25)";
+                      }}
+                      style={{ 
+                        textAlign: "center", 
+                        padding: "12px 8px", 
+                        background: isAbnormal ? "rgba(239,68,68,0.06)" : "rgba(15,14,12,0.02)", 
+                        borderRadius: "var(--radius-md)", 
+                        border: isAbnormal ? "1px solid rgba(239,68,68,0.25)" : "1px solid var(--border-default)",
+                        cursor: isAbnormal ? "pointer" : "default",
+                        transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)"
+                      }}
+                    >
                       <div className="label" style={{ marginBottom: "6px" }}>{key.replace("_", " ").toUpperCase()}</div>
-                      <div style={{ fontWeight: 600, fontSize: "1.05rem", color: isAbnormal ? "var(--danger)" : "var(--text-primary)" }}>{String(val)}{key === "temp" ? "°F" : key === "o2_sat" ? "%" : ""}</div>
+                      <div style={{ fontWeight: 600, fontSize: "1.05rem", color: isAbnormal ? "var(--danger)" : "var(--text-primary)", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>
+                        {isAbnormal && <AlertTriangle size={14} style={{ color: "var(--danger)", flexShrink: 0 }} />}
+                        {String(val)}{key === "temp" ? "°F" : key === "o2_sat" ? "%" : ""}
+                      </div>
                     </div>
                   );
                 }) : <div style={{ color: "var(--text-tertiary)", fontSize: "0.85rem", fontStyle: "italic" }}>No vitals recorded.</div>}
@@ -528,10 +689,56 @@ export default function WorkspaceDetailPage() {
                     ? lowerKey.toUpperCase() 
                     : key.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
                   const isLabAbnormal = (lowerKey === "bnp" && Number(val) > 500) || (lowerKey === "wbc" && (Number(val) > 12 || Number(val) < 4)) || (lowerKey === "lactate" && Number(val) >= 2.0) || (lowerKey === "creatinine" && Number(val) > 1.5) || (lowerKey === "troponin" && Number(val) > 0.04) || (lowerKey === "potassium" && Number(val) > 5.5) || (lowerKey === "ef" && Number(val) < 40);
+                  
+                  const handleLabClick = () => {
+                    if (!isLabAbnormal) return;
+                    const info = ABNORMAL_EXPLANATIONS[lowerKey] || {
+                      title: `Abnormal Lab: ${labName}`,
+                      range: "Standard reference range",
+                      meaning: "This value is flagged as abnormal.",
+                      significance: "Clinical review is required to evaluate this lab value."
+                    };
+                    setAbnormalExplanation({
+                      ...info,
+                      key: lowerKey,
+                      val: String(val)
+                    });
+                  };
+
                   return (
-                    <div key={key} style={{ display: "flex", justifyContent: "space-between", padding: "10px 14px", borderBottom: "1px solid var(--border-default)", background: isLabAbnormal ? "rgba(239,68,68,0.04)" : "rgba(15,14,12,0.01)", borderRadius: "var(--radius-sm)" }}>
+                    <div 
+                      key={key} 
+                      onClick={handleLabClick}
+                      onMouseEnter={(e) => {
+                        if (!isLabAbnormal) return;
+                        (e.currentTarget as HTMLDivElement).style.transform = "translateY(-2px) scale(1.02)";
+                        (e.currentTarget as HTMLDivElement).style.boxShadow = "0 4px 12px rgba(239,68,68,0.12)";
+                        (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(239,68,68,0.38)";
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isLabAbnormal) return;
+                        (e.currentTarget as HTMLDivElement).style.transform = "none";
+                        (e.currentTarget as HTMLDivElement).style.boxShadow = "none";
+                        (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(239,68,68,0.18)";
+                      }}
+                      style={{ 
+                        display: "flex", 
+                        justifyContent: "space-between", 
+                        padding: "10px 14px", 
+                        borderBottom: "1px solid var(--border-default)", 
+                        background: isLabAbnormal ? "rgba(239,68,68,0.04)" : "rgba(15,14,12,0.01)", 
+                        borderRadius: "var(--radius-sm)", 
+                        border: isLabAbnormal ? "1px solid rgba(239,68,68,0.18)" : "none", 
+                        alignItems: "center",
+                        cursor: isLabAbnormal ? "pointer" : "default",
+                        transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)"
+                      }}
+                    >
                       <span style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>{labName}</span>
-                      <span style={{ fontWeight: 600, fontSize: "0.9rem", color: isLabAbnormal ? "var(--danger)" : "var(--text-primary)" }}>{String(val)}</span>
+                      <span style={{ fontWeight: 600, fontSize: "0.9rem", color: isLabAbnormal ? "var(--danger)" : "var(--text-primary)", display: "flex", alignItems: "center", gap: "6px" }}>
+                        {isLabAbnormal && <AlertTriangle size={13} style={{ color: "var(--danger)", flexShrink: 0 }} />}
+                        {String(val)}
+                      </span>
                     </div>
                   );
                 }) : <div style={{ color: "var(--text-tertiary)", fontSize: "0.85rem", fontStyle: "italic", gridColumn: "span 2" }}>No lab results recorded.</div>}
@@ -1060,6 +1267,62 @@ export default function WorkspaceDetailPage() {
           </div>
         );
       })()}
+
+      {/* Abnormal Value Explanation Modal */}
+      {abnormalExplanation && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+          background: "rgba(0,0,0,0.5)", zIndex: 9999,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          backdropFilter: "blur(2px)"
+        }} onClick={() => setAbnormalExplanation(null)}>
+          <div style={{
+            background: "var(--bg-surface)", borderRadius: "var(--radius-lg)",
+            width: "90%", maxWidth: "500px", display: "flex", flexDirection: "column",
+            boxShadow: "var(--shadow-xl)", overflow: "hidden"
+          }} onClick={(e) => e.stopPropagation()}>
+            <div style={{
+              padding: "16px 20px", borderBottom: "1px solid var(--border-default)",
+              display: "flex", justifyContent: "space-between", alignItems: "center"
+            }}>
+              <span style={{ fontWeight: 600, fontSize: "0.95rem", display: "flex", alignItems: "center", gap: "8px" }}>
+                <AlertTriangle size={18} style={{ color: "var(--danger)" }} /> {abnormalExplanation.title}
+              </span>
+              <button onClick={() => setAbnormalExplanation(null)} style={{
+                background: "none", border: "none", cursor: "pointer", padding: "4px",
+                color: "var(--text-tertiary)", borderRadius: "var(--radius-sm)"
+              }}>
+                <XCircle size={20} />
+              </button>
+            </div>
+            <div style={{ padding: "24px", fontSize: "0.9rem", lineHeight: 1.6, color: "var(--text-secondary)" }}>
+              <div style={{ 
+                marginBottom: "16px", padding: "12px", background: "rgba(239,68,68,0.06)", 
+                borderRadius: "var(--radius-md)", borderLeft: "3px solid var(--danger)" 
+              }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                  <div>
+                    <div style={{ fontSize: "0.75rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-tertiary)", marginBottom: "2px" }}>Patient Value</div>
+                    <div style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--danger)" }}>{abnormalExplanation.val}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: "0.75rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-tertiary)", marginBottom: "2px" }}>Reference Range</div>
+                    <div style={{ fontSize: "1rem", fontWeight: 500, color: "var(--text-primary)" }}>{abnormalExplanation.range}</div>
+                  </div>
+                </div>
+              </div>
+              <div style={{ marginBottom: "16px" }}>
+                <h4 style={{ color: "var(--text-primary)", fontSize: "0.85rem", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "6px" }}>Clinical Meaning</h4>
+                <p style={{ margin: 0 }}>{abnormalExplanation.meaning}</p>
+              </div>
+              <div>
+                <h4 style={{ color: "var(--text-primary)", fontSize: "0.85rem", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "6px" }}>Clinical Significance</h4>
+                <p style={{ margin: 0 }}>{abnormalExplanation.significance}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -91,10 +91,10 @@ def run_policy_match(case_id: str, diagnosis: str, structured: dict = None, db: 
             except:
                 pass
         criteria = [
-            {"criterion": "Suspected Infection", "section": "6A", "status": "MET", "evidence": "Infection suspected based on diagnosis", "confidence": 0.96},
+            {"criterion": "Suspected Infection", "section": "6A", "status": "MET", "evidence": f"Infection suspected based on diagnosis of {diagnosis}", "confidence": 0.96},
             {"criterion": "Elevated Lactate", "section": "6B", "status": "MET" if lact >= 2.0 else "NOT_MET", "evidence": f"Lactate {lact}", "confidence": 0.99 if lact >= 2.0 else 0.80},
             {"criterion": "Persistent Hypotension", "section": "6C", "status": "MET" if bp_sys < 90 else "NOT_MET", "evidence": f"BP {bp_val}", "confidence": 0.97 if bp_sys < 90 else 0.75},
-            {"criterion": "Altered Mental Status", "section": "6D", "status": "MET" if lact > 4.0 else "NOT_MET", "evidence": "AMS likely" if lact > 4.0 else "Alert", "confidence": 0.95 if lact > 4.0 else 0.80},
+            {"criterion": "Altered Mental Status", "section": "6D", "status": "MET" if lact > 4.0 else "NOT_MET", "evidence": "Altered Mental Status (AMS) likely" if lact > 4.0 else "Alert", "confidence": 0.95 if lact > 4.0 else 0.80},
             {"criterion": "IV Antibiotic Requirement", "section": "6E", "status": "MET", "evidence": "IV antibiotics indicated", "confidence": 0.98},
         ]
         match_dict["applicable_policy"] = "UM-SEPSIS-001"

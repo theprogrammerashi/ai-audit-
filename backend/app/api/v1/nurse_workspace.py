@@ -329,6 +329,8 @@ async def get_workspace_data(
             overall_confidence=pdict.get("overall_confidence", 0.0),
         )
 
+    diag_name = case_dict.get("primary_diagnosis_display") or case_dict.get("primary_diagnosis_code") or "Sepsis"
+
     # --- Build human-readable explanations for each criterion ---
     def _explain_criterion(c) -> str:
         """Generate a natural-English explanation for a single policy criterion."""
@@ -336,6 +338,13 @@ async def get_workspace_data(
             "not satisfied" if c.status == "NOT_MET" else "lacking sufficient evidence"
         )
         evidence_text = c.evidence if c.evidence else "No clinical evidence was documented"
+        if "Infection suspected based on diagnosis" in evidence_text:
+            evidence_text = f"Infection suspected based on diagnosis of {diag_name}"
+            c.evidence = evidence_text
+        if "AMS likely" in evidence_text:
+            evidence_text = "Altered Mental Status (AMS) likely"
+            c.evidence = evidence_text
+
         if c.status == "MET":
             return (
                 f"The patient's clinical data shows: {evidence_text}. "
@@ -401,16 +410,21 @@ async def get_workspace_data(
 
         # --- Build vitals/labs narrative fragments ---
         vitals_narrative_parts = []
-        if vitals.get("blood_pressure"):
-            vitals_narrative_parts.append(f"blood pressure of {vitals['blood_pressure']}")
-        if vitals.get("heart_rate"):
-            vitals_narrative_parts.append(f"heart rate of {vitals['heart_rate']} bpm")
-        if vitals.get("respiratory_rate"):
-            vitals_narrative_parts.append(f"respiratory rate of {vitals['respiratory_rate']}/min")
-        if vitals.get("oxygen_saturation"):
-            vitals_narrative_parts.append(f"oxygen saturation of {vitals['oxygen_saturation']}%")
-        if vitals.get("temperature"):
-            vitals_narrative_parts.append(f"temperature of {vitals['temperature']}°F")
+        bp_val = vitals.get("bp") or vitals.get("blood_pressure")
+        if bp_val:
+            vitals_narrative_parts.append(f"blood pressure of {bp_val}")
+        hr_val = vitals.get("hr") or vitals.get("heart_rate")
+        if hr_val:
+            vitals_narrative_parts.append(f"heart rate of {hr_val} bpm")
+        rr_val = vitals.get("rr") or vitals.get("respiratory_rate")
+        if rr_val:
+            vitals_narrative_parts.append(f"respiratory rate of {rr_val}/min")
+        o2_val = vitals.get("o2_sat") or vitals.get("oxygen_saturation")
+        if o2_val:
+            vitals_narrative_parts.append(f"oxygen saturation of {o2_val}%")
+        temp_val = vitals.get("temp") or vitals.get("temperature")
+        if temp_val:
+            vitals_narrative_parts.append(f"temperature of {temp_val}°F")
         vitals_narrative = ", ".join(vitals_narrative_parts) if vitals_narrative_parts else "vitals not fully documented"
 
         labs_narrative_parts = []

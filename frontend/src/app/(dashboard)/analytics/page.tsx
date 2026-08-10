@@ -162,29 +162,41 @@ export default function AnalyticsPage() {
 
         {/* Team KPI Header */}
         {teamStats && (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "16px", marginBottom: "28px" }}>
-            <div className="metric-card" style={{ borderTopColor: "var(--primary)" }}>
-              <div style={{ background: "var(--primary-light)", padding: "12px", borderRadius: "10px", color: "var(--primary)", width: "40px", height: "40px", marginBottom: "12px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <Activity size={20} />
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "16px", marginBottom: "20px" }}>
+            <div className="metric-card" style={{ borderTopColor: "var(--primary)", padding: "14px 18px", borderTopWidth: "3px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                <div style={{ background: "var(--primary-light)", padding: "8px", borderRadius: "8px", color: "var(--primary)", width: "32px", height: "32px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Activity size={16} />
+                </div>
+                <div>
+                  <div style={{ color: "var(--text-secondary)", fontSize: "0.78rem", fontWeight: 500, marginBottom: "2px" }}>Avg QA Score</div>
+                  <div style={{ fontSize: "1.4rem", fontWeight: 700, color: "var(--text-primary)" }}>{teamStats.team_avg_qa_score}%</div>
+                </div>
               </div>
-              <div style={{ color: "var(--text-secondary)", fontSize: "0.85rem", fontWeight: 500, marginBottom: "4px" }}>Avg QA Score</div>
-              <div style={{ fontSize: "1.75rem", fontWeight: 700 }}>{teamStats.team_avg_qa_score}%</div>
             </div>
 
-            <div className="metric-card" style={{ borderTopColor: "var(--success)" }}>
-              <div style={{ background: "var(--success-light)", padding: "12px", borderRadius: "10px", color: "var(--success)", width: "40px", height: "40px", marginBottom: "12px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <Percent size={20} />
+            <div className="metric-card" style={{ borderTopColor: "var(--success)", padding: "14px 18px", borderTopWidth: "3px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                <div style={{ background: "var(--success-light)", padding: "8px", borderRadius: "8px", color: "var(--success)", width: "32px", height: "32px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Percent size={16} />
+                </div>
+                <div>
+                  <div style={{ color: "var(--text-secondary)", fontSize: "0.78rem", fontWeight: 500, marginBottom: "2px" }}>Avg Approval Rate</div>
+                  <div style={{ fontSize: "1.4rem", fontWeight: 700, color: "var(--text-primary)" }}>{Math.round(teamStats.team_avg_approval_rate * 100)}%</div>
+                </div>
               </div>
-              <div style={{ color: "var(--text-secondary)", fontSize: "0.85rem", fontWeight: 500, marginBottom: "4px" }}>Avg Approval Rate</div>
-              <div style={{ fontSize: "1.75rem", fontWeight: 700 }}>{Math.round(teamStats.team_avg_approval_rate * 100)}%</div>
             </div>
 
-            <div className="metric-card" style={{ borderTopColor: "var(--warning)" }}>
-              <div style={{ background: "var(--warning-light)", padding: "12px", borderRadius: "10px", color: "var(--warning)", width: "40px", height: "40px", marginBottom: "12px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <BookOpen size={20} />
+            <div className="metric-card" style={{ borderTopColor: "var(--warning)", padding: "14px 18px", borderTopWidth: "3px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                <div style={{ background: "var(--warning-light)", padding: "8px", borderRadius: "8px", color: "var(--warning)", width: "32px", height: "32px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <BookOpen size={16} />
+                </div>
+                <div>
+                  <div style={{ color: "var(--text-secondary)", fontSize: "0.78rem", fontWeight: 500, marginBottom: "2px" }}>Total Volume (30d)</div>
+                  <div style={{ fontSize: "1.4rem", fontWeight: 700, color: "var(--text-primary)" }}>{teamStats.total_cases}</div>
+                </div>
               </div>
-              <div style={{ color: "var(--text-secondary)", fontSize: "0.85rem", fontWeight: 500, marginBottom: "4px" }}>Total Volume (30d)</div>
-              <div style={{ fontSize: "1.75rem", fontWeight: 700 }}>{teamStats.total_cases}</div>
             </div>
           </div>
         )}
