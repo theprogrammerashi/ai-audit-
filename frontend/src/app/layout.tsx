@@ -4,7 +4,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "CareAudit AI — Clinical Audit Intelligence",
   description:
-    "AI-powered clinical audit and quality assurance platform. AI prepares → Human decides → AI audits → Organization learns.",
+    "AI-powered clinical audit and quality assurance platform. AI prepares → Human decides → AI audits → Organization scales.",
   keywords: ["clinical audit", "healthcare AI", "quality assurance", "utilization management", "nurse review"],
 };
 

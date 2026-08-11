@@ -227,7 +227,16 @@ export default function HomePage() {
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,800;0,900;1,700;1,800&family=Outfit:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
         *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
         html{scroll-behavior:smooth;}
-        body{font-family:'Outfit',system-ui,sans-serif;background:#FAF8F5;color:#0F0E0C;padding-top:68px;}
+        body{font-family:'Outfit',system-ui,sans-serif;background:#FAF8F5;color:#0F0E0C;}
+
+        /* CSS Variables for new design */
+        :root {
+          --teal-dark: #0A1C1A;
+          --teal-mid: #1A3C38;
+          --teal-light: #E0F2F1;
+          --orange: #E8521A;
+          --orange-light: #FF7A45;
+        }
 
         .ca-reveal{opacity:0;transform:translateY(24px);transition:opacity .7s cubic-bezier(.25,.46,.45,.94),transform .7s cubic-bezier(.25,.46,.45,.94);}
         .ca-reveal-left{opacity:0;transform:translateX(-24px);transition:opacity .7s cubic-bezier(.25,.46,.45,.94),transform .7s cubic-bezier(.25,.46,.45,.94);}
@@ -235,164 +244,192 @@ export default function HomePage() {
         .ca-reveal.ca-vis,.ca-reveal-left.ca-vis,.ca-reveal-right.ca-vis{opacity:1!important;transform:none!important;}
 
         @keyframes heroIn{from{opacity:0;transform:translateY(-16px);}to{opacity:1;transform:translateY(0);}}
-        @keyframes floatA{0%,100%{transform:translateY(0);}50%{transform:translateY(-10px);}}
-        @keyframes floatB{0%,100%{transform:translateY(0);}50%{transform:translateY(8px);}}
-        @keyframes pulseRing{0%{box-shadow:0 0 0 0 rgba(26,122,74,.5);}70%{box-shadow:0 0 0 8px rgba(26,122,74,0);}100%{box-shadow:0 0 0 0 rgba(26,122,74,0);}}
         @keyframes shimmer{0%{background-position:-200% center;}100%{background-position:200% center;}}
-        @keyframes blink{0%,100%{opacity:1;}50%{opacity:0;}}
-        @keyframes connIn{from{transform:scaleX(0);}to{transform:scaleX(1);}}
-
+        @keyframes pulseRing{0%{box-shadow:0 0 0 0 rgba(26,122,74,.5);}70%{box-shadow:0 0 0 8px rgba(26,122,74,0);}100%{box-shadow:0 0 0 0 rgba(26,122,74,0);}}
+        
         .hero-pill{animation:heroIn .8s cubic-bezier(.25,.46,.45,.94) both;}
         .hero-h1{animation:heroIn .8s .1s cubic-bezier(.25,.46,.45,.94) both;}
         .hero-sub{animation:heroIn .8s .2s cubic-bezier(.25,.46,.45,.94) both;}
         .hero-cta{animation:heroIn .7s .3s cubic-bezier(.25,.46,.45,.94) both;}
-        .hero-trust{animation:heroIn .7s .4s cubic-bezier(.25,.46,.45,.94) both;}
         .hero-mockup{animation:heroIn .9s .15s cubic-bezier(.25,.46,.45,.94) both;}
-        .hero-c1{animation:heroIn .6s .6s cubic-bezier(0,.55,.45,1) both,floatA 4s 1.2s ease-in-out infinite;}
-        .hero-c2{animation:heroIn .6s .75s cubic-bezier(0,.55,.45,1) both,floatB 4s 2.7s ease-in-out infinite;}
+        
         .pulse-dot{animation:pulseRing 2s ease-out infinite;}
-        .cursor-blink{animation:blink .8s ease-in-out infinite;}
-        .connector-line{transform-origin:left;animation:connIn .8s .2s cubic-bezier(.25,.46,.45,.94) both;}
 
         .nav-link{position:relative;text-decoration:none;font-family:'Outfit',sans-serif;font-size:.875rem;font-weight:500;color:rgba(15,14,12,.55);padding:4px 0;cursor:pointer;transition:color .2s;}
         .nav-link::after{content:'';position:absolute;bottom:-2px;left:0;width:0;height:1.5px;background:#E8521A;transition:width .25s cubic-bezier(.25,.46,.45,.94);transform-origin:left;}
         .nav-link:hover{color:#0F0E0C;}
         .nav-link:hover::after{width:100%;}
 
-        .step-card{border:1px solid rgba(15,14,12,.08);border-radius:12px;padding:20px 24px;background:#fff;cursor:pointer;transition:border-color .25s,box-shadow .25s,background .25s;}
-        .step-card:hover,.step-card.active{border-color:#E8521A;box-shadow:0 4px 20px rgba(232,82,26,.08);}
-        .step-card.active{background:rgba(232,82,26,.02);}
-        .step-desc{max-height:0;overflow:hidden;opacity:0;transition:max-height .35s cubic-bezier(.25,.46,.45,.94),opacity .3s,margin-top .3s;}
-        .step-card.active .step-desc{max-height:200px;opacity:1;margin-top:12px;}
+        .btn-brand{display:inline-flex;align-items:center;gap:8px;padding:10px 24px;background:#E8521A;color:#fff;border:none;border-radius:24px;font-size:.9rem;font-weight:600;cursor:pointer;box-shadow:0 8px 24px rgba(232,82,26,.3);font-family:'Outfit',sans-serif;transition:background .2s,transform .2s;}
+        .btn-brand:hover{background:#C94415;transform:translateY(-1px);}
+        .btn-ghost{background:transparent;border:none;padding:10px 20px;font-size:.9rem;font-weight:500;color:#0F0E0C;cursor:pointer;font-family:'Outfit',sans-serif;transition:color .2s;}
+        .btn-ghost:hover{color:#E8521A;}
 
-        .cap-card{background:#fff;padding:36px 32px;display:flex;flex-direction:column;gap:16px;position:relative;cursor:pointer;transition:transform .25s cubic-bezier(.25,.46,.45,.94),box-shadow .25s,background .25s;}
-        .cap-card::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#E8521A,#FF7A45);transform:scaleX(0);transform-origin:left;transition:transform .3s cubic-bezier(.25,.46,.45,.94);}
-        .cap-card:hover{transform:translateY(-4px);box-shadow:0 12px 48px rgba(0,0,0,.08);background:#FFF2EC;}
-        .cap-card:hover::after{transform:scaleX(1);}
-        .cap-icon-box{width:52px;height:52px;border-radius:12px;background:#FAF8F5;border:1px solid rgba(15,14,12,.1);display:flex;align-items:center;justify-content:center;color:rgba(15,14,12,.5);transition:background .25s,border-color .25s,color .25s;flex-shrink:0;}
-        .cap-card:hover .cap-icon-box{background:#E8521A;border-color:#E8521A;color:#fff;}
+        /* Glassmorphism Cards */
+        .glass-card {
+          background: rgba(255, 255, 255, 0.4);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          border: 1px solid rgba(255, 255, 255, 0.6);
+          border-radius: 16px;
+          padding: 32px;
+          transition: transform 0.3s, box-shadow 0.3s;
+          cursor: pointer;
+        }
+        .glass-card:hover {
+          transform: translateY(-4px);
+          box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08);
+          background: rgba(255, 255, 255, 0.6);
+        }
+        .glass-icon {
+          width: 48px; height: 48px;
+          border-radius: 12px;
+          background: rgba(26, 122, 74, 0.1);
+          color: #1A7A4A;
+          display: flex; align-items: center; justify-content: center;
+          margin-bottom: 20px;
+        }
 
-        .phase-circle{width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid rgba(15,14,12,.1);background:#fff;color:rgba(15,14,12,.4);transition:background .25s,border-color .25s,color .25s,box-shadow .25s;flex-shrink:0;z-index:2;}
-        .phase-card{text-align:center;cursor:pointer;}
-        .phase-card:hover .phase-circle{background:#E8521A;border-color:#E8521A;color:#fff;box-shadow:0 8px 24px rgba(232,82,26,.3);}
+        /* Dark Mode Metrics */
+        .dark-section {
+          background: #111414; /* Deep dark teal/charcoal */
+          color: #fff;
+        }
+        .metric-card-dark{
+          padding:32px 24px;
+          background: rgba(255,255,255,0.03);
+          border: 1px solid rgba(255,255,255,0.08);
+          border-radius: 16px;
+          transition:background .2s, transform .2s;
+        }
+        .metric-card-dark:hover{background: rgba(255,255,255,0.06); transform: translateY(-4px);}
 
-        /* Metric card — dark */
-        .metric-card-dark{padding:28px 24px;border-right:1px solid rgba(255,255,255,.06);background:#1E1A17;border-radius:0;transition:background .2s;}
-        .metric-card-dark:hover{background:#261F1A;}
-        .metric-card-dark:first-child{border-radius:14px 0 0 14px;}
-        .metric-card-dark:last-child{border-right:none;border-radius:0 14px 14px 0;}
+        /* Step Card */
+        .step-card {
+          padding: 20px; border-radius: 12px; transition: all 0.3s; cursor: pointer;
+          border-left: 3px solid transparent;
+        }
+        .step-card.active { background: rgba(232,82,26,0.05); border-left: 3px solid #E8521A; }
+        
+        /* Compliance Card */
+        .comp-card-dark {
+          background: rgba(255,255,255,0.03);
+          border: 1px solid rgba(255,255,255,0.08);
+          border-radius: 12px;
+          padding: 20px; display: flex; gap: 16px; align-items: flex-start;
+          transition: all 0.25s;
+        }
+        .comp-card-dark:hover { border-color: rgba(26,122,74,0.4); background: rgba(26,122,74,0.05); }
 
-        /* Compliance card */
-        .comp-card{background:#fff;border:1px solid rgba(15,14,12,.08);border-radius:12px;padding:20px 24px;display:flex;gap:16px;align-items:flex-start;cursor:pointer;transition:border-color .2s,box-shadow .2s,transform .25s cubic-bezier(.25,.46,.45,.94);}
-        .comp-card:hover{border-color:rgba(232,82,26,.25);box-shadow:0 4px 24px rgba(232,82,26,.08);transform:translateX(4px);}
-
-        /* Sparkbar — animate maxHeight from 0 to final value */
         .sparkbar{max-height:0!important;overflow:hidden;transition:max-height .4s cubic-bezier(.25,.46,.45,.94);align-self:flex-end;}
         .sparkbar.bar-vis{max-height:44px!important;}
-
-        /* Btn */
-        .btn-brand{display:inline-flex;align-items:center;gap:8px;padding:8px 20px;background:#E8521A;color:#fff;border:none;border-radius:7px;font-size:.875rem;font-weight:600;cursor:pointer;box-shadow:0 8px 32px rgba(232,82,26,.3);font-family:'Outfit',sans-serif;transition:background .2s,transform .2s;}
-        .btn-brand:hover{background:#B53C0C;transform:translateY(-1px);}
-        .btn-ghost{background:transparent;border:1.5px solid rgba(15,14,12,.15);border-radius:7px;padding:8px 20px;font-size:.875rem;font-weight:500;color:#0F0E0C;cursor:pointer;font-family:'Outfit',sans-serif;transition:border-color .2s,background .2s;}
-        .btn-ghost:hover{border-color:#E8521A;background:#FFF2EC;}
-        .btn-signout{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:transparent;color:rgba(15,14,12,.5);border:1.5px solid rgba(15,14,12,.12);border-radius:7px;font-size:.875rem;font-weight:500;cursor:pointer;font-family:'Outfit',sans-serif;transition:border-color .2s,color .2s;}
-        .btn-signout:hover{border-color:#E8521A;color:#E8521A;}
       `}</style>
 
       <div style={{ minHeight: "100vh", background: "#FAF8F5" }}>
-
+        
         {/* ═══ NAV ═══ */}
-        <nav style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 200, height: "68px", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 48px", background: "rgba(250,248,245,.95)", backdropFilter: "blur(20px) saturate(180%)", WebkitBackdropFilter: "blur(20px) saturate(180%)", borderBottom: "1px solid rgba(15,14,12,.08)", boxShadow: scrolled ? "0 2px 24px rgba(0,0,0,.08)" : "none", transition: "box-shadow .3s" }}>
+        <nav style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 200, height: "80px", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 48px", background: scrolled ? "rgba(250,248,245,.9)" : "transparent", backdropFilter: scrolled ? "blur(12px)" : "none", borderBottom: scrolled ? "1px solid rgba(15,14,12,.05)" : "none", transition: "all .3s" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <span style={{ background: "#E8521A", color: "#fff", fontFamily: "'DM Mono',monospace", fontSize: ".62rem", padding: "4px 8px", borderRadius: "4px" }}>EXL</span>
-            <span style={{ fontFamily: "'Playfair Display',serif", fontSize: "1.25rem", fontWeight: 700, color: "#0F0E0C" }}>CareAudit<span style={{ color: "#E8521A" }}>.ai</span></span>
+            <span style={{ background: "#E8521A", color: "#fff", fontFamily: "'DM Mono',monospace", fontSize: ".65rem", padding: "6px 10px", borderRadius: "6px" }}>EXL</span>
+            <span style={{ fontFamily: "'Playfair Display',serif", fontSize: "1.4rem", fontWeight: 800, color: "#0F0E0C" }}>CareAudit<span style={{ color: "#E8521A" }}>.ai</span></span>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "36px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "40px" }}>
             {NAV_LINKS.map(l => <a key={l.label} className="nav-link" href={l.href} onClick={e => { e.preventDefault(); scrollTo(l.href); }}>{l.label}</a>)}
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
             {isLoggedIn ? (
               <>
                 <button className="btn-brand" onClick={() => router.push("/cases")}>Open Platform <ArrowRight size={14} /></button>
-                <button className="btn-signout" onClick={handleLogout}><LogOut size={14} /> Sign Out</button>
+                <button className="btn-ghost" onClick={handleLogout}><LogOut size={16} /> Sign Out</button>
               </>
             ) : (
               <>
-                <button className="btn-ghost" onClick={() => router.push("/login")}>Sign In</button>
-                <button className="btn-brand" onClick={() => router.push("/login")}>Start Reviewing <ArrowRight size={14} /></button>
+                <button className="btn-ghost" onClick={() => router.push("/login")}>Login</button>
+                <button className="btn-brand" onClick={() => router.push("/login")}>Get Started <ArrowRight size={14} /></button>
               </>
             )}
           </div>
         </nav>
 
         {/* ═══ HERO ═══ */}
-        <section id="hero" style={{ position: "relative", overflow: "hidden", minHeight: "100vh", display: "flex", alignItems: "center" }}>
-          <div style={{ position: "absolute", inset: 0, backgroundImage: "radial-gradient(ellipse 640px 640px at 80% 30%,rgba(232,82,26,.12) 0%,transparent 70%),radial-gradient(circle 1px at center,rgba(15,14,12,.35) 0%,transparent 0%)", backgroundSize: "auto,80px 80px" }} />
-          <div style={{ maxWidth: "1280px", margin: "0 auto", padding: "0 48px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "80px", alignItems: "center", position: "relative", zIndex: 1, width: "100%" }}>
+        <section id="hero" style={{ position: "relative", paddingTop: "140px", paddingBottom: "100px", minHeight: "100vh", display: "flex", alignItems: "center", overflow: "hidden" }}>
+          <div style={{ position: "absolute", inset: 0, backgroundImage: "radial-gradient(ellipse at 80% 20%, rgba(26,122,74,0.15) 0%, transparent 50%), radial-gradient(ellipse at 20% 80%, rgba(232,82,26,0.15) 0%, transparent 50%)", backgroundSize: "cover" }} />
+          <div style={{ position: "absolute", inset: 0, opacity: 0.4, backgroundImage: "radial-gradient(circle,rgba(15,14,12,.1) 1px,transparent 1px)", backgroundSize: "40px 40px" }} />
+          
+          <div style={{ maxWidth: "1320px", margin: "0 auto", padding: "0 48px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "60px", alignItems: "center", position: "relative", zIndex: 1, width: "100%" }}>
             <div>
-              <div className="hero-pill" style={{ display: "inline-flex", alignItems: "center", gap: "8px", padding: "6px 16px 6px 10px", borderRadius: "99px", background: "#fff", border: "1px solid rgba(15,14,12,.1)", marginBottom: "28px", boxShadow: "0 2px 8px rgba(0,0,0,.05)" }}>
-                <span className="pulse-dot" style={{ width: 8, height: 8, borderRadius: "50%", background: "#1A7A4A", flexShrink: 0 }} />
-                <span style={{ fontFamily: "'Outfit',sans-serif", fontSize: ".78rem", fontWeight: 600, color: "#0F0E0C" }}>Live — All 6 AI Agents Operational</span>
-              </div>
-              <h1 className="hero-h1" style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(2.6rem,4.5vw,3.8rem)", fontWeight: 800, lineHeight: 1.08, color: "#0F0E0C", marginBottom: "24px", letterSpacing: "-.02em" }}>
-                Clinical Audit<br />Intelligence that{" "}
-                <em style={{ fontStyle: "italic", background: "linear-gradient(135deg,#E8521A 0%,#FF7A45 50%,#E8521A 100%)", backgroundSize: "200% auto", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", animation: "shimmer 2s .9s ease both" }}>Learns</em>{" "}as it Works
+
+              <h1 className="hero-h1" style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(3rem, 5vw, 4.5rem)", fontWeight: 800, lineHeight: 1.05, color: "#0A1C1A", marginBottom: "24px", letterSpacing: "-.02em" }}>
+                Clinical Audit<br />Intelligence that<br />
+                <em style={{ fontStyle: "italic", background: "linear-gradient(135deg,#E8521A 0%,#FF7A45 50%,#E8521A 100%)", backgroundSize: "200% auto", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", animation: "shimmer 2s .9s ease both" }}>Accelerates</em>{" "}Turnarounds
               </h1>
-              <p className="hero-sub" style={{ fontFamily: "'Outfit',sans-serif", fontSize: "1.05rem", lineHeight: 1.75, color: "rgba(15,14,12,.6)", maxWidth: "460px", marginBottom: "36px" }}>
-                CareAudit.ai automates prior authorization reviews, scores every decision in real time, predicts appeal risk, and trains your clinical team — all through a Human-in-the-Loop multi-agent workflow.
+              <p className="hero-sub" style={{ fontFamily: "'Outfit',sans-serif", fontSize: "1.1rem", lineHeight: 1.7, color: "rgba(10,28,26,.7)", maxWidth: "480px", marginBottom: "40px" }}>
+                CareAudit.ai automates prior authorization reviews, scores every decision in real time, predicts appeal risk, and scales your quality assurance — all through a Human-in-the-Loop workflow.
               </p>
-              <div className="hero-cta" style={{ marginBottom: "52px" }}>
-                <button className="btn-brand" style={{ padding: "14px 28px", fontSize: ".95rem", boxShadow: "0 8px 32px rgba(232,82,26,.3)" }} onClick={goToApp}>
-                  {isLoggedIn ? "Open Platform" : "Explore Platform"} <ArrowRight size={16} />
+              <div className="hero-cta">
+                <button className="btn-brand" style={{ padding: "16px 32px", fontSize: "1rem" }} onClick={goToApp}>
+                  {isLoggedIn ? "Open Platform" : "Get Started"} <ArrowRight size={18} />
                 </button>
               </div>
             </div>
-            <div className="hero-mockup" style={{ position: "relative", minHeight: "440px" }}>
-              <div style={{ background: "#fff", borderRadius: "16px", border: "1px solid rgba(15,14,12,.08)", boxShadow: "0 24px 80px rgba(0,0,0,.12)", overflow: "hidden", position: "relative", zIndex: 2 }}>
-                <div style={{ padding: "12px 16px", background: "#FAF8F5", borderBottom: "1px solid rgba(15,14,12,.08)", display: "flex", alignItems: "center", gap: "12px" }}>
-                  <div style={{ display: "flex", gap: "6px" }}>{["#FF5F57", "#FEBC2E", "#28C840"].map(c => <span key={c} style={{ width: 12, height: 12, borderRadius: "50%", background: c }} />)}</div>
-                  <div style={{ flex: 1, background: "rgba(15,14,12,.05)", borderRadius: "6px", padding: "4px 12px", fontSize: ".72rem", fontFamily: "'DM Mono',monospace", color: "rgba(15,14,12,.4)" }}>app.careaudit.ai / cases</div>
+            
+            {/* HERO MOCKUP — Glassmorphism */}
+            <div className="hero-mockup" style={{ position: "relative" }}>
+              {/* Ambient blobs behind glass */}
+              <div style={{ position: "absolute", top: "-40px", right: "-40px", width: "200px", height: "200px", borderRadius: "50%", background: "radial-gradient(circle, rgba(26,122,74,0.35) 0%, transparent 70%)", filter: "blur(30px)", pointerEvents: "none", zIndex: 0 }} />
+              <div style={{ position: "absolute", bottom: "-40px", left: "-20px", width: "160px", height: "160px", borderRadius: "50%", background: "radial-gradient(circle, rgba(232,82,26,0.25) 0%, transparent 70%)", filter: "blur(24px)", pointerEvents: "none", zIndex: 0 }} />
+
+              {/* Glass outer shell */}
+              <div style={{ background: "rgba(255,255,255,0.18)", backdropFilter: "blur(32px) saturate(180%)", WebkitBackdropFilter: "blur(32px) saturate(180%)", borderRadius: "28px", border: "1.5px solid rgba(255,255,255,0.55)", boxShadow: "0 8px 40px rgba(0,0,0,.1), inset 0 1px 0 rgba(255,255,255,0.7)", overflow: "hidden", position: "relative", zIndex: 2, padding: "10px" }}>
+
+                {/* Title bar — frosted glass */}
+                <div style={{ background: "rgba(250,248,245,0.6)", backdropFilter: "blur(12px)", borderRadius: "18px 18px 0 0", padding: "16px 20px", borderBottom: "1px solid rgba(255,255,255,0.4)", display: "flex", alignItems: "center", gap: "12px" }}>
+                  <div style={{ display: "flex", gap: "8px" }}>{["#FF5F57", "#FEBC2E", "#28C840"].map(c => <span key={c} style={{ width: 12, height: 12, borderRadius: "50%", background: c, boxShadow: `0 0 6px ${c}88` }} />)}</div>
+                  <div style={{ flex: 1, background: "rgba(255,255,255,0.5)", backdropFilter: "blur(8px)", borderRadius: "8px", padding: "6px 16px", fontSize: ".75rem", fontFamily: "'DM Mono',monospace", color: "rgba(15,14,12,.55)", border: "1px solid rgba(255,255,255,0.6)" }}>app.careaudit.ai / cases</div>
                 </div>
-                <div style={{ display: "flex" }}>
-                  <div style={{ width: "140px", padding: "20px 14px", borderRight: "1px solid rgba(15,14,12,.06)", display: "flex", flexDirection: "column", gap: "4px" }}>
-                    <span style={{ fontFamily: "'Playfair Display',serif", fontWeight: 700, fontSize: "1rem", color: "#E8521A", marginBottom: "16px" }}>CareAudit.ai</span>
-                    {["Cases", "Workspace", "Audit", "Analytics"].map((item, i) => <div key={item} style={{ padding: "7px 10px", borderRadius: "6px", fontSize: ".8rem", fontWeight: i === 0 ? 600 : 400, color: i === 0 ? "#E8521A" : "rgba(15,14,12,.5)", background: i === 0 ? "#FFF2EC" : "transparent", fontFamily: "'Outfit',sans-serif" }}>{item}</div>)}
+
+                {/* Content area — glass */}
+                <div style={{ background: "rgba(255,255,255,0.25)", backdropFilter: "blur(16px)", borderRadius: "0 0 18px 18px", padding: "24px", display: "grid", gap: "16px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                    <span style={{ fontFamily: "'Playfair Display',serif", fontSize: "1.3rem", fontWeight: 700, color: "#0A1C1A" }}>Policy Criteria Tracker</span>
+                    <span style={{ fontSize: "0.78rem", color: "#1A7A4A", background: "rgba(26,122,74,0.12)", backdropFilter: "blur(8px)", padding: "5px 14px", borderRadius: "12px", fontWeight: 600, border: "1px solid rgba(26,122,74,0.2)" }}>All Criteria Met</span>
                   </div>
-                  <div style={{ flex: 1, padding: "20px 16px" }}>
-                    <div style={{ fontSize: ".68rem", fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: "rgba(15,14,12,.35)", marginBottom: "12px", fontFamily: "'Outfit',sans-serif" }}>PENDING QUEUE</div>
-                    {[{ id: "CASE-2026-020", name: "Angela Davis", dx: "Sepsis" }, { id: "CASE-2026-004", name: "Dorothy Jenkins", dx: "CHF" }, { id: "CASE-2026-012", name: "Nancy Rodriguez", dx: "COPD" }].map(c => (
-                      <div key={c.id} style={{ padding: "10px 12px", borderLeft: "2px solid rgba(232,82,26,.25)", marginBottom: "6px", borderRadius: "0 6px 6px 0", background: "rgba(15,14,12,.02)" }}>
-                        <div style={{ fontFamily: "'DM Mono',monospace", fontSize: ".65rem", color: "rgba(15,14,12,.4)", marginBottom: "2px" }}>{c.id}</div>
-                        <div style={{ fontFamily: "'Outfit',sans-serif", fontSize: ".8rem", fontWeight: 600, color: "#0F0E0C" }}>{c.name} · {c.dx}</div>
+                  {[{ id: "CASE-2026-020", name: "David Chan", status: "Approved", color: "#1A7A4A" }, { id: "CASE-2026-004", name: "Sarah Jenkins", status: "Denied", color: "#EF4444" }].map(c => (
+                    <div key={c.id} style={{ padding: "16px 20px", borderRadius: "14px", background: "rgba(255,255,255,0.45)", backdropFilter: "blur(12px)", border: "1px solid rgba(255,255,255,0.65)", boxShadow: "0 2px 12px rgba(0,0,0,0.05)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                      <div>
+                        <div style={{ fontFamily: "'Outfit',sans-serif", fontSize: "1rem", fontWeight: 700, color: "#0A1C1A" }}>{c.name}</div>
+                        <div style={{ fontFamily: "'DM Mono',monospace", fontSize: ".72rem", color: "rgba(15,14,12,.45)", marginTop: "4px" }}>{c.id}</div>
                       </div>
-                    ))}
-                  </div>
+                      <div style={{ background: c.color + "18", color: c.color, padding: "6px 18px", borderRadius: "20px", fontSize: "0.85rem", fontWeight: 700, border: `1px solid ${c.color}30`, backdropFilter: "blur(8px)" }}>
+                        {c.status}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
-
             </div>
           </div>
         </section>
 
-        {/* ═══ PLATFORM ═══ */}
-        <section id="platform" style={{ background: "#FAF8F5", padding: "120px 0" }}>
-          <div style={{ maxWidth: "1280px", margin: "0 auto", padding: "0 48px" }}>
-            <div className="ca-reveal" style={{ marginBottom: "56px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "16px" }}><div style={{ width: 32, height: 3, background: "#E8521A", borderRadius: 2 }} /><span style={{ fontFamily: "'Outfit',sans-serif", fontSize: ".75rem", fontWeight: 700, letterSpacing: ".1em", color: "#E8521A", textTransform: "uppercase" }}>Platform Capabilities</span></div>
-              <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(2rem,3vw,2.6rem)", fontWeight: 800, color: "#0F0E0C", lineHeight: 1.15 }}>Every tool your review<br />team needs — in one platform</h2>
-              <p style={{ fontFamily: "'Outfit',sans-serif", fontSize: "1rem", color: "rgba(15,14,12,.55)", marginTop: "12px", lineHeight: 1.7 }}>Click any capability to explore it live.</p>
+        {/* ═══ CAPABILITIES ═══ */}
+        <section id="platform" style={{ padding: "120px 0", position: "relative" }}>
+          <div style={{ maxWidth: "1320px", margin: "0 auto", padding: "0 48px" }}>
+            <div className="ca-reveal" style={{ marginBottom: "64px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "16px" }}>
+                <span style={{ fontFamily: "'Outfit',sans-serif", fontSize: ".8rem", fontWeight: 700, letterSpacing: ".1em", color: "#E8521A", textTransform: "uppercase" }}>Platform Capabilities</span>
+              </div>
+              <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(2rem,3vw,3rem)", fontWeight: 800, color: "#0A1C1A", lineHeight: 1.15 }}>Every tool your review<br />team needs — in one platform</h2>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "1px", background: "rgba(15,14,12,.09)", borderRadius: "16px", overflow: "hidden" }}>
+            
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "24px" }}>
               {CAPABILITIES.map((cap, i) => (
-                <div key={cap.title} className="cap-card ca-reveal" style={{ transitionDelay: `${i * 80}ms` }} onClick={() => router.push(cap.route)} onMouseEnter={() => setHoveredCap(i)} onMouseLeave={() => setHoveredCap(null)}>
-                  <div className="cap-icon-box">{cap.icon}</div>
-                  <div>
-                    <h3 style={{ fontFamily: "'Outfit',sans-serif", fontSize: "1rem", fontWeight: 700, color: "#0F0E0C", marginBottom: "8px" }}>{cap.title}</h3>
-                    <p style={{ fontFamily: "'Outfit',sans-serif", fontSize: ".875rem", lineHeight: 1.7, color: "rgba(15,14,12,.55)" }}>{cap.desc}</p>
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <span style={{ display: "inline-block", padding: "4px 12px", borderRadius: "99px", background: hoveredCap === i ? "#E8521A" : "#FFF2EC", color: hoveredCap === i ? "#fff" : "#E8521A", fontFamily: "'Outfit',sans-serif", fontSize: ".68rem", fontWeight: 700, letterSpacing: ".05em", textTransform: "uppercase", transition: "background .25s,color .25s" }}>{cap.tag}</span>
-                    <span style={{ fontFamily: "'Outfit',sans-serif", fontSize: ".75rem", color: hoveredCap === i ? "#E8521A" : "rgba(15,14,12,.3)", display: "flex", alignItems: "center", gap: "4px", transition: "color .2s" }}>Open <ArrowRight size={12} /></span>
+                <div key={cap.title} className="glass-card ca-reveal" style={{ transitionDelay: `${i * 100}ms` }} onClick={() => router.push(cap.route)}>
+                  <div className="glass-icon">{cap.icon}</div>
+                  <h3 style={{ fontFamily: "'Outfit',sans-serif", fontSize: "1.1rem", fontWeight: 700, color: "#0A1C1A", marginBottom: "12px" }}>{cap.title}</h3>
+                  <p style={{ fontFamily: "'Outfit',sans-serif", fontSize: ".9rem", lineHeight: 1.6, color: "rgba(10,28,26,.6)", marginBottom: "20px", minHeight: "70px" }}>{cap.desc}</p>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "#E8521A", letterSpacing: "0.05em" }}>{cap.tag}</span>
+                    <ArrowRight size={16} color="rgba(10,28,26,.4)" />
                   </div>
                 </div>
               ))}
@@ -401,298 +438,184 @@ export default function HomePage() {
         </section>
 
         {/* ═══ HOW IT WORKS ═══ */}
-        <section id="how-it-works" style={{ background: "#fff", padding: "120px 0" }}>
-          <div style={{ maxWidth: "1280px", margin: "0 auto", padding: "0 48px" }}>
-            <div className="ca-reveal" style={{ marginBottom: "56px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "16px" }}><div style={{ width: 32, height: 3, background: "#E8521A", borderRadius: 2 }} /><span style={{ fontFamily: "'Outfit',sans-serif", fontSize: ".75rem", fontWeight: 700, letterSpacing: ".1em", color: "#E8521A", textTransform: "uppercase" }}>Human-in-the-Loop Workflow</span></div>
-              <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(2rem,3.5vw,2.8rem)", fontWeight: 800, color: "#0F0E0C", lineHeight: 1.15 }}>How It Works</h2>
+        <section id="how-it-works" style={{ padding: "120px 0" }}>
+          <div style={{ maxWidth: "1320px", margin: "0 auto", padding: "0 48px" }}>
+            <div className="ca-reveal" style={{ marginBottom: "64px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "16px" }}>
+                <span style={{ fontFamily: "'Outfit',sans-serif", fontSize: ".8rem", fontWeight: 700, letterSpacing: ".1em", color: "#E8521A", textTransform: "uppercase" }}>Human-in-the-Loop Workflow</span>
+              </div>
+              <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(2rem,3.5vw,3rem)", fontWeight: 800, color: "#0A1C1A", lineHeight: 1.15 }}>How It Works</h2>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "48px", alignItems: "flex-start" }}>
-              <div className="ca-reveal-left" style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+            
+            <div style={{ display: "grid", gridTemplateColumns: "400px 1fr", gap: "80px", alignItems: "center" }}>
+              <div className="ca-reveal-left" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                 {STEPS.map((step, i) => (
-                  <div key={step.num} className={`step-card${activeStep === i ? " active" : ""}`} onClick={() => setActiveStep(i)} onMouseEnter={() => setActiveStep(i)}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-                      <div style={{ width: 40, height: 40, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: activeStep === i ? "#E8521A" : "rgba(232,82,26,.1)", color: activeStep === i ? "#fff" : "#E8521A", fontFamily: "'DM Mono',monospace", fontSize: ".78rem", fontWeight: 500, transition: "background .25s,color .25s" }}>{step.num}</div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontFamily: "'Outfit',sans-serif", fontSize: ".68rem", fontWeight: 600, letterSpacing: ".08em", color: "#E8521A", textTransform: "uppercase", marginBottom: "4px" }}>{step.phase}</div>
-                        <div style={{ fontFamily: "'Outfit',sans-serif", fontSize: ".95rem", fontWeight: 700, color: "#0F0E0C" }}>{step.title}</div>
+                  <div key={step.num} className={`step-card ${activeStep === i ? 'active' : ''}`} onClick={() => setActiveStep(i)}>
+                    <div style={{ display: "flex", gap: "20px", alignItems: "flex-start" }}>
+                      <div style={{ width: 32, height: 32, borderRadius: "50%", background: activeStep === i ? "#E8521A" : "rgba(232,82,26,0.1)", color: activeStep === i ? "#fff" : "#E8521A", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.85rem", fontWeight: 700, flexShrink: 0 }}>
+                        {i + 1}
                       </div>
-                      <ChevronRight size={16} style={{ color: "rgba(15,14,12,.3)", flexShrink: 0, transform: activeStep === i ? "rotate(90deg)" : "rotate(0deg)", transition: "transform .3s" }} />
+                      <div>
+                        <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "#E8521A", letterSpacing: "0.05em", marginBottom: "4px" }}>{step.phase.toUpperCase()}</div>
+                        <div style={{ fontSize: "1.1rem", fontWeight: 700, color: "#0A1C1A", marginBottom: "8px" }}>{step.title}</div>
+                        {activeStep === i && (
+                          <div style={{ fontSize: "0.9rem", color: "rgba(10,28,26,.6)", lineHeight: 1.6 }}>{step.desc}</div>
+                        )}
+                      </div>
                     </div>
-                    <div className="step-desc"><p style={{ fontFamily: "'Outfit',sans-serif", fontSize: ".875rem", lineHeight: 1.7, color: "rgba(15,14,12,.6)", paddingLeft: "56px" }}>{step.desc}</p></div>
                   </div>
                 ))}
               </div>
-              <div className="ca-reveal-right" style={{ background: "#FAF8F5", borderRadius: "20px", boxShadow: "inset 0 2px 12px rgba(0,0,0,.04)", padding: "28px", position: "sticky", top: "88px" }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
-                  <span style={{ fontFamily: "'Outfit',sans-serif", fontSize: ".68rem", fontWeight: 700, letterSpacing: ".1em", color: "rgba(15,14,12,.4)", textTransform: "uppercase" }}>Agent Pipeline Status</span>
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "4px 12px", borderRadius: "99px", background: "rgba(26,122,74,.1)", color: "#1A7A4A", fontFamily: "'Outfit',sans-serif", fontSize: ".72rem", fontWeight: 600 }}>
-                    <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#1A7A4A" }} />All Operational
-                  </span>
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                  {AGENTS.slice(0, 3).map((a, i) => <AgentRow key={a.name} agent={a} highlighted={activeStep === i} />)}
-                  <div style={{ margin: "8px 0", padding: "10px 14px", border: "1.5px dashed rgba(239,68,68,.35)", borderRadius: "10px", display: "flex", alignItems: "center", gap: "10px", background: "rgba(239,68,68,.03)" }}>
-                    <div style={{ width: 32, height: 32, borderRadius: "8px", background: "rgba(239,68,68,.1)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" /></svg>
-                    </div>
-                    <div>
-                      <div style={{ fontFamily: "'Outfit',sans-serif", fontSize: ".8rem", fontWeight: 700, color: "#EF4444" }}>Human Decision Point</div>
-                      <div style={{ fontFamily: "'Outfit',sans-serif", fontSize: ".72rem", color: "rgba(15,14,12,.4)" }}>Pipeline paused · Awaiting reviewer decision</div>
-                    </div>
+              
+              <div className="ca-reveal-right" style={{ background: "rgba(255,255,255,0.5)", backdropFilter: "blur(20px)", borderRadius: "24px", border: "1px solid rgba(255,255,255,0.8)", padding: "40px", boxShadow: "0 20px 60px rgba(0,0,0,0.05)" }}>
+                <div style={{ background: "#fff", borderRadius: "16px", padding: "24px", boxShadow: "0 4px 20px rgba(0,0,0,0.03)" }}>
+                  <div style={{ fontSize: "0.8rem", fontWeight: 700, color: "rgba(10,28,26,.4)", letterSpacing: "0.1em", marginBottom: "24px" }}>AI PIPELINE STATUS</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                    {AGENTS.slice(0, 3).map((a, i) => (
+                      <div key={a.name} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px", borderRadius: "12px", background: activeStep === i ? "rgba(26,122,74,0.05)" : "#FAF8F5", border: `1px solid ${activeStep === i ? 'rgba(26,122,74,0.2)' : 'transparent'}` }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                          <div style={{ width: 40, height: 40, borderRadius: "10px", background: a.iconBg, color: a.pillColor, display: "flex", alignItems: "center", justifyContent: "center" }}>{a.icon}</div>
+                          <div>
+                            <div style={{ fontWeight: 600, color: "#0A1C1A", fontSize: "0.95rem" }}>{a.name}</div>
+                            <div style={{ fontSize: "0.75rem", color: "rgba(10,28,26,.5)" }}>{a.desc}</div>
+                          </div>
+                        </div>
+                        <div style={{ fontSize: "0.8rem", fontWeight: 600, color: "#1A7A4A" }}>Operational</div>
+                      </div>
+                    ))}
                   </div>
-                  {AGENTS.slice(3).map((a, i) => <AgentRow key={a.name} agent={a} highlighted={activeStep === 3 && i === 0} />)}
                 </div>
               </div>
             </div>
           </div>
         </section>
 
-        {/* ═══ CORE WORKFLOW ═══ */}
-        <section style={{ background: "#fff", padding: "120px 0" }}>
-          <div style={{ maxWidth: "1280px", margin: "0 auto", padding: "0 48px" }}>
-            <div className="ca-reveal" style={{ textAlign: "center", marginBottom: "72px" }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "12px", marginBottom: "16px" }}><div style={{ width: 32, height: 3, background: "#E8521A", borderRadius: 2 }} /><span style={{ fontFamily: "'Outfit',sans-serif", fontSize: ".75rem", fontWeight: 700, letterSpacing: ".1em", color: "#E8521A", textTransform: "uppercase" }}>Core Workflow</span><div style={{ width: 32, height: 3, background: "#E8521A", borderRadius: 2 }} /></div>
-              <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(2rem,3vw,2.6rem)", fontWeight: 800, color: "#0F0E0C", lineHeight: 1.15 }}>Four phases. One closed loop.</h2>
-            </div>
-            <div style={{ position: "relative" }}>
-              <div className="connector-line" style={{ position: "absolute", top: "28px", left: "calc(12.5% + 28px)", right: "calc(12.5% + 28px)", height: "2px", background: "linear-gradient(90deg,#E8521A,#FF7A45,#E8521A)" }} />
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "24px" }}>
-                {PHASES.map((phase, i) => (
-                  <div key={phase.label} className="phase-card ca-reveal" style={{ transitionDelay: `${300 + i * 120}ms` }} onClick={() => router.push(phase.route)}>
-                    <div style={{ display: "flex", justifyContent: "center", marginBottom: "20px" }}><div className="phase-circle">{phase.icon}</div></div>
-                    <div style={{ fontFamily: "'Outfit',sans-serif", fontSize: ".68rem", fontWeight: 700, letterSpacing: ".1em", color: "#E8521A", textTransform: "uppercase", marginBottom: "8px" }}>{phase.label}</div>
-                    <h3 style={{ fontFamily: "'Outfit',sans-serif", fontSize: "1rem", fontWeight: 700, color: "#0F0E0C", marginBottom: "10px" }}>{phase.title}</h3>
-                    <p style={{ fontFamily: "'Outfit',sans-serif", fontSize: ".85rem", lineHeight: 1.65, color: "rgba(15,14,12,.55)" }}>{phase.desc}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ═══ OUTCOMES — REAL DATA + SPARKLINES ═══ */}
-        <section id="outcomes" ref={metricsRef} style={{ background: "#0F0E0C", padding: "100px 0", position: "relative", overflow: "hidden" }}>
-          {/* Top radial glow */}
-          <div style={{ position: "absolute", top: "-80px", left: "50%", transform: "translateX(-50%)", width: "700px", height: "500px", background: "radial-gradient(ellipse,rgba(232,82,26,.22) 0%,transparent 70%)", opacity: metricsVisible ? 1 : 0, transition: "opacity 1.2s ease", pointerEvents: "none" }} />
-          {/* Grid dots */}
-          <div style={{ position: "absolute", inset: 0, opacity: .1, backgroundImage: "radial-gradient(circle,rgba(255,255,255,.5) 1px,transparent 1px)", backgroundSize: "80px 80px" }} />
-
-          <div style={{ maxWidth: "1280px", margin: "0 auto", padding: "0 48px", position: "relative", zIndex: 1 }}>
-            {/* Header — 2 col split */}
-            <div className="ca-reveal" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "80px", alignItems: "flex-end", marginBottom: "56px" }}>
-              <div>
-                <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px" }}>
-                  <div style={{ width: 32, height: 3, background: "#E8521A", borderRadius: 2 }} />
-                  <span style={{ fontFamily: "'Outfit',sans-serif", fontSize: ".75rem", fontWeight: 700, letterSpacing: ".1em", color: "#E8521A", textTransform: "uppercase" }}>Proven Outcomes</span>
-                </div>
-                <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(2rem,3.5vw,3rem)", fontWeight: 800, color: "#fff", lineHeight: 1.12 }}>
-                  Real impact from<br />1,000 reviewed cases
-                </h2>
-              </div>
-              <p style={{ fontFamily: "'Outfit',sans-serif", fontSize: ".95rem", lineHeight: 1.75, color: "rgba(255,255,255,.4)", alignSelf: "flex-end" }}>
-                Real outcomes from utilization management operations powered by CareAudit AI — drawn from 1,000 historical prior authorization records.
+        {/* ═══ OUTCOMES / METRICS (DARK) ═══ */}
+        <section id="outcomes" ref={metricsRef} className="dark-section" style={{ padding: "120px 0", position: "relative" }}>
+          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "1px", background: "linear-gradient(90deg, transparent, rgba(232,82,26,0.5), transparent)" }} />
+          <div style={{ position: "absolute", inset: 0, opacity: 0.1, backgroundImage: "linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)", backgroundSize: "60px 60px" }} />
+          
+          <div style={{ maxWidth: "1320px", margin: "0 auto", padding: "0 48px", position: "relative", zIndex: 1 }}>
+            <div className="ca-reveal" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "64px" }}>
+              <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(2rem,3.5vw,3rem)", fontWeight: 800, color: "#fff", lineHeight: 1.15, maxWidth: "500px" }}>
+                Real impact from 1,000 reviewed cases
+              </h2>
+              <p style={{ fontFamily: "'Outfit',sans-serif", fontSize: "1rem", color: "rgba(255,255,255,0.6)", maxWidth: "400px", textAlign: "right" }}>
+                Proven results from across our network. CareAudit drastically reduces turnaround times while protecting your bottom line.
               </p>
             </div>
-
-            {/* ── METRIC CARDS WITH SPARKLINES ── */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", borderRadius: "16px", overflow: "hidden", border: "1px solid rgba(255,255,255,.07)" }}>
-              {METRIC_CONFIGS.map((m, mi) => {
-                const raw = counters[m.idx];
-                const display = m.idx === 0 ? Math.floor(raw) : raw;
-                const maxBar = Math.max(...m.bars, 1);
-                return (
-                  <div key={m.label} className="metric-card-dark">
-                    {/* Big number */}
-                    <div style={{ marginBottom: "8px" }}>
-                      <span style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(2rem,3vw,2.6rem)", fontWeight: 800, color: "#fff", lineHeight: 1 }}>
-                        {m.prefix && <span style={{ color: "#E8521A" }}>{m.prefix}</span>}
-                        {display}
-                        <span style={{ color: "#E8521A" }}>{m.suffix}</span>
-                      </span>
-                    </div>
-                    {/* Label */}
-                    <div style={{ fontFamily: "'Outfit',sans-serif", fontSize: ".8rem", color: "rgba(255,255,255,.4)", marginBottom: "12px" }}>{m.label}</div>
-                    {/* Delta badge */}
-                    <div style={{ marginBottom: "20px" }}>
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "3px 10px", borderRadius: "99px", background: "rgba(26,122,74,.2)", color: "#4ADE80", fontFamily: "'Outfit',sans-serif", fontSize: ".7rem", fontWeight: 600 }}>
-                        {m.delta}
-                      </span>
-                    </div>
-                    {/* Sparkline bar chart — staggered 60ms per bar, 400ms duration */}
-                    <div style={{ display: "flex", alignItems: "flex-end", gap: "3px", height: "44px" }}>
-                      {m.bars.map((v, bi) => {
-                        const pct = (v / maxBar) * 100;
-                        const barH = Math.max(Math.round(pct * 0.44), 5);
-                        const isHighlight = bi === m.bars.length - 1 || v >= maxBar * 0.75;
-                        return (
-                          <div
-                            key={bi}
-                            style={{
-                              flex: 1,
-                              height: barsVisible ? `${barH}px` : "0px",
-                              borderRadius: "2px 2px 0 0",
-                              background: isHighlight ? "#E8521A" : "rgba(232,82,26,.3)",
-                              alignSelf: "flex-end",
-                              transition: "height 0.4s cubic-bezier(.25,.46,.45,.94)",
-                              transitionDelay: `${bi * 60}ms`,
-                            }}
-                          />
-                        );
-                      })}
-                    </div>
+            
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "24px" }}>
+              {METRIC_CONFIGS.map((m, i) => (
+                <div key={m.label} className="metric-card-dark ca-reveal" style={{ transitionDelay: `${i * 100}ms` }}>
+                  <div style={{ fontFamily: "'Playfair Display',serif", fontSize: "3rem", fontWeight: 700, color: "#fff", marginBottom: "8px", display: "flex", alignItems: "center", gap: "4px" }}>
+                    {m.prefix}<span style={{ background: "linear-gradient(135deg, #fff, #aaa)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>{counters[m.idx]}</span><span style={{ color: "#E8521A" }}>{m.suffix}</span>
                   </div>
-                );
-              })}
+                  <div style={{ fontFamily: "'Outfit',sans-serif", fontSize: "0.9rem", fontWeight: 600, color: "rgba(255,255,255,0.8)", marginBottom: "8px" }}>{m.label}</div>
+                  <div style={{ fontSize: "0.75rem", color: "#22C55E", fontWeight: 600, display: "flex", alignItems: "center", gap: "6px" }}>
+                    <span style={{ padding: "2px 8px", background: "rgba(34,197,94,0.1)", borderRadius: "10px" }}>{m.delta}</span>
+                  </div>
+                  {/* Miniature Sparkline */}
+                  <div style={{ height: "40px", marginTop: "24px", display: "flex", alignItems: "flex-end", gap: "4px" }}>
+                     {m.bars.map((val, bIdx) => {
+                       const max = Math.max(...m.bars);
+                       const pct = (val / max) * 100;
+                       return (
+                         <div key={bIdx} className={`sparkbar ${barsVisible ? "bar-vis" : ""}`} style={{ flex: 1, background: "linear-gradient(to top, rgba(232,82,26,0.8), rgba(232,82,26,0.2))", borderRadius: "2px", height: `${pct}%` }} />
+                       );
+                     })}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </section>
 
-        {/* ═══ COMPLIANCE — matches screenshot: grid bg · left checklist · right code ═══ */}
-        <section id="compliance" style={{ background: "#FAF8F5", padding: "120px 0", position: "relative" }}>
-          {/* Subtle grid overlay matching screenshot */}
-          <div style={{ position: "absolute", inset: 0, opacity: .4, backgroundImage: "linear-gradient(rgba(15,14,12,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(15,14,12,.04) 1px,transparent 1px)", backgroundSize: "80px 80px", pointerEvents: "none" }} />
-
-          <div style={{ maxWidth: "1280px", margin: "0 auto", padding: "0 48px", position: "relative", zIndex: 1 }}>
-            {/* Header — 2 col */}
-            <div className="ca-reveal" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "80px", alignItems: "flex-start", marginBottom: "72px" }}>
-              <div>
-                <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px" }}>
-                  <div style={{ width: 32, height: 3, background: "#E8521A", borderRadius: 2 }} />
-                  <span style={{ fontFamily: "'Outfit',sans-serif", fontSize: ".75rem", fontWeight: 700, letterSpacing: ".1em", color: "#E8521A", textTransform: "uppercase" }}>Built for Healthcare Compliance</span>
-                </div>
-                <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(1.8rem,3vw,2.6rem)", fontWeight: 800, color: "#0F0E0C", lineHeight: 1.12 }}>
-                  Security and compliance<br />at the <em style={{ fontStyle: "italic", color: "#E8521A" }}>foundation</em>
-                </h2>
-              </div>
-              <p style={{ fontFamily: "'Outfit',sans-serif", fontSize: "1rem", lineHeight: 1.8, color: "rgba(15,14,12,.55)", paddingTop: "56px" }}>
-                CareAudit is architected from the ground up for healthcare's regulatory requirements — not bolted on as an afterthought.
-              </p>
+        {/* ═══ COMPLIANCE (DARK) ═══ */}
+        <section id="compliance" className="dark-section" style={{ padding: "120px 0 160px 0" }}>
+          <div style={{ maxWidth: "1320px", margin: "0 auto", padding: "0 48px" }}>
+            <div className="ca-reveal" style={{ marginBottom: "64px" }}>
+              <span style={{ fontFamily: "'Outfit',sans-serif", fontSize: ".8rem", fontWeight: 700, letterSpacing: ".1em", color: "#E8521A", textTransform: "uppercase", display: "block", marginBottom: "16px" }}>Enterprise Grade</span>
+              <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(2rem,3vw,3rem)", fontWeight: 800, color: "#fff", lineHeight: 1.15 }}>
+                Security and compliance<br />at the <em style={{ fontStyle: "italic", color: "#E8521A" }}>foundation</em>
+              </h2>
             </div>
-
-            {/* Body — left checklist + right code block */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "48px", alignItems: "stretch" }}>
-              {/* Left: compliance cards */}
-              <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+            
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "80px", alignItems: "center" }}>
+              <div className="ca-reveal-left" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                 {COMPLIANCE_ITEMS.map((item, i) => (
-                  <div key={item.title} className="comp-card ca-reveal-left" style={{ transitionDelay: `${i * 100}ms` }} onClick={() => router.push(item.route)}>
-                    <div style={{ width: 36, height: 36, borderRadius: "8px", flexShrink: 0, background: "rgba(26,122,74,.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <div key={item.title} className="comp-card-dark">
+                    <div style={{ width: 32, height: 32, borderRadius: "8px", background: "rgba(26,122,74,0.1)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                       {item.icon}
                     </div>
                     <div>
-                      <div style={{ fontFamily: "'Outfit',sans-serif", fontSize: ".9rem", fontWeight: 700, color: "#0F0E0C", marginBottom: "6px" }}>{item.title}</div>
-                      <div style={{ fontFamily: "'Outfit',sans-serif", fontSize: ".82rem", lineHeight: 1.7, color: "rgba(15,14,12,.55)" }}>{item.desc}</div>
+                      <h4 style={{ fontSize: "1.05rem", fontWeight: 600, color: "#fff", marginBottom: "8px" }}>{item.title}</h4>
+                      <p style={{ fontSize: "0.85rem", color: "rgba(255,255,255,0.6)", lineHeight: 1.6 }}>{item.desc}</p>
                     </div>
                   </div>
                 ))}
               </div>
-
-              {/* Right: Audit log code block — exact spec */}
-              <div ref={codeRef} className="ca-reveal-right" style={{ minHeight: "400px" }}>
-                <div style={{
-                  height: "100%",
-                  background: "#0F0E0C",
-                  borderRadius: "20px",
-                  padding: "32px",
-                  position: "relative",
-                  overflow: "hidden",
-                  boxShadow: "0 24px 80px rgba(0,0,0,.20)",
-                  minHeight: "400px",
-                }}>
-                  {/* Radial glow — top-right per spec */}
-                  <div style={{ position: "absolute", top: "-30%", right: "-20%", width: "360px", height: "360px", background: "radial-gradient(circle,rgba(232,82,26,.25) 0%,transparent 65%)", pointerEvents: "none", zIndex: 0 }} />
-
-                  <div style={{ position: "relative", zIndex: 1 }}>
-                    {/* Label */}
-                    <div style={{ fontFamily: "'DM Mono',monospace", fontSize: ".68rem", fontWeight: 500, letterSpacing: ".10em", color: "rgba(255,255,255,.30)", textTransform: "uppercase", marginBottom: "16px" }}>
-                      AUDIT LOG · LIVE STREAM
+              
+              <div className="ca-reveal-right" ref={codeRef} style={{ background: "#000", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "16px", padding: "32px", position: "relative" }}>
+                <div style={{ position: "absolute", top: "16px", left: "16px", display: "flex", gap: "8px" }}>
+                  <div style={{ width: 12, height: 12, borderRadius: "50%", background: "#333" }} />
+                  <div style={{ width: 12, height: 12, borderRadius: "50%", background: "#333" }} />
+                  <div style={{ width: 12, height: 12, borderRadius: "50%", background: "#333" }} />
+                </div>
+                <div style={{ fontFamily: "'DM Mono',monospace", fontSize: "0.85rem", lineHeight: 1.6, marginTop: "24px", minHeight: "300px" }}>
+                  {CODE_LINES.map((line, i) => (
+                    <div key={i} style={{ opacity: i < visibleCodeLines ? 1 : 0, transition: "opacity 0.1s" }}>
+                      {line.map((token, j) => {
+                        let color = "#A3A3A3";
+                        if (token.c === "k") color = "#FF7A45";
+                        else if (token.c === "s") color = "#7DD3FC";
+                        else if (token.c === "n") color = "#86EFAC";
+                        else if (token.c === "b") color = "#FCA5A5";
+                        else if (token.c === "c") color = "#4ADE80";
+                        return <span key={j} style={{ color }}>{token.t}</span>;
+                      })}
                     </div>
-                    {/* Code */}
-                    <pre style={{ fontFamily: "'DM Mono',monospace", fontSize: ".75rem", lineHeight: 1.90, margin: 0, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
-                      {CODE_LINES.slice(0, visibleCodeLines).map((line, li) => (
-                        <div key={li}>
-                          {line.map((tok, ti) => (
-                            <span key={ti} style={{
-                              color:
-                                tok.c === "k" ? "#FF7A45" :
-                                  tok.c === "s" ? "#7DD3FC" :
-                                    tok.c === "n" ? "#86EFAC" :
-                                      tok.c === "b" ? "#FCA5A5" :
-                                        tok.c === "c" ? "rgba(255,255,255,.25)" :
-                                          "rgba(255,255,255,.45)",
-                              fontStyle: tok.c === "c" ? "italic" : "normal",
-                            }}>{tok.t}</span>
-                          ))}
-                        </div>
-                      ))}
-                      {visibleCodeLines >= CODE_LINES.length && <span className="cursor-blink" style={{ color: "#E8521A" }}>|</span>}
-                    </pre>
-                  </div>
+                  ))}
+                  {codeVisible && visibleCodeLines < CODE_LINES.length && <span className="cursor-blink" style={{ display: "inline-block", width: "8px", height: "16px", background: "#fff", marginLeft: "4px", verticalAlign: "middle" }} />}
                 </div>
               </div>
             </div>
           </div>
         </section>
 
-        {/* ═══ CTA ═══ */}
-        <section style={{ background: "#0F0E0C", padding: "120px 0", textAlign: "center", position: "relative", overflow: "hidden" }}>
-          <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at center,rgba(232,82,26,.15) 0%,transparent 70%)", pointerEvents: "none" }} />
-          <div className="ca-reveal" style={{ maxWidth: "640px", margin: "0 auto", padding: "0 48px", position: "relative", zIndex: 1 }}>
-            <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(2rem,4vw,3rem)", fontWeight: 800, color: "#fff", lineHeight: 1.15, marginBottom: "24px" }}>
-              Ready to streamline your<br />prior authorization workflow?
+        {/* ═══ FOOTER CTA ═══ */}
+        <section style={{ background: "radial-gradient(ellipse at bottom, #1A3C38 0%, #0A1C1A 100%)", padding: "100px 0", textAlign: "center" }}>
+          <div style={{ maxWidth: "800px", margin: "0 auto", padding: "0 48px" }} className="ca-reveal">
+            <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(2.5rem,4vw,3.5rem)", fontWeight: 800, color: "#fff", lineHeight: 1.15, marginBottom: "32px" }}>
+              Ready to streamline your prior authorization workflow?
             </h2>
-            <p style={{ fontFamily: "'Outfit',sans-serif", fontSize: "1rem", lineHeight: 1.75, color: "rgba(255,255,255,.5)", marginBottom: "40px" }}>
-              Start reviewing cases with AI-powered assistance, real-time QA scoring, and predictive appeal risk analysis.
+            <p style={{ fontFamily: "'Outfit',sans-serif", fontSize: "1.1rem", color: "rgba(255,255,255,0.7)", marginBottom: "40px" }}>
+              Join the innovative healthcare organizations using CareAudit.ai to scale quality assurance.
             </p>
-            <div style={{ display: "flex", justifyContent: "center", gap: "12px" }}>
-              <button style={{ display: "inline-flex", alignItems: "center", gap: "8px", padding: "16px 32px", background: "#E8521A", color: "#fff", border: "none", borderRadius: "8px", fontSize: "1rem", fontWeight: 600, cursor: "pointer", boxShadow: "0 8px 32px rgba(232,82,26,.4)", fontFamily: "'Outfit',sans-serif", transition: "background .2s, transform .2s" }}
-                onClick={goToApp}
-                onMouseEnter={e => { e.currentTarget.style.background = "#B53C0C"; e.currentTarget.style.transform = "translateY(-2px)"; }}
-                onMouseLeave={e => { e.currentTarget.style.background = "#E8521A"; e.currentTarget.style.transform = "translateY(0)"; }}
-              >{isLoggedIn ? "Continue Reviewing" : "Sign In to Start"} <ArrowRight size={18} /></button>
-              {!isLoggedIn && (
-                <button style={{ padding: "16px 32px", background: "rgba(255,255,255,.08)", color: "#fff", border: "1.5px solid rgba(255,255,255,.12)", borderRadius: "8px", fontSize: "1rem", fontWeight: 500, cursor: "pointer", fontFamily: "'Outfit',sans-serif", transition: "background .2s,border-color .2s" }}
-                  onClick={() => router.push("/login")}
-                  onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,.12)"; e.currentTarget.style.borderColor = "rgba(255,255,255,.25)"; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,.08)"; e.currentTarget.style.borderColor = "rgba(255,255,255,.12)"; }}
-                >Sign In</button>
-              )}
+            <div style={{ display: "flex", justifyContent: "center", gap: "16px" }}>
+              <button className="btn-brand" style={{ padding: "16px 36px", fontSize: "1.05rem" }} onClick={goToApp}>
+                Get Started <ArrowRight size={18} />
+              </button>
+              <button className="btn-ghost" style={{ color: "#fff", border: "1px solid rgba(255,255,255,0.3)" }} onClick={() => router.push("/login")}>
+                Login
+              </button>
             </div>
           </div>
         </section>
-
-        {/* ═══ FOOTER ═══ */}
-        <footer style={{ background: "#0A0908", padding: "36px 48px", borderTop: "1px solid rgba(255,255,255,.06)" }}>
-          <div style={{ maxWidth: "1280px", margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              <span style={{ background: "#E8521A", color: "#fff", fontFamily: "'DM Mono',monospace", fontSize: ".62rem", padding: "3px 7px", borderRadius: "4px" }}>EXL</span>
-              <span style={{ fontFamily: "'Playfair Display',serif", fontWeight: 700, fontSize: "1rem", color: "#fff" }}>CareAudit<span style={{ color: "#E8521A" }}>.ai</span></span>
-            </div>
-            <div style={{ display: "flex", gap: "28px" }}>
-              {([["Cases", "/cases"], ["Audit Queue", "/audit"], ["Training", "/training"], ["Policy Engine", "/policy"]] as [string, string][]).map(([l, r]) => (
-                <span key={l} onClick={() => router.push(r)} style={{ fontFamily: "'Outfit',sans-serif", fontSize: ".8rem", color: "rgba(255,255,255,.3)", cursor: "pointer", transition: "color .2s" }}
-                  onMouseEnter={e => { e.currentTarget.style.color = "rgba(255,255,255,.7)"; }}
-                  onMouseLeave={e => { e.currentTarget.style.color = "rgba(255,255,255,.3)"; }}
-                >{l}</span>
-              ))}
-            </div>
-            <span style={{ fontFamily: "'Outfit',sans-serif", fontSize: ".8rem", color: "rgba(255,255,255,.25)" }}>© 2026 CareAudit AI · Role-Based Access Control</span>
+        
+        <footer style={{ background: "#050F0E", padding: "32px 48px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <span style={{ background: "#E8521A", color: "#fff", fontFamily: "'DM Mono',monospace", fontSize: ".55rem", padding: "4px 6px", borderRadius: "4px" }}>EXL</span>
+            <span style={{ fontFamily: "'Playfair Display',serif", fontSize: "1rem", fontWeight: 700, color: "#fff" }}>CareAudit.ai</span>
+          </div>
+          <div style={{ fontFamily: "'Outfit',sans-serif", fontSize: "0.8rem", color: "rgba(255,255,255,0.5)", display: "flex", gap: "24px" }}>
+            <span>© 2026 EXL Health. All rights reserved.</span>
+            <a href="#" style={{ color: "inherit", textDecoration: "none" }}>Privacy</a>
+            <a href="#" style={{ color: "inherit", textDecoration: "none" }}>Terms</a>
           </div>
         </footer>
+
       </div>
     </>
-  );
-}
-
-function AgentRow({ agent, highlighted }: { agent: typeof AGENTS[0]; highlighted: boolean }) {
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: "12px", padding: "10px 12px", borderRadius: "10px", border: `1px solid ${highlighted ? "rgba(232,82,26,.25)" : "transparent"}`, background: highlighted ? "#FFF2EC" : "transparent", boxShadow: highlighted ? "0 2px 12px rgba(232,82,26,.1)" : "none", transition: "border-color .2s,background .2s,box-shadow .2s" }}>
-      <div style={{ width: 36, height: 36, borderRadius: "8px", flexShrink: 0, background: agent.iconBg, display: "flex", alignItems: "center", justifyContent: "center" }}>{agent.icon}</div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontFamily: "'Outfit',sans-serif", fontSize: ".82rem", fontWeight: 600, color: "#0F0E0C", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{agent.name}</div>
-        <div style={{ fontFamily: "'Outfit',sans-serif", fontSize: ".72rem", color: "rgba(15,14,12,.45)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{agent.desc}</div>
-      </div>
-      <span style={{ padding: "3px 10px", borderRadius: "99px", flexShrink: 0, background: agent.pillBg, color: agent.pillColor, fontFamily: "'DM Mono',monospace", fontSize: ".7rem", fontWeight: 500 }}>{agent.score}</span>
-    </div>
   );
 }

@@ -160,7 +160,7 @@ export default function AuditDetailPage() {
   }
 
   const effectiveScore = d.effective_score || d.qa_score;
-  const scoreColor = effectiveScore >= 90 ? "var(--success)" : effectiveScore >= 75 ? "var(--warning)" : "var(--danger)";
+  const scoreColor = effectiveScore >= 80 ? "var(--success)" : "var(--danger)";
   const isVerified = d.qa_verified === true;
 
   return (
@@ -239,13 +239,9 @@ export default function AuditDetailPage() {
         </div>
 
         <div style={{ display: "flex", justifyContent: "center", gap: "10px", flexWrap: "wrap" }}>
-          <span className={`badge ${(d.risk_level === "CRITICAL" || d.risk_level === "HIGH") ? "badge-danger" : d.risk_level === "MEDIUM" ? "badge-info" : "badge-success"}`}
+          <span className={`badge ${effectiveScore >= 80 ? "badge-success" : "badge-danger"}`}
             style={{ fontSize: "0.85rem", padding: "6px 18px" }}>
-            <Shield size={12} style={{ marginRight: "4px" }} /> {d.risk_level} Risk
-          </span>
-          <span className={`badge ${d.audit_result === "PASS" ? "badge-success" : "badge-danger"}`}
-            style={{ fontSize: "0.85rem", padding: "6px 18px" }}>
-            {d.audit_result}
+            {effectiveScore >= 80 ? "PASS" : "FAIL"}
           </span>
         </div>
 

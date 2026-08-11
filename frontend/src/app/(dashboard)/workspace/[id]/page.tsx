@@ -579,41 +579,49 @@ export default function WorkspaceDetailPage() {
 
 
               {/* Timeline */}
-              {d.timeline && d.timeline.length > 0 && (
-                <div style={{ marginTop: "20px" }}>
-                  <div style={{ 
-                    fontSize: "0.78rem", fontWeight: 600, textTransform: "uppercase", 
-                    letterSpacing: "0.06em", color: "var(--text-secondary)", marginBottom: "12px",
-                    display: "flex", alignItems: "center", gap: "6px"
-                  }}>
-                    <Activity size={13} />
-                    Clinical Timeline
-                  </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: "0" }}>
-                    {d.timeline.map((event: any, idx: number) => {
-                      const eventName = typeof event === "string" ? event : (event.event || event.name || event.title || "");
-                      const eventDetails = typeof event === "string" ? "" : (event.details || event.description || event.note || "");
-                      return (
-                        <div key={idx} style={{ 
-                          display: "flex", gap: "12px", padding: "8px 0",
-                          borderBottom: idx < d.timeline.length - 1 ? "1px solid rgba(0,0,0,0.04)" : "none"
-                        }}>
-                          <div style={{ 
-                            width: "6px", height: "6px", borderRadius: "50%", 
-                            background: "var(--primary)", flexShrink: 0, marginTop: "7px"
-                          }} />
-                          <div>
-                            <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--text-primary)" }}>{eventName}</div>
-                            {eventDetails && (
+              {(() => {
+                if (!d.timeline || d.timeline.length === 0) return null;
+                const meaningfulEvents = d.timeline.filter((event: any) => {
+                  const name = typeof event === "string" ? event : (event.event || event.name || event.title || "");
+                  const details = typeof event === "string" ? "" : (event.details || event.description || event.note || "");
+                  // Only show if both name and details are non-empty and not just the label itself
+                  return name.trim() && details.trim() && name.trim() !== details.trim();
+                });
+                if (meaningfulEvents.length === 0) return null;
+                return (
+                  <div style={{ marginTop: "20px" }}>
+                    <div style={{ 
+                      fontSize: "0.78rem", fontWeight: 600, textTransform: "uppercase", 
+                      letterSpacing: "0.06em", color: "var(--text-secondary)", marginBottom: "12px",
+                      display: "flex", alignItems: "center", gap: "6px"
+                    }}>
+                      <Activity size={13} />
+                      Clinical Timeline
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "0" }}>
+                      {meaningfulEvents.map((event: any, idx: number) => {
+                        const eventName = typeof event === "string" ? event : (event.event || event.name || event.title || "");
+                        const eventDetails = typeof event === "string" ? "" : (event.details || event.description || event.note || "");
+                        return (
+                          <div key={idx} style={{ 
+                            display: "flex", gap: "12px", padding: "8px 0",
+                            borderBottom: idx < meaningfulEvents.length - 1 ? "1px solid rgba(0,0,0,0.04)" : "none"
+                          }}>
+                            <div style={{ 
+                              width: "6px", height: "6px", borderRadius: "50%", 
+                              background: "var(--primary)", flexShrink: 0, marginTop: "7px"
+                            }} />
+                            <div>
+                              <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--text-primary)" }}>{eventName}</div>
                               <div style={{ fontSize: "0.8rem", color: "var(--text-tertiary)", marginTop: "2px" }}>{eventDetails}</div>
-                            )}
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
             </div>
           </div>
 

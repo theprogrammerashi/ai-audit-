@@ -697,7 +697,6 @@ export default function CaseDetailPage() {
         <div style={{ flex: 1 }}>
           <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "4px" }}>
             <h1 style={{ fontSize: "1.4rem" }}>{c.case_number}</h1>
-            <span className={`badge`} style={{ backgroundColor: riskColor, color: "white" }}>{riskLevel} RISK</span>
             <span className={`badge ${decisionColor === "var(--success)" ? "badge-success" : decisionColor === "var(--danger)" ? "badge-danger" : "badge-warning"}`}>{decisionStr}</span>
             <span className="badge badge-info">{c.status.replace("_", " ")}</span>
           </div>
@@ -834,103 +833,112 @@ export default function CaseDetailPage() {
 
                 return (
                   <div 
-                    key={key} 
-                    onClick={handleLabClick}
-                    onMouseEnter={(e) => {
-                      if (!isLabAbnormal) return;
-                      (e.currentTarget as HTMLDivElement).style.transform = "translateY(-2px) scale(1.02)";
-                      (e.currentTarget as HTMLDivElement).style.boxShadow = "0 4px 12px rgba(239,68,68,0.12)";
-                      (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(239,68,68,0.35)";
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!isLabAbnormal) return;
-                      (e.currentTarget as HTMLDivElement).style.transform = "none";
-                      (e.currentTarget as HTMLDivElement).style.boxShadow = "none";
-                      (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(239,68,68,0.15)";
-                    }}
-                    style={{ 
-                      display: "flex", 
-                      justifyContent: "space-between", 
-                      padding: "6px 8px", 
-                      borderBottom: "1px solid var(--border-default)", 
-                      background: isLabAbnormal ? "rgba(239,68,68,0.04)" : "none", 
-                      borderRadius: "var(--radius-sm)", 
-                      border: isLabAbnormal ? "1px solid rgba(239,68,68,0.15)" : "none", 
-                      alignItems: "center",
-                      cursor: isLabAbnormal ? "pointer" : "default",
-                      transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)"
-                    }}
+                     key={key} 
+                     onClick={handleLabClick}
+                     onMouseEnter={(e) => {
+                       if (!isLabAbnormal) return;
+                       (e.currentTarget as HTMLDivElement).style.transform = "translateY(-2px) scale(1.02)";
+                       (e.currentTarget as HTMLDivElement).style.boxShadow = "0 4px 12px rgba(239,68,68,0.12)";
+                       (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(239,68,68,0.35)";
+                     }}
+                     onMouseLeave={(e) => {
+                       if (!isLabAbnormal) return;
+                       (e.currentTarget as HTMLDivElement).style.transform = "none";
+                       (e.currentTarget as HTMLDivElement).style.boxShadow = "none";
+                       (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(239,68,68,0.15)";
+                     }}
+                     style={{ 
+                       padding: "8px 10px", 
+                       background: isLabAbnormal ? "rgba(239,68,68,0.06)" : "var(--bg-body)", 
+                       borderRadius: "var(--radius-md)", 
+                       border: isLabAbnormal ? "1px solid rgba(239,68,68,0.2)" : "1px solid var(--border-default)",
+                       cursor: isLabAbnormal ? "pointer" : "default",
+                       display: "flex",
+                       alignItems: "center",
+                       justifyContent: "space-between",
+                       gap: "4px",
+                       transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)"
+                     }}
                   >
-                    <span style={{ fontSize: "0.8rem" }}>{labName}</span>
-                    <span style={{ fontWeight: 600, fontSize: "0.85rem", color: isLabAbnormal ? "var(--danger)" : "var(--text-primary)", display: "flex", alignItems: "center", gap: "4px" }}>
-                      {isLabAbnormal && <AlertTriangle size={12} style={{ color: "var(--danger)", flexShrink: 0 }} />}
-                      {String(val)}
-                    </span>
+                     <div style={{ flex: 1, minWidth: 0 }}>
+                       <div className="label" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{labName}</div>
+                       <div style={{ fontWeight: 600, color: isLabAbnormal ? "var(--danger)" : "var(--text-primary)" }}>{String(val)}</div>
+                     </div>
+                     {isLabAbnormal && <AlertTriangle size={13} style={{ color: "var(--danger)", flexShrink: 0 }} />}
                   </div>
                 );
-              }) : <div style={{ color: "var(--text-tertiary)", fontSize: "0.85rem", fontStyle: "italic", gridColumn: "span 2" }}>No lab results recorded.</div>}
+              }) : <div style={{ color: "var(--text-tertiary)", fontSize: "0.85rem", fontStyle: "italic" }}>No lab results.</div>}
             </div>
           </div>
+        </div>
 
-          {/* Clinical Summary */}
-          <div className="card">
-            <h3 style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.9rem", marginBottom: "12px" }}>
-              <Stethoscope size={16} style={{ color: "var(--primary)" }} /> Clinical Summary
-            </h3>
-            <div style={{ fontSize: "0.85rem", lineHeight: 1.7, color: "var(--text-secondary)" }}>
-              {capitalizeMedicalTerms(summary).split(/\r?\n|\\n/g).map((line: string, i: number, arr: any[]) => (
-                <Fragment key={i}>
-                  {line.split(/(\*\*.*?\*\*)/g).map((part, j) => 
-                    part.startsWith('**') && part.endsWith('**') 
-                      ? <strong key={j} style={{ color: "var(--text-primary)" }}>{part.slice(2, -2)}</strong> 
-                      : part
-                  )}
-                  {i < arr.length - 1 && <br />}
-                </Fragment>
-              ))}
-            </div>
-            
-            {/* Documentation Gap warning if vitals or labs are missing */}
-            {(missingVitals.length > 0 || missingLabs.length > 0) && (
-              <div style={{ 
-                marginTop: "14px", 
-                padding: "12px 14px", 
-                background: "rgba(245,158,11,0.06)", 
-                border: "1px solid rgba(245,158,11,0.25)", 
-                borderRadius: "var(--radius-md)",
-                display: "flex",
-                flexDirection: "column",
-                gap: "4px"
-              }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--warning)", fontWeight: 600, fontSize: "0.78rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                  <AlertTriangle size={13} style={{ color: "var(--warning)" }} />
-                  Incomplete Documentation Detected
-                </div>
-                <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)", lineHeight: 1.5 }}>
-                  {missingVitals.length > 0 && (
-                    <div>
-                      <strong>Missing Vitals:</strong> {missingVitals.join(", ")}
-                    </div>
-                  )}
-                  {missingLabs.length > 0 && (
-                    <div style={{ marginTop: missingVitals.length > 0 ? "2px" : "0" }}>
-                      <strong>Missing Labs:</strong> {missingLabs.join(", ")}
-                    </div>
-                  )}
-                </div>
+        <div style={{ borderTop: "1px solid var(--border-default)", marginTop: "16px", paddingTop: "24px" }}>
+          {/* Vitals & Labs Warnings */}
+          {(missingVitals.length > 0 || missingLabs.length > 0) && (
+            <div style={{
+              background: "rgba(245,158,11,0.05)",
+              border: "1px solid rgba(245,158,11,0.2)",
+              padding: "12px 16px",
+              borderRadius: "var(--radius-md)",
+              display: "flex",
+              flexDirection: "column",
+              gap: "4px"
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--warning)", fontWeight: 600, fontSize: "0.78rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                <AlertTriangle size={13} style={{ color: "var(--warning)" }} />
+                Incomplete Documentation Detected
               </div>
-            )}
+              <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)", lineHeight: 1.5 }}>
+                {missingVitals.length > 0 && (
+                  <div>
+                    <strong>Missing Vitals:</strong> {missingVitals.join(", ")}
+                  </div>
+                )}
+                {missingLabs.length > 0 && (
+                  <div style={{ marginTop: missingVitals.length > 0 ? "2px" : "0" }}>
+                    <strong>Missing Labs:</strong> {missingLabs.join(", ")}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
+        </div>
+
+        {/* Clinical Summary */}
+        <div className="card" style={{ marginTop: "20px" }}>
+          <h3 style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.9rem", marginBottom: "12px" }}>
+            <Stethoscope size={16} style={{ color: "var(--primary)" }} /> Clinical Summary
+          </h3>
+          <div style={{ fontSize: "0.85rem", lineHeight: 1.7, color: "var(--text-secondary)" }}>
+            {capitalizeMedicalTerms(summary).split(/\r?\n|\\n/g).map((line: string, i: number, arr: any[]) => (
+              <Fragment key={i}>
+                {line.split(/(\*\*.*?\*\*)/g).map((part, j) => 
+                  part.startsWith('**') && part.endsWith('**') 
+                    ? <strong key={j} style={{ color: "var(--text-primary)" }}>{part.slice(2, -2)}</strong> 
+                    : part
+                )}
+                {i < arr.length - 1 && <br />}
+              </Fragment>
+            ))}
           </div>
+        </div>
 
-          {/* Timeline */}
-          {timeline.length > 0 && (
-            <div className="card">
+        {/* Timeline */}
+        {(() => {
+          const meaningfulEvents = timeline.filter((t: any) => {
+            const name = typeof t === "string" ? t : (t.event || t.name || t.title || "");
+            const details = typeof t === "string" ? "" : (t.details || t.description || t.note || "");
+            return name.trim() && details.trim() && name.trim() !== details.trim();
+          });
+          if (meaningfulEvents.length === 0) return null;
+          return (
+            <div className="card" style={{ marginTop: "20px" }}>
               <h3 style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.9rem", marginBottom: "16px" }}>
                 <Clock size={16} style={{ color: "var(--primary)" }} /> Clinical Timeline
               </h3>
               <ul style={{ paddingLeft: "20px", margin: 0, listStyleType: "disc", color: "var(--primary)" }}>
-                {timeline.map((t: any, i: number) => (
+                {meaningfulEvents.map((t: any, i: number) => (
                   <li key={i} style={{ marginBottom: "12px" }}>
                     <div style={{ fontWeight: 600, fontSize: "0.85rem", marginBottom: "4px", color: "var(--text-primary)", display: "flex", alignItems: "center", gap: "6px" }}>
                       {mapEventName(t.event)}
@@ -951,8 +959,8 @@ export default function CaseDetailPage() {
                 ))}
               </ul>
             </div>
-          )}
-        </div>
+          );
+        })()}
 
         {/* Attached Documents — Only show when real uploaded documents exist */}
         {uploadedDocuments.length > 0 && (
