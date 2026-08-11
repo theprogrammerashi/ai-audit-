@@ -142,9 +142,6 @@ export default function WorkspaceAppealPage() {
             <div style={{ fontSize: "0.75rem", color: "var(--text-tertiary)", marginBottom: "2px" }}>Original Denial Reason</div>
             <div style={{ fontSize: "0.9rem", fontWeight: 600, color: "var(--text-primary)" }}>{data.denial_reason_category}</div>
           </div>
-          <div style={{ marginBottom: "12px" }}>
-            <div style={{ fontSize: "0.75rem", color: "var(--text-tertiary)", marginBottom: "2px" }}>Disputed Amount</div>
-            <div style={{ fontSize: "0.9rem", fontWeight: 500, color: "var(--text-primary)" }}>${(data.financial_amount_disputed || 0).toLocaleString()}</div>
           </div>
         </div>
 

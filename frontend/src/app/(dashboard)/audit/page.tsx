@@ -180,7 +180,7 @@ export default function AuditPage() {
       {/* Summary Cards */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "16px", marginBottom: "28px" }}>
         {[
-          { label: "Total Audited", value: cases.length, color: "var(--primary)", icon: ShieldCheck, bg: "var(--primary-light)" },
+          { label: "Total Audited", value: tabCases.length, color: "var(--primary)", icon: ShieldCheck, bg: "var(--primary-light)" },
           { label: "Passed (≥80%)", value: passCount, color: "var(--success)", icon: ShieldCheck, bg: "var(--success-light)" },
           { label: "Failed (<80%)", value: failCount, color: "var(--danger)", icon: AlertTriangle, bg: "var(--danger-light)" },
           { label: "Avg QA Score", value: `${avgScore}%`, color: "var(--warning)", icon: ShieldCheck, bg: "var(--warning-light)" },

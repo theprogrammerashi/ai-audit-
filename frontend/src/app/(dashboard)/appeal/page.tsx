@@ -16,7 +16,7 @@ const outcomeBadge: Record<string, { cls: string; label: string }> = {
 
 export default function AppealPage() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState("tracker");
+  const [activeTab, setActiveTab] = useState("risk");
   const [dashboardData, setDashboardData] = useState<any>(null);
   const [intakeData, setIntakeData] = useState<any[]>([]);
   const [analyticsData, setAnalyticsData] = useState<any>(null);
@@ -154,8 +154,8 @@ export default function AppealPage() {
       {/* Tabs */}
       <div style={{ display: "flex", gap: "4px", borderBottom: "1px solid var(--border-default)", marginBottom: "24px", paddingBottom: "0" }}>
         {[
-          { id: "tracker", label: "Appeal Tracker", icon: FileText },
           { id: "risk", label: "Risk Dashboard", icon: AlertTriangle },
+          { id: "tracker", label: "Appeal Tracker", icon: FileText },
         ].map((tab) => (
           <button
             key={tab.id}

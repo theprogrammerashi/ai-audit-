@@ -435,6 +435,44 @@ def extract_labs(text: str) -> Optional[ExtractedLabs]:
 
 def extract_clinical_summary(text: str) -> Tuple[Optional[str], float]:
     """Extract a clinical summary or HPI from the text."""
+    # Try GenAI (Groq LLM) first if configured
+    try:
+        from app.config import settings
+        if settings.GROQ_API_KEY and text.strip():
+            from groq import Groq
+            client = Groq(api_key=settings.GROQ_API_KEY)
+            prompt = f"""You are a clinical quality assurance expert. Provide a detailed yet concise clinical summary of the following raw medical text. Balance clinical thoroughness with brevity.
+            
+Ensure the output is formatted exactly with these bold headers:
+**CHIEF COMPLAINT:** [Chief Complaint - max 1 sentence]
+**History of Present Illness (HPI):** [Brief narrative of symptoms and presentation - max 3 sentences]
+**OBJECTIVE DATA:**
+- **Vitals:** [key vital signs: temperature, blood pressure, heart rate, respiratory rate, oxygen saturation]
+- **Exam:** [key physical exam findings]
+- **Labs/Imaging:** [key labs/imaging results: lactate, WBC, creatinine, procalcitonin, BNP, EF, etc.]
+**ASSESSMENT & PLAN:** [clinical assessment and treatment plan, noting therapies and planned monitoring - max 3 sentences]
+
+Rules:
+- Be clinically precise, objective, and thorough. Do not omit critical clinical signs.
+- Keep each section short, bulleted, and to the point. Avoid conversational filler.
+- If any section cannot be found in the text, write "Not documented" for that specific section.
+
+Raw Medical Text:
+{text[:4000]}"""
+            response = client.chat.completions.create(
+                model=settings.GROQ_FAST_MODEL,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.1,
+                max_tokens=600,
+            )
+            summary = response.choices[0].message.content.strip()
+            if len(summary) > 30:
+                logger.info("[Parser] Successfully generated GenAI clinical summary.")
+                return summary, 0.95
+    except Exception as e:
+        logger.warning(f"[Parser] LLM clinical summary extraction failed: {e}. Falling back to rule-based.")
+
+    # Rule-based fallback
     patterns = [
         r"(?:clinical\s*summary|summary|HPI|history\s*of\s*present\s*illness|chief\s*complaint|cc|assessment\s*(?:and|&)\s*plan|a/?p|hospital\s*course|reason\s*for\s*(?:admission|visit|consultation|review))[\s:]+(.*)",
     ]

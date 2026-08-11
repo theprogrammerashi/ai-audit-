@@ -332,36 +332,64 @@ async def get_workspace_data(
     diag_name = case_dict.get("primary_diagnosis_display") or case_dict.get("primary_diagnosis_code") or "Sepsis"
 
     # --- Build human-readable explanations for each criterion ---
+    POLICY_THRESHOLDS = {
+        # Sepsis
+        "6A": "Documented or suspected clinical infection requiring treatment",
+        "6B": "Serum lactate level >= 2.0 mmol/L",
+        "6C": "Systolic blood pressure < 90 mmHg",
+        "6D": "Acute altered mental status (AMS) from patient baseline (e.g., confusion, lethargy)",
+        "6E": "Requirement for broad-spectrum intravenous (IV) antibiotic therapy",
+        # Heart Failure
+        "5A": "Oxygen saturation (O2 Sat) < 90% on room air",
+        "5B": "B-type Natriuretic Peptide (BNP) > 500 pg/mL",
+        "5C": "Left ventricular ejection fraction (EF) < 40% on echo",
+        "5D": "Initiation of intravenous (IV) loop diuretics (e.g., IV Lasix)",
+        # COPD
+        "4A": "Severe hypoxemia (Oxygen Saturation < 88% on room air)",
+        "4B": "Failure of outpatient oral steroids/bronchodilators (e.g., pCO2 > 50 mmHg)",
+        "4C": "Respiratory acidosis (ABG pH < 7.35)",
+        "4D": "Requirement for intravenous (IV) corticosteroids",
+        # Observation/General
+        "7A": "Expected stay duration exceeding 24 hours based on clinical trajectory",
+        "7B": "Requirement for intravenous (IV) medications or therapies",
+        "7C": "Need for active clinical monitoring (e.g., O2 sat < 93%)",
+        "7D": "Failure to improve under standard observation protocol",
+    }
+
     def _explain_criterion(c) -> str:
         """Generate a natural-English explanation for a single policy criterion."""
         status_word = "satisfied" if c.status == "MET" else (
             "not satisfied" if c.status == "NOT_MET" else "lacking sufficient evidence"
         )
         evidence_text = c.evidence if c.evidence else "No clinical evidence was documented"
-        if "Infection suspected based on diagnosis" in evidence_text:
+        # Preserve dynamic evidence (infection source and clinical signs) if present
+        if "Infection suspected based on diagnosis" in evidence_text and not ("secondary" in evidence_text or "supported" in evidence_text):
             evidence_text = f"Infection suspected based on diagnosis of {diag_name}"
             c.evidence = evidence_text
         if "AMS likely" in evidence_text:
             evidence_text = "Altered Mental Status (AMS) likely"
             c.evidence = evidence_text
 
+        threshold = POLICY_THRESHOLDS.get(c.section, "Standard clinical necessity threshold")
+
         if c.status == "MET":
             return (
                 f"The patient's clinical data shows: {evidence_text}. "
                 f"This meets the threshold defined by policy Section {c.section} "
-                f"for \"{c.criterion}\". This criterion is {status_word}."
+                f"(Required: {threshold}) for \"{c.criterion}\". This criterion is {status_word}."
             )
         elif c.status == "NOT_MET":
             return (
                 f"Regarding \"{c.criterion}\" (policy Section {c.section}): "
-                f"the available evidence ({evidence_text}) does not satisfy the required threshold. "
-                f"This criterion is {status_word}."
+                f"the available evidence ({evidence_text}) does not satisfy the required threshold "
+                f"(Required: {threshold}). This criterion is {status_word}."
             )
         else:
             return (
                 f"For \"{c.criterion}\" (policy Section {c.section}): "
                 f"{evidence_text}. There is insufficient documentation to determine "
-                f"whether this criterion is met or unmet."
+                f"whether this criterion is met or unmet against the policy guideline "
+                f"(Required: {threshold})."
             )
 
     # Attach explanations to each criterion

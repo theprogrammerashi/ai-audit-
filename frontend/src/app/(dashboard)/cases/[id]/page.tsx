@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Fragment } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   ArrowLeft, User, Stethoscope, Activity, FileText, AlertTriangle, Clock, Shield, Loader2, X, Eye, Info
@@ -877,7 +877,18 @@ export default function CaseDetailPage() {
             <h3 style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.9rem", marginBottom: "12px" }}>
               <Stethoscope size={16} style={{ color: "var(--primary)" }} /> Clinical Summary
             </h3>
-            <p style={{ fontSize: "0.85rem", lineHeight: 1.7, color: "var(--text-secondary)" }}>{capitalizeMedicalTerms(summary)}</p>
+            <div style={{ fontSize: "0.85rem", lineHeight: 1.7, color: "var(--text-secondary)" }}>
+              {capitalizeMedicalTerms(summary).split(/\r?\n|\\n/g).map((line: string, i: number, arr: any[]) => (
+                <Fragment key={i}>
+                  {line.split(/(\*\*.*?\*\*)/g).map((part, j) => 
+                    part.startsWith('**') && part.endsWith('**') 
+                      ? <strong key={j} style={{ color: "var(--text-primary)" }}>{part.slice(2, -2)}</strong> 
+                      : part
+                  )}
+                  {i < arr.length - 1 && <br />}
+                </Fragment>
+              ))}
+            </div>
             
             {/* Documentation Gap warning if vitals or labs are missing */}
             {(missingVitals.length > 0 || missingLabs.length > 0) && (

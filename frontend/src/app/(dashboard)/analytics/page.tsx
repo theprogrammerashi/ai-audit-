@@ -138,7 +138,7 @@ export default function AnalyticsPage() {
         <div style={{ display: "flex", gap: "4px", borderBottom: "1px solid var(--border-default)", marginBottom: "32px", paddingBottom: "0" }}>
           {[
             { id: "nurse-analytics", label: "Nurse Analytics", icon: Users },
-            { id: "analytics-outcomes", label: "Analytics & Outcomes", icon: BarChart3 },
+            { id: "analytics-outcomes", label: "Appeal Analytics", icon: BarChart3 },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -327,15 +327,7 @@ export default function AnalyticsPage() {
                     }}
                     onClick={() => handleReviewerClick(r.reviewer_id)}
                   >
-                    {/* Yellow Exclamation Mark for gaps */}
-                    {hasGaps && (
-                      <div
-                        style={{ position: "absolute", top: "14px", right: "14px", cursor: "help" }}
-                        title={`Identified Gaps: ${r.top_gaps.map((g: string) => g.replace(/_/g, ' ')).join(", ")}`}
-                      >
-                        <AlertTriangle size={20} style={{ color: "var(--warning)" }} />
-                      </div>
-                    )}
+
 
                     {/* Profile Circle */}
                     <div style={{ marginBottom: "14px" }}>
@@ -444,45 +436,6 @@ export default function AnalyticsPage() {
                   </div>
                 </div>
 
-                {/* Actionable Coaching Plan */}
-                <div>
-                  <h3 style={{ fontSize: "1.05rem", fontWeight: 600, marginBottom: "16px", color: "var(--text-primary)" }}>Actionable Coaching Plan</h3>
-                  <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                    {(reviewerDetail.stats.top_gaps || []).slice(0, 3).map((gap: any, i: number) => {
-                      const gapArea = typeof gap === 'string' ? gap.replace(/_/g, ' ') : (gap.area || gap.name || 'General');
-                      const gapRec = typeof gap === 'string'
-                        ? `Assign interactive module on ${gap.replace(/_/g, ' ').toLowerCase()} criteria. Monitor next 10 decisions for improvement.`
-                        : (gap.recommendation || gap.coaching || `Focus on improving ${gapArea.toLowerCase()} performance.`);
-                      const gapScore = typeof gap === 'object' ? gap.score : null;
-                      return (
-                        <div key={i} style={{ display: "flex", gap: "14px", background: "var(--bg-body)", padding: "18px", borderRadius: "var(--radius-md)", borderLeft: `3px solid ${i === 0 ? 'var(--danger)' : i === 1 ? 'var(--warning)' : 'var(--info)'}` }}>
-                          <div style={{ width: "28px", height: "28px", borderRadius: "50%", flexShrink: 0, background: i === 0 ? 'rgba(220,38,38,0.1)' : i === 1 ? 'rgba(217,119,6,0.1)' : 'rgba(37,99,235,0.1)', color: i === 0 ? 'var(--danger)' : i === 1 ? 'var(--warning)' : 'var(--info)', display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.8rem", fontWeight: 700 }}>
-                            {i + 1}
-                          </div>
-                          <div style={{ flex: 1 }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
-                              <span style={{ fontWeight: 600, fontSize: "0.9rem" }}>{gapArea}</span>
-                              {gapScore != null && (
-                                <span style={{ fontSize: "0.75rem", color: gapScore >= 85 ? "var(--success)" : gapScore >= 70 ? "var(--warning)" : "var(--danger)", fontWeight: 600 }}>
-                                  {Number(gapScore).toFixed(1)}%
-                                </span>
-                              )}
-                            </div>
-                            <div style={{ color: "var(--text-secondary)", fontSize: "0.85rem", lineHeight: 1.6 }}>
-                              {gapRec}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                    {(!reviewerDetail.stats.top_gaps || reviewerDetail.stats.top_gaps.length === 0) && (
-                      <div style={{ padding: "20px", background: "rgba(22,163,74,0.05)", borderRadius: "var(--radius-md)", border: "1px solid rgba(22,163,74,0.15)", textAlign: "center", color: "var(--success)", fontSize: "0.9rem" }}>
-                        <CheckCircle size={18} style={{ marginBottom: "6px" }} />
-                        <p style={{ margin: "4px 0 0" }}>All performance dimensions meet benchmarks. No coaching gaps identified.</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
 
                 {/* Recent Cases */}
                 <div>
@@ -536,6 +489,9 @@ export default function AnalyticsPage() {
             {/* Financial Impact */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "16px", marginBottom: "28px" }}>
               <MetricCard label="Appeal Volume" value={intake.length.toString()} accentColor="var(--info)" icon={<FileText size={13} />} />
+              <MetricCard label="Total Overturned" value={(outcomeDist.overturned || 0).toString()} accentColor="var(--danger)" icon={<AlertTriangle size={13} />} />
+              <MetricCard label="Overturn Rate" value={`${totalOutcome > 0 ? Math.round(((outcomeDist.overturned || 0) / totalOutcome) * 100) : 0}%`} accentColor="var(--danger)" icon={<Percent size={13} />} />
+              <MetricCard label="Pending Appeals" value={(outcomeDist.pending || 0).toString()} accentColor="var(--warning)" icon={<Clock size={13} />} />
             </div>
 
             {/* Outcome Distribution Chart */}

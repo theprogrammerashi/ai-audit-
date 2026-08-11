@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, Fragment } from "react";
 import { useRouter } from "next/navigation";
 import {
   Upload, FileText, User, Calendar, Stethoscope,
@@ -13,15 +13,89 @@ interface ConfidenceIndicatorProps {
   confidence: number;
 }
 function ConfidenceIndicator({ confidence }: ConfidenceIndicatorProps) {
-  const color = confidence >= 0.8 ? "var(--success)" : confidence >= 0.5 ? "var(--warning)" : "var(--danger)";
-  const label = confidence >= 0.8 ? "High" : confidence >= 0.5 ? "Medium" : "Low";
+  const pct = Math.round(confidence * 100);
+  const color = confidence >= 0.85 ? "var(--success)" : confidence >= 0.70 ? "var(--warning)" : "var(--danger)";
   return (
-    <span style={{ fontSize: "0.7rem", fontWeight: 600, color, display: "inline-flex", alignItems: "center", gap: "4px", marginLeft: "8px" }}>
-      <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: color, display: "inline-block" }} />
-      {Math.round(confidence * 100)}% {label}
+    <span style={{ fontSize: "0.7rem", color, fontWeight: 600, background: `${color}10`, padding: "2px 6px", borderRadius: "100px", marginLeft: "6px" }}>
+      {pct}% Confidence
     </span>
   );
 }
+
+const ABNORMAL_EXPLANATIONS: Record<string, { title: string; range: string; meaning: string; significance: string }> = {
+  temp: {
+    title: "Abnormal Vital: Temperature (Fever)",
+    range: "97.0°F - 100.4°F",
+    meaning: "Elevated core body temperature (> 100.4°F or 38°C).",
+    significance: "Indicates active systemic inflammatory response (SIRS) or infection."
+  },
+  bp: {
+    title: "Abnormal Vital: Blood Pressure (Hypotension)",
+    range: "90/60 - 120/80 mmHg",
+    meaning: "Low blood pressure (systolic < 90 mmHg).",
+    significance: "Indicates reduced tissue perfusion and potential hemodynamic instability or shock."
+  },
+  hr: {
+    title: "Abnormal Vital: Heart Rate (Tachycardia)",
+    range: "60 - 100 bpm",
+    meaning: "Elevated heart rate (> 100 beats per minute).",
+    significance: "Reflects physiological stress, compensatory mechanism for fever, hypovolemia, or hypoperfusion."
+  },
+  rr: {
+    title: "Abnormal Vital: Respiratory Rate (Tachypnea)",
+    range: "12 - 20 breaths/min",
+    meaning: "Elevated respiratory rate (> 24 breaths per minute).",
+    significance: "Indicates respiratory distress, hypoxemia, or metabolic acidosis compensation."
+  },
+  o2_sat: {
+    title: "Abnormal Vital: Oxygen Saturation (Hypoxemia)",
+    range: "95% - 100%",
+    meaning: "Low arterial blood oxygen saturation (< 90%).",
+    significance: "Reflects impaired gas exchange in lungs, requiring immediate oxygen supplementation."
+  },
+  wbc: {
+    title: "Abnormal Lab: WBC (Leukocytosis)",
+    range: "4.0 - 11.0 K/uL",
+    meaning: "Elevated White Blood Cell count (> 12.0 K/uL).",
+    significance: "Strong marker of active infection, systemic inflammation, or leukemoid reaction."
+  },
+  lactate: {
+    title: "Abnormal Lab: Lactate (Hyperlactatemia)",
+    range: "< 2.0 mmol/L",
+    meaning: "Elevated blood lactate levels (>= 2.0 mmol/L).",
+    significance: "Indicates anaerobic metabolism due to systemic hypoperfusion, tissue hypoxia, or sepsis."
+  },
+  creatinine: {
+    title: "Abnormal Lab: Creatinine",
+    range: "0.6 - 1.2 mg/dL",
+    meaning: "Elevated serum creatinine level (> 1.5 mg/dL).",
+    significance: "Indicates acute kidney injury (AKI) or renal dysfunction due to hypoperfusion or nephrotoxicity."
+  },
+  bnp: {
+    title: "Abnormal Lab: BNP",
+    range: "< 100 pg/mL",
+    meaning: "Elevated Brain Natriuretic Peptide (> 500 pg/mL).",
+    significance: "Indicates myocardial wall stretch, typical of acute decompensated heart failure."
+  },
+  troponin: {
+    title: "Abnormal Lab: Troponin",
+    range: "< 0.04 ng/mL",
+    meaning: "Elevated troponin level (> 0.04 ng/mL).",
+    significance: "Specific marker of myocardial injury, suggesting acute coronary syndrome or cardiac strain."
+  },
+  potassium: {
+    title: "Abnormal Lab: Potassium (Hyperkalemia)",
+    range: "3.5 - 5.0 mEq/L",
+    meaning: "Elevated serum potassium level (> 5.5 mEq/L).",
+    significance: "Can cause severe cardiac conduction abnormalities or arrhythmias."
+  },
+  ef: {
+    title: "Abnormal Lab: Ejection Fraction (Reduced EF)",
+    range: "55% - 70%",
+    meaning: "Reduced left ventricular ejection fraction (< 40%).",
+    significance: "Indicates systolic heart failure with high risk for clinical instability."
+  }
+};
 
 interface ICD10Suggestion {
   code: string;
@@ -114,10 +188,9 @@ const DOC_TYPES = [
   { value: "APPEAL_DOCUMENT", label: "Appeal Document" },
 ];
 
-// Fields that can be auto-filled
 type AutoFillField = "patient_name" | "mrn" | "dob" | "age" | "gender" | "primary_diagnosis_code" | "primary_diagnosis_display" | "secondary_diagnoses" | "clinical_notes";
 
-export default function NewCasePage() { // force rebuild
+export default function NewCasePage() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -148,8 +221,8 @@ export default function NewCasePage() { // force rebuild
   const [extractedLabs, setExtractedLabs] = useState<any>(null);
   const [extractedTimeline, setExtractedTimeline] = useState<any[]>([]);
   const [riskSignals, setRiskSignals] = useState<string[]>([]);
+  const [abnormalExplanation, setAbnormalExplanation] = useState<any | null>(null);
 
-  // Autofill animation: track which fields just got filled
   const triggerAutofillAnimation = (fields: AutoFillField[]) => {
     const fieldSet = new Set(fields) as Set<AutoFillField>;
     setAutoFilledFields(fieldSet);
@@ -211,7 +284,6 @@ export default function NewCasePage() { // force rebuild
 
         const data = res.data;
 
-        // Auto-fill form fields (keep highest confidence or if not set)
         if (data.patient_name && (!newForm.patient_name || (data.patient_name_confidence > (newConfidences.patient_name || 0)))) {
           newForm.patient_name = data.patient_name;
           newConfidences.patient_name = data.patient_name_confidence;
@@ -266,7 +338,6 @@ export default function NewCasePage() { // force rebuild
         if (data.timeline) mergedTimeline = [...mergedTimeline, ...data.timeline];
         if (data.risk_signals) data.risk_signals.forEach((s: string) => mergedRiskSignals.add(s));
 
-        // Merge ICD-10 AI suggestions
         if (data.icd10_suggestions && data.icd10_suggestions.length > 0) {
           const existingCodes = new Set(mergedSuggestions.map((s) => s.code));
           for (const s of data.icd10_suggestions) {
@@ -275,7 +346,6 @@ export default function NewCasePage() { // force rebuild
               existingCodes.add(s.code);
             }
           }
-          // Sort by confidence
           mergedSuggestions.sort((a, b) => b.confidence - a.confidence);
         }
 
@@ -293,7 +363,6 @@ export default function NewCasePage() { // force rebuild
       }
     }
 
-    // Auto-set priority based on risk signals
     if (mergedRiskSignals.size >= 3) {
       newForm.priority = "URGENT";
     } else if (mergedRiskSignals.size > 0) {
@@ -311,7 +380,6 @@ export default function NewCasePage() { // force rebuild
     setIsParsing(false);
     if (fileInputRef.current) fileInputRef.current.value = "";
 
-    // Trigger autofill animation on filled fields
     if (filledFields.length > 0) triggerAutofillAnimation(filledFields);
   };
 
@@ -373,7 +441,6 @@ export default function NewCasePage() { // force rebuild
 
   return (
     <>
-      {/* Autofill animation style */}
       <style>{`
         @keyframes autofillPulse {
           0%   { background-color: rgba(34,197,94,0.18); border-color: var(--success); box-shadow: 0 0 0 3px rgba(34,197,94,0.15); }
@@ -383,7 +450,6 @@ export default function NewCasePage() { // force rebuild
       `}</style>
 
       <div style={{ padding: "32px", maxWidth: "900px", margin: "0 auto" }}>
-        {/* Header */}
         <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "8px" }}>
           <button onClick={() => router.push("/cases")} className="btn btn-secondary" style={{ padding: "6px 10px" }}>
             <ArrowLeft size={16} />
@@ -399,8 +465,6 @@ export default function NewCasePage() { // force rebuild
         </div>
 
         <div style={{ borderTop: "1px solid var(--border-default)", marginTop: "16px", paddingTop: "28px" }}>
-
-          {/* Document Upload */}
           <div className="card" style={{ marginBottom: "20px", borderLeft: "3px solid var(--primary)" }}>
             <h3 style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.95rem", marginBottom: "6px" }}>
               <Sparkles size={18} style={{ color: "var(--primary)" }} /> Smart Document Upload
@@ -498,7 +562,6 @@ export default function NewCasePage() { // force rebuild
             )}
           </div>
 
-          {/* Document Type */}
           <div className="card" style={{ marginBottom: "20px" }}>
             <h3 style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.95rem", marginBottom: "12px" }}>
               <FileText size={18} style={{ color: "var(--primary)" }} /> Document Type
@@ -518,7 +581,6 @@ export default function NewCasePage() { // force rebuild
             </div>
           </div>
 
-          {/* Patient Demographics */}
           <div className="card" style={{ marginBottom: "20px" }}>
             <h3 style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.95rem", marginBottom: "20px" }}>
               <User size={18} style={{ color: "var(--primary)" }} /> Patient Demographics
@@ -596,7 +658,6 @@ export default function NewCasePage() { // force rebuild
             </div>
           </div>
 
-          {/* Diagnosis */}
           <div className="card" style={{ marginBottom: "20px" }}>
             <h3 style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.95rem", marginBottom: "20px" }}>
               <Stethoscope size={18} style={{ color: "var(--primary)" }} /> Diagnosis Information
@@ -626,6 +687,7 @@ export default function NewCasePage() { // force rebuild
             </div>
 
 
+
             <div style={{ marginTop: "16px" }}>
               <label className="label" style={{ marginBottom: "6px", display: "block" }}>Secondary Diagnoses (comma-separated ICD-10)</label>
               <input
@@ -638,7 +700,6 @@ export default function NewCasePage() { // force rebuild
             </div>
           </div>
 
-          {/* Extracted Vitals & Labs */}
           {(extractedVitals || extractedLabs) && (
             <div className="card" style={{ marginBottom: "20px", borderLeft: "3px solid var(--info)" }}>
               <h3 style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.95rem", marginBottom: "16px" }}>
@@ -649,12 +710,53 @@ export default function NewCasePage() { // force rebuild
                   <div>
                     <div className="label" style={{ marginBottom: "8px" }}>Vitals</div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
-                      {Object.entries(extractedVitals).filter(([_, v]) => v !== null).map(([key, val]) => (
-                        <div key={key} style={{ padding: "8px 12px", background: "var(--bg-body)", borderRadius: "var(--radius-md)", fontSize: "0.85rem" }}>
-                          <span style={{ color: "var(--text-tertiary)", textTransform: "uppercase", fontSize: "0.7rem" }}>{key.replace("_", " ")}</span>
-                          <div style={{ fontWeight: 600 }}>{String(val)}</div>
-                        </div>
-                      ))}
+                      {Object.entries(extractedVitals).filter(([_, v]) => v !== null).map(([key, val]) => {
+                        const isAbnormal = (key === "o2_sat" && Number(val) < 90) || (key === "hr" && Number(val) > 100) || (key === "rr" && Number(val) > 24) || (key === "temp" && Number(val) > 100.4) || (key === "bp" && typeof val === "string" && Number(val.split('/')[0]) < 90);
+                        
+                        const handleBoxClick = () => {
+                          if (!isAbnormal) return;
+                          const info = ABNORMAL_EXPLANATIONS[key] || {
+                            title: `Abnormal Vital: ${key.replace("_", " ").toUpperCase()}`,
+                            range: "Standard reference range",
+                            meaning: "This value is flagged as abnormal.",
+                            significance: "Clinical review is required to evaluate this vital sign."
+                          };
+                          setAbnormalExplanation({
+                            ...info,
+                            key,
+                            val: `${String(val)}${key === "temp" ? "°F" : key === "o2_sat" ? "%" : ""}`
+                          });
+                        };
+
+                        return (
+                          <div key={key} 
+                            onClick={handleBoxClick}
+                            style={{ 
+                              padding: "8px 12px", 
+                              background: isAbnormal ? "rgba(239, 68, 68, 0.04)" : "var(--bg-body)", 
+                              border: isAbnormal ? "1px solid rgba(239, 68, 68, 0.15)" : "1px solid var(--border-default)",
+                              borderRadius: "var(--radius-md)", 
+                              fontSize: "0.85rem",
+                              cursor: isAbnormal ? "pointer" : "default",
+                              transition: "transform 0.2s"
+                            }}
+                            onMouseEnter={(e) => {
+                              if (!isAbnormal) return;
+                              e.currentTarget.style.transform = "translateY(-2px) scale(1.02)";
+                            }}
+                            onMouseLeave={(e) => {
+                              if (!isAbnormal) return;
+                              e.currentTarget.style.transform = "none";
+                            }}
+                          >
+                            <span style={{ color: isAbnormal ? "var(--danger)" : "var(--text-tertiary)", textTransform: "uppercase", fontSize: "0.7rem", display: "flex", alignItems: "center", gap: "4px" }}>
+                              {isAbnormal && <AlertTriangle size={10} style={{ color: "var(--danger)" }} />}
+                              {key.replace("_", " ")}
+                            </span>
+                            <div style={{ fontWeight: 600, color: isAbnormal ? "var(--danger)" : "var(--text-primary)" }}>{String(val)}</div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -662,12 +764,57 @@ export default function NewCasePage() { // force rebuild
                   <div>
                     <div className="label" style={{ marginBottom: "8px" }}>Lab Results</div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
-                      {Object.entries(extractedLabs).filter(([_, v]) => v !== null).map(([key, val]) => (
-                        <div key={key} style={{ padding: "8px 12px", background: "var(--bg-body)", borderRadius: "var(--radius-md)", fontSize: "0.85rem" }}>
-                          <span style={{ color: "var(--text-tertiary)", textTransform: "uppercase", fontSize: "0.7rem" }}>{key}</span>
-                          <div style={{ fontWeight: 600 }}>{String(val)}</div>
-                        </div>
-                      ))}
+                      {Object.entries(extractedLabs).filter(([_, v]) => v !== null).map(([key, val]) => {
+                        const lowerKey = key.toLowerCase();
+                        const isLabAbnormal = (lowerKey === "bnp" && Number(val) > 500) || (lowerKey === "wbc" && (Number(val) > 12 || Number(val) < 4)) || (lowerKey === "lactate" && Number(val) >= 2.0) || (lowerKey === "creatinine" && Number(val) > 1.5) || (lowerKey === "troponin" && Number(val) > 0.04) || (lowerKey === "potassium" && Number(val) > 5.5) || (lowerKey === "ef" && Number(val) < 40);
+                        
+                        const handleLabClick = () => {
+                          if (!isLabAbnormal) return;
+                          const labName = (lowerKey === "bnp" || lowerKey === "ef" || lowerKey === "wbc") 
+                            ? lowerKey.toUpperCase() 
+                            : key.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
+                          const info = ABNORMAL_EXPLANATIONS[lowerKey] || {
+                            title: `Abnormal Lab: ${labName}`,
+                            range: "Standard reference range",
+                            meaning: "This value is flagged as abnormal.",
+                            significance: "Clinical review is required to evaluate this lab value."
+                          };
+                          setAbnormalExplanation({
+                            ...info,
+                            key: lowerKey,
+                            val: String(val)
+                          });
+                        };
+
+                        return (
+                          <div key={key} 
+                            onClick={handleLabClick}
+                            style={{ 
+                              padding: "8px 12px", 
+                              background: isLabAbnormal ? "rgba(239, 68, 68, 0.04)" : "var(--bg-body)", 
+                              border: isLabAbnormal ? "1px solid rgba(239, 68, 68, 0.15)" : "1px solid var(--border-default)",
+                              borderRadius: "var(--radius-md)", 
+                              fontSize: "0.85rem",
+                              cursor: isLabAbnormal ? "pointer" : "default",
+                              transition: "transform 0.2s"
+                            }}
+                            onMouseEnter={(e) => {
+                              if (!isLabAbnormal) return;
+                              e.currentTarget.style.transform = "translateY(-2px) scale(1.02)";
+                            }}
+                            onMouseLeave={(e) => {
+                              if (!isLabAbnormal) return;
+                              e.currentTarget.style.transform = "none";
+                            }}
+                          >
+                            <span style={{ color: isLabAbnormal ? "var(--danger)" : "var(--text-tertiary)", textTransform: "uppercase", fontSize: "0.7rem", display: "flex", alignItems: "center", gap: "4px" }}>
+                              {isLabAbnormal && <AlertTriangle size={10} style={{ color: "var(--danger)" }} />}
+                              {key}
+                            </span>
+                            <div style={{ fontWeight: 600, color: isLabAbnormal ? "var(--danger)" : "var(--text-primary)" }}>{String(val)}</div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -675,39 +822,34 @@ export default function NewCasePage() { // force rebuild
             </div>
           )}
 
-          {/* Risk Signals */}
-          {riskSignals.length > 0 && (
-            <div className="card" style={{ marginBottom: "20px", borderLeft: "3px solid var(--danger)" }}>
-              <h3 style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.95rem", marginBottom: "12px" }}>
-                <AlertTriangle size={18} style={{ color: "var(--danger)" }} /> Risk Signals Detected
-              </h3>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-                {riskSignals.map((s) => (
-                  <span key={s} className="badge badge-danger" style={{ fontSize: "0.75rem" }}>
-                    {s.replace(/_/g, " ")}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Clinical Notes */}
           <div className="card" style={{ marginBottom: "20px" }}>
             <h3 style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.95rem", marginBottom: "20px" }}>
               <FileText size={18} style={{ color: "var(--primary)" }} /> Clinical Summary
               {confidences.clinical_notes ? <ConfidenceIndicator confidence={confidences.clinical_notes} /> : null}
             </h3>
-            <textarea
-              className="input"
-              rows={5}
-              placeholder="Paste or type clinical summary, ED notes, or any relevant narrative. The AI will auto-fill this from uploaded documents..."
-              value={form.clinical_notes}
-              onChange={(e) => setForm({ ...form, clinical_notes: e.target.value })}
-              style={{ resize: "vertical", ...getFieldStyle("clinical_notes") }}
-            />
+
+            <div style={{ 
+              fontSize: "0.85rem", lineHeight: 1.7, color: "var(--text-secondary)",
+              padding: "14px 16px", background: "rgba(15,14,12,0.02)", borderRadius: "var(--radius-md)",
+              borderLeft: "3px solid var(--primary)", minHeight: "80px"
+            }}>
+              {form.clinical_notes ? (
+                form.clinical_notes.split(/\r?\n|\\n/g).map((line: string, i: number, arr: any[]) => (
+                  <Fragment key={i}>
+                    {line.split(/(\*\*.*?\*\*)/g).map((part, j) => 
+                      part.startsWith('**') && part.endsWith('**') 
+                        ? <strong key={j} style={{ color: "var(--text-primary)" }}>{part.slice(2, -2)}</strong> 
+                        : part
+                    )}
+                    {i < arr.length - 1 && <br />}
+                  </Fragment>
+                ))
+              ) : (
+                <span style={{ fontStyle: "italic", color: "var(--text-tertiary)" }}>No clinical summary generated.</span>
+              )}
+            </div>
           </div>
 
-          {/* Priority */}
           <div className="card" style={{ marginBottom: "28px" }}>
             <h3 style={{ fontSize: "0.95rem", marginBottom: "12px" }}>Review Priority</h3>
             <div style={{ display: "flex", gap: "10px" }}>
@@ -724,7 +866,6 @@ export default function NewCasePage() { // force rebuild
             </div>
           </div>
 
-          {/* Actions */}
           <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end" }}>
             <button className="btn btn-secondary" onClick={() => router.push("/cases")}>Cancel</button>
             <button
@@ -741,6 +882,62 @@ export default function NewCasePage() { // force rebuild
             </button>
           </div>
         </div>
+
+        {/* Abnormal Value Explanation Modal */}
+        {abnormalExplanation && (
+          <div style={{
+            position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+            background: "rgba(0,0,0,0.5)", zIndex: 9999,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            backdropFilter: "blur(2px)"
+          }} onClick={() => setAbnormalExplanation(null)}>
+            <div style={{
+              background: "var(--bg-surface)", borderRadius: "var(--radius-lg)",
+              width: "90%", maxWidth: "500px", display: "flex", flexDirection: "column",
+              boxShadow: "var(--shadow-xl)", overflow: "hidden"
+            }} onClick={(e) => e.stopPropagation()}>
+              <div style={{
+                padding: "16px 20px", borderBottom: "1px solid var(--border-default)",
+                display: "flex", justifyContent: "space-between", alignItems: "center"
+              }}>
+                <span style={{ fontWeight: 600, fontSize: "0.95rem", display: "flex", alignItems: "center", gap: "8px" }}>
+                  <AlertTriangle size={18} style={{ color: "var(--danger)" }} /> {abnormalExplanation.title}
+                </span>
+                <button onClick={() => setAbnormalExplanation(null)} style={{
+                  background: "none", border: "none", cursor: "pointer", padding: "4px",
+                  color: "var(--text-tertiary)", borderRadius: "var(--radius-sm)"
+                }}>
+                  <X size={20} />
+                </button>
+              </div>
+              <div style={{ padding: "24px", fontSize: "0.9rem", lineHeight: 1.6, color: "var(--text-secondary)" }}>
+                <div style={{ 
+                  marginBottom: "16px", padding: "12px", background: "rgba(239,68,68,0.06)", 
+                  borderRadius: "var(--radius-md)", borderLeft: "3px solid var(--danger)" 
+                }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                    <div>
+                      <div style={{ fontSize: "0.75rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-tertiary)", marginBottom: "2px" }}>Patient Value</div>
+                      <div style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--danger)" }}>{abnormalExplanation.val}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: "0.75rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-tertiary)", marginBottom: "2px" }}>Reference Range</div>
+                      <div style={{ fontSize: "1rem", fontWeight: 500, color: "var(--text-primary)" }}>{abnormalExplanation.range}</div>
+                    </div>
+                  </div>
+                </div>
+                <div style={{ marginBottom: "16px" }}>
+                  <h4 style={{ color: "var(--text-primary)", fontSize: "0.85rem", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "6px", margin: "0 0 6px" }}>Clinical Meaning</h4>
+                  <p style={{ margin: 0 }}>{abnormalExplanation.meaning}</p>
+                </div>
+                <div>
+                  <h4 style={{ color: "var(--text-primary)", fontSize: "0.85rem", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "6px", margin: "0 0 6px" }}>Clinical Significance</h4>
+                  <p style={{ margin: 0 }}>{abnormalExplanation.significance}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </>
   );

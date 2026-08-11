@@ -244,11 +244,11 @@ def compute_qa_audit(
 
     # ── Overall QA Score ────────────────────────────────────────────────────
     qa_score = int(
-        clinical_accuracy          * 0.30 +
+        clinical_accuracy          * 0.40 +
         documentation_completeness * 0.20 +
         policy_compliance          * 0.20 +
-        consistency_score          * 0.15 +
-        timeliness_score           * 0.15
+        consistency_score          * 0.10 +
+        timeliness_score           * 0.10
     )
 
     # ── Risk Level & Audit Result ───────────────────────────────────────────

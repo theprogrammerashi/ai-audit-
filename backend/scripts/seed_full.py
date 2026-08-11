@@ -199,7 +199,18 @@ def build_cases():
             "diagnosis": {"primary": "I50.23", "display": "Acute on Chronic Systolic Heart Failure", "secondary": ["I11.0", "E11.9"]},
             "vitals": {"temp": temp, "bp": bp, "hr": hr, "rr": rr, "o2_sat": o2},
             "labs": {"bnp": bnp, "creatinine": creat, "potassium": k, "troponin": trop, "ef": ef},
-            "clinical_summary": f"{age}-year-old {'male' if i % 2 == 0 else 'female'} presenting with acute decompensated heart failure. EF {ef}% on echo. {'Severe dyspnea at rest' if o2 < 88 else 'Moderate dyspnea on exertion'}, bilateral crackles, {'3+' if bnp > 2000 else '2+'} peripheral edema. O2 sat {o2}% on room air. BNP {'critically' if bnp > 2000 else 'significantly'} elevated at {bnp:,}. {'IV Lasix initiated with inadequate response to oral diuretics' if bnp > 1500 else 'Oral diuretics with close monitoring'}.",
+            "clinical_summary": (
+                f"**CHIEF COMPLAINT:** Worsening shortness of breath and edema.\n\n"
+                f"**History of Present Illness (HPI):** {age}-year-old {'male' if i % 2 == 0 else 'female'} presenting with acute decompensated heart failure. "
+                f"Patient reports progressive documentation over the last 48 hours. {'Severe dyspnea at rest' if o2 < 88 else 'Moderate dyspnea on exertion'}, "
+                f"associated with orthopnea and paroxysmal nocturnal dyspnea.\n\n"
+                f"**OBJECTIVE DATA:**\n"
+                f"- **Vitals:** O2 sat {o2}% on room air, RR 24, BP 145/90.\n"
+                f"- **Exam:** Bilateral crackles in lung bases, {'3+' if bnp > 2000 else '2+'} pitting lower extremity edema.\n"
+                f"- **Labs/Imaging:** BNP {'critically ' if bnp > 2000 else 'significantly '}elevated at {bnp:,} pg/mL. Echo shows EF {ef}%. CXR reveals pulmonary vascular congestion.\n\n"
+                f"**ASSESSMENT & PLAN:** Acute on chronic heart failure exacerbation. "
+                f"{'Requires urgent inpatient admission for continuous IV Lasix and respiratory support.' if bnp > 1500 else 'Observation status for oral diuresis and close monitoring.'}"
+            ),
             "timeline": [
                 {"day": "Day 1", "event": "Emergency Room Arrival", "details": f"{'Severe' if o2 < 88 else 'Moderate'} dyspnea, O2 sat {o2}%, bilateral crackles"},
                 {"day": "Day 1", "event": "Labs & Imaging", "details": f"BNP {bnp:,}, CXR {'bilateral pleural effusions' if bnp > 1500 else 'mild congestion'}, Echo EF {ef}%"},
@@ -265,7 +276,17 @@ def build_cases():
             "diagnosis": {"primary": "J44.1", "display": "Acute COPD Exacerbation with Acute Exacerbation", "secondary": ["J96.01", "J18.9"]},
             "vitals": {"temp": temp, "bp": bp, "hr": hr, "rr": rr, "o2_sat": o2},
             "labs": {"wbc": wbc, "ph": ph, "pco2": pco2, "procalcitonin": procal},
-            "clinical_summary": f"{age}-year-old {'male' if i % 2 == 0 else 'female'} with {'severe' if ph < 7.32 else 'moderate'} COPD (GOLD Stage {'III' if ph < 7.32 else 'II'}) presenting with acute exacerbation. {'Failed outpatient prednisone and azithromycin course' if pco2 > 50 else 'Worsening symptoms despite bronchodilators'}. {'Hypoxic' if o2 < 88 else 'Borderline hypoxic'} (O2 sat {o2}%), {'tachypneic' if rr > 24 else 'mildly elevated RR'} (RR {rr}). ABG shows {'respiratory acidosis' if ph < 7.35 else 'near-normal pH'} with pH {ph} and pCO2 {pco2}. {'IV methylprednisolone and nebulizer treatments initiated' if ph < 7.35 else 'Oral steroids and nebulizers started'}.",
+            "clinical_summary": (
+                f"**CHIEF COMPLAINT:** Severe respiratory distress and productive cough.\n\n"
+                f"**History of Present Illness (HPI):** {age}-year-old {'male' if i % 2 == 0 else 'female'} with {'severe' if ph < 7.32 else 'moderate'} COPD (GOLD Stage {'III' if ph < 7.32 else 'II'}) presenting with acute exacerbation. "
+                f"Patient reports 4 days of worsening symptoms. {'Failed outpatient prednisone and azithromycin course' if pco2 > 50 else 'Worsening symptoms despite bronchodilators'}.\n\n"
+                f"**OBJECTIVE DATA:**\n"
+                f"- **Vitals:** {'Hypoxic' if o2 < 88 else 'Borderline hypoxic'} (O2 sat {o2}%), {'tachypneic' if rr > 24 else 'mildly elevated RR'} (RR {rr}).\n"
+                f"- **Exam:** Diffuse expiratory wheezing, accessory muscle use, diminished breath sounds bilaterally.\n"
+                f"- **Labs:** ABG shows {'respiratory acidosis' if ph < 7.35 else 'near-normal pH'} with pH {ph} and pCO2 {pco2}.\n\n"
+                f"**ASSESSMENT & PLAN:** Acute COPD exacerbation with impending respiratory failure. "
+                f"{'IV methylprednisolone, continuous nebulizer treatments, and BiPAP initiated.' if ph < 7.35 else 'Oral steroids and scheduled nebulizers started. Monitor on floor.'}"
+            ),
             "timeline": [
                 {"day": "Day 1", "event": "Emergency Room Arrival", "details": f"{'Severe' if o2 < 86 else 'Moderate'} dyspnea, O2 sat {o2}%"},
                 {"day": "Day 1", "event": "Labs & ABG", "details": f"pH {ph}, pCO2 {pco2}, WBC {wbc}"},
@@ -326,7 +347,17 @@ def build_cases():
             "diagnosis": {"primary": "A41.9", "display": "Sepsis, Unspecified Organism", "secondary": ["I95.9", "G93.41"]},
             "vitals": {"temp": temp, "bp": bp, "hr": hr, "rr": rr, "o2_sat": o2},
             "labs": {"wbc": wbc, "lactate": lact, "procalcitonin": procal, "creatinine": creat},
-            "clinical_summary": f"{age}-year-old {'male' if i % 2 == 0 else 'female'} presenting with {'severe sepsis' if lact >= 4.0 else 'suspected sepsis'} secondary to {'UTI' if i % 3 == 0 else 'pneumonia' if i % 3 == 1 else 'abdominal source'}. {'Persistent hypotension' if int(bp.split('/')[0]) < 90 else 'Borderline hypotension'} (BP {bp}) {'despite 2L IV fluid resuscitation' if lact > 3 else 'responsive to initial fluids'}. Elevated lactate ({lact} mmol/L), procalcitonin {procal}, WBC {wbc}. {'Altered mental status — confused to time and situation' if lact > 4 else 'Alert and oriented'}. Broad-spectrum IV antibiotics initiated.",
+            "clinical_summary": (
+                f"**CHIEF COMPLAINT:** Fever, confusion, and generalized weakness.\n\n"
+                f"**History of Present Illness (HPI):** {age}-year-old {'male' if i % 2 == 0 else 'female'} presenting with {'severe sepsis' if lact >= 4.0 else 'suspected sepsis'} secondary to {'UTI' if i % 3 == 0 else 'pneumonia' if i % 3 == 1 else 'abdominal source'}. "
+                f"Patient's family notes declining mental status / Altered Mental Status (AMS) over 24 hours.\n\n"
+                f"**OBJECTIVE DATA:**\n"
+                f"- **Vitals:** {'Persistent hypotension' if int(bp.split('/')[0]) < 90 else 'Borderline hypotension'} (BP {bp}) {'despite 2L IV fluid resuscitation' if lact > 3 else 'responsive to initial fluids'}, Temp {temp}°F, HR {hr} bpm, RR {rr}/min, Oxygen Saturation {o2}%.\n"
+                f"- **Exam:** {'Altered Mental Status (AMS) — confused to time and situation, lethargic.' if lact > 4 else 'Alert and oriented, but toxic appearing.'}\n"
+                f"- **Labs:** Elevated lactate ({lact} mmol/L), procalcitonin {procal} ng/mL, WBC {wbc} K/uL, creatinine {creat} mg/dL.\n\n"
+                f"**ASSESSMENT & PLAN:** Sepsis protocol initiated. Broad-spectrum intravenous (IV) antibiotics started. "
+                f"{'Patient meets criteria for ICU admission for vasopressor support.' if lact > 4.0 else 'Admit for continued IV antibiotics and fluid resuscitation.'}"
+            ),
             "timeline": [
                 {"day": "Day 1", "event": "Emergency Room Arrival", "details": f"Fever {temp}°F, {'hypotension' if int(bp.split('/')[0]) < 90 else 'low-normal BP'}, {'AMS' if lact > 4 else 'alert'}"},
                 {"day": "Day 1", "event": "Sepsis Workup", "details": f"Blood cultures x2, Lactate {lact}, PCT {procal}"},
@@ -494,8 +525,43 @@ def build_policy_matches(cases):
             lact = labs.get("lactate", 0)
             wbc = labs.get("wbc", 10)
             bp_sys = int(vitals.get("bp", "120/80").split("/")[0])
+            
+            # Determine source of infection from clinical summary if possible
+            inf_source = ""
+            summary_lower = (structured.get("clinical_summary") or "").lower()
+            if "uti" in summary_lower or "urinary" in summary_lower:
+                inf_source = " (secondary to UTI)"
+            elif "pneumonia" in summary_lower:
+                inf_source = " (secondary to Pneumonia)"
+            elif "abdominal" in summary_lower:
+                inf_source = " (secondary to Abdominal source)"
+            elif "cellulitis" in summary_lower or "skin" in summary_lower:
+                inf_source = " (secondary to Cellulitis/Skin)"
+
+            # Check for abnormal vitals/labs supporting infection (SIRS criteria)
+            temp = float(vitals.get("temp", 98.6))
+            hr = float(vitals.get("hr", 70))
+            rr = float(vitals.get("rr", 16))
+            procal = float(labs.get("procalcitonin", 0))
+            
+            signs = []
+            if temp > 100.4:
+                signs.append(f"fever ({temp}°F)")
+            if wbc > 12.0 or wbc < 4.0:
+                signs.append(f"leukocytosis (WBC {wbc} K/uL)")
+            if procal > 0.15:
+                signs.append(f"elevated procalcitonin ({procal} ng/mL)")
+            if hr > 100:
+                signs.append(f"tachycardia ({hr} bpm)")
+            if rr > 24:
+                signs.append(f"tachypnea ({rr} breaths/min)")
+                
+            supporting_text = ""
+            if signs:
+                supporting_text = " supported by " + " and ".join(signs[:2])
+
             criteria = [
-                {"criterion": "Suspected/Confirmed Infection", "section": "6A", "status": "MET", "evidence": "Infection confirmed, blood cultures pending", "confidence": 0.96},
+                {"criterion": "Suspected Infection", "section": "6A", "status": "MET", "evidence": f"Infection suspected{inf_source}{supporting_text} based on diagnosis of Sepsis", "confidence": 0.96},
                 {"criterion": "Elevated Lactate", "section": "6B", "status": "MET" if lact >= 2.0 else "NOT_MET", "evidence": f"Lactate {lact} mmol/L", "confidence": 0.99 if lact >= 2.0 else 0.80},
                 {"criterion": "Persistent Hypotension", "section": "6C", "status": "MET" if bp_sys < 90 else "NOT_MET", "evidence": f"BP {vitals.get('bp')}", "confidence": 0.97 if bp_sys < 90 else 0.75},
                 {"criterion": "Altered Mental Status", "section": "6D", "status": "MET" if lact > 4.0 else "NOT_MET", "evidence": f"{'Confused to time and situation' if lact > 4.0 else 'Alert and oriented'}", "confidence": 0.95 if lact > 4.0 else 0.80},
@@ -647,16 +713,29 @@ def build_audit_results(decisions, cases):
                 findings.append({"type": "DOCUMENTATION_GAP", "severity": "LOW", "description": "Rationale could include more specific lab values", "recommendation": "Consider citing exact values for all referenced criteria"})
         elif dec["decision"] == "DENIED":
             # Check if denial contradicts evidence
+            dx_code = c["primary_diagnosis_code"]
             o2 = vitals.get("o2_sat", 95)
             bnp = labs.get("bnp", 0)
-            if (o2 < 90 and bnp > 2000):  # wrongful denial
+            lact = labs.get("lactate", 0)
+            bp_val = vitals.get("bp", "120/80")
+            bp_sys = 120
+            if bp_val and "/" in bp_val:
+                try:
+                    bp_sys = int(bp_val.split("/")[0])
+                except:
+                    pass
+            
+            is_wrongful_chf = (o2 < 90 and bnp > 2000)
+            is_wrongful_sepsis = (dx_code == "A41.9" and lact >= 2.0 and bp_sys < 90)
+
+            if is_wrongful_chf or is_wrongful_sepsis:  # wrongful denial
                 clinical_accuracy = random.randint(28, 42)
                 doc_completeness = random.randint(25, 40)
                 policy_compliance = random.randint(30, 45)
                 consistency = random.randint(55, 70)
                 findings = [
-                    {"type": "POLICY_MISMATCH", "severity": "CRITICAL", "description": f"Reviewer denied but O2 sat {o2}% and BNP {bnp:,} meet admission criteria", "recommendation": "Decision contradicts clinical evidence. Review policy criteria."},
-                    {"type": "CLINICAL_MISS", "severity": "CRITICAL", "description": "Critical lab values not addressed in rationale", "recommendation": "Rationale must reference specific vitals and labs."},
+                    {"type": "POLICY_MISMATCH", "severity": "CRITICAL", "description": f"Reviewer denied but Sepsis criteria met with Lactate {lact} and BP {bp_val}", "recommendation": "Decision contradicts clinical evidence. Review policy criteria."},
+                    {"type": "CLINICAL_MISS", "severity": "CRITICAL", "description": "Critical values not addressed in rationale", "recommendation": "Rationale must reference specific vitals and labs."},
                     {"type": "DOCUMENTATION_GAP", "severity": "HIGH", "description": "Insufficient clinical justification for denial", "recommendation": "Include specific criteria references in rationale."},
                 ]
             else:

@@ -62,7 +62,7 @@ const SUGGESTION_CATEGORIES: SuggestionCategory[] = [
       "Which cases have the highest appeal risk?",
       "Show appeal outcomes for denied cases",
       "What diagnoses have the most appeals?",
-      "What is our total financial exposure?"
+      "What is our average appeal overturn risk?"
     ]
   },
   {
@@ -241,6 +241,9 @@ export default function ChatPage() {
         html += renderTable(seg.content);
       } else {
         let content = seg.content
+          .replace(/^### (.*)$/gm, "<h3 style='margin:12px 0 4px;font-size:1.05rem;color:var(--text-primary);'>$1</h3>")
+          .replace(/^## (.*)$/gm, "<h2 style='margin:16px 0 6px;font-size:1.15rem;color:var(--text-primary);'>$1</h2>")
+          .replace(/^# (.*)$/gm, "<h1 style='margin:16px 0 8px;font-size:1.3rem;color:var(--text-primary);'>$1</h1>")
           .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
           .replace(/\n/g, "<br />")
           .replace(/^- /gm, "&#8226; ");

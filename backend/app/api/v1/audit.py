@@ -64,7 +64,7 @@ async def get_audit_result(
     Returns the effective score (override if set, else AI score) plus explanation.
     """
     result = db.execute("""
-        SELECT ar.*, c.status as case_status, c.submitted_by 
+        SELECT ar.*, c.status as case_status, c.submitted_by, c.case_number, c.patient_name
         FROM audit_results ar
         JOIN cases c ON ar.case_id = c.id
         WHERE ar.case_id = ? 
@@ -319,7 +319,7 @@ async def element_score_override(
             raise HTTPException(status_code=400, detail=f"{name} must be 0-100")
 
     # Auto-calculate weighted total
-    total = round(int(ca) * 0.30 + int(dc) * 0.25 + int(pc) * 0.25 + int(cs) * 0.10 + int(ts) * 0.10)
+    total = round(int(ca) * 0.40 + int(dc) * 0.20 + int(pc) * 0.20 + int(cs) * 0.10 + int(ts) * 0.10)
 
     # Determine risk level and result
     risk = "LOW" if total >= 85 else "MEDIUM" if total >= 70 else "HIGH" if total >= 50 else "CRITICAL"
@@ -333,16 +333,12 @@ async def element_score_override(
                qa_score = ?, risk_level = ?, audit_result = ?,
                original_ai_score = ?,
                qa_override_score = ?, qa_override_notes = ?,
-               qa_override_by = ?, qa_override_at = ?,
-               qa_verified = TRUE, qa_verified_by = ?, qa_verified_at = ?
+               qa_override_by = ?, qa_override_at = ?
          WHERE id = ?
     """, [int(ca), int(dc), int(pc), int(cs), int(ts),
           total, risk, result, original_ai_score,
           total, notes.strip() if notes else "Element-level score adjustment",
-          user["id"], now, user["id"], now, audit_id])
-
-    # Also update case status
-    db.execute("UPDATE cases SET status = 'AUDITED' WHERE id = ?", [case_id])
+          user["id"], now, audit_id])
 
     reviewer_id = get_reviewer_id_for_case(db, case_id)
     if reviewer_id:

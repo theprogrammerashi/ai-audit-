@@ -19,9 +19,9 @@ const severityIcons: Record<string, any> = {
 };
 
 const DIMENSION_CONFIG = [
-  { key: "clinical_accuracy", label: "Clinical Accuracy", weight: 0.30, icon: Target, desc: "Alignment of decision with clinical evidence" },
-  { key: "documentation_completeness", label: "Documentation", weight: 0.25, icon: FileText, desc: "Completeness and quality of rationale" },
-  { key: "policy_compliance", label: "Policy Compliance", weight: 0.25, icon: Scale, desc: "Adherence to applicable policy criteria" },
+  { key: "clinical_accuracy", label: "Clinical Accuracy", weight: 0.40, icon: Target, desc: "Alignment of decision with clinical evidence" },
+  { key: "documentation_completeness", label: "Documentation", weight: 0.20, icon: FileText, desc: "Completeness and quality of rationale" },
+  { key: "policy_compliance", label: "Policy Compliance", weight: 0.20, icon: Scale, desc: "Adherence to applicable policy criteria" },
   { key: "consistency_score", label: "Consistency", weight: 0.10, icon: Users, desc: "Alignment with peer decision patterns" },
   { key: "timeliness_score", label: "Timeliness", weight: 0.10, icon: Clock, desc: "Review completed within SLA timeframe" },
 ];
@@ -45,7 +45,11 @@ export default function AuditDetailPage() {
   const [editScores, setEditScores] = useState<Record<string, number>>({});
   const [editNotes, setEditNotes] = useState("");
   const [isSaving, setIsSaving] = useState(false);
-  const [isVerifying, setIsVerifying] = useState(false);
+
+  // Finalize (Verify & Complete)
+  const [isVerifyModalOpen, setIsVerifyModalOpen] = useState(false);
+  const [verifyNotes, setVerifyNotes] = useState("");
+  const [isVerifyingAndCompleting, setIsVerifyingAndCompleting] = useState(false);
 
   const canOverride = user?.role === "QA_LEAD" || user?.role === "ADMIN" || user?.role === "EXECUTIVE";
 
@@ -90,28 +94,31 @@ export default function AuditDetailPage() {
     }
   };
 
-  const handleVerify = async () => {
-    setIsVerifying(true);
-    try {
-      await api.post(`/audit/${caseId}/verify`);
-      setActionSuccess("QA audit verified — scores are now visible to the nurse.");
-      fetchAudit();
-    } catch (err) {
-      console.error("Failed to verify:", err);
-      alert("Failed to verify audit.");
-    } finally {
-      setIsVerifying(false);
+  const handleVerifyAndComplete = async () => {
+    if (verifyNotes.trim().length < 5) {
+      alert("Please provide a QA remark (min 5 characters) for the nurse.");
+      return;
     }
-  };
-
-  const handleMarkComplete = async () => {
+    setIsVerifyingAndCompleting(true);
     try {
+      // 1. Save the remark
+      await api.post(`/audit/${caseId}/score-override`, {
+        score: d.qa_override_score ?? d.qa_score,
+        notes: verifyNotes
+      });
+      // 2. Verify (publishes scores)
+      await api.post(`/audit/${caseId}/verify`);
+      // 3. Complete (closes case)
       await api.post(`/audit/${caseId}/complete`);
-      setActionSuccess("QA Audit marked as complete.");
+      
+      setActionSuccess("QA Audit verified, published, and marked as complete.");
+      setIsVerifyModalOpen(false);
       fetchAudit();
     } catch (err) {
-      console.error("Failed to complete audit:", err);
-      alert("Failed to complete QA audit.");
+      console.error("Failed to verify and complete audit:", err);
+      alert("Failed to finalize QA audit.");
+    } finally {
+      setIsVerifyingAndCompleting(false);
     }
   };
 
@@ -170,7 +177,7 @@ export default function AuditDetailPage() {
             </h1>
             <div style={{ display: "flex", alignItems: "center", gap: "12px", marginTop: "6px" }}>
               <span style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}>
-                Case ID: <strong>{d.case_id}</strong>
+                Case: <strong>{d.case_number || d.case_id}</strong> {d.patient_name && <span>({d.patient_name})</span>}
               </span>
               <span className={`badge ${effectiveScore >= 80 ? "badge-success" : "badge-danger"}`}>
                 {effectiveScore >= 80 ? "PASS" : "FAIL"}
@@ -250,7 +257,7 @@ export default function AuditDetailPage() {
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "6px" }}>
               <Edit3 size={14} style={{ color: "var(--warning)" }} />
-              <strong style={{ color: "var(--warning)", fontSize: "0.85rem" }}>QA Lead Override</strong>
+              <strong style={{ color: "var(--warning)", fontSize: "0.85rem" }}>QA Lead Adjustment</strong>
             </div>
             <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", margin: 0 }}>
               Original AI Score: <strong>{d.original_ai_score}</strong> → Adjusted Score: <strong>{d.qa_override_score}</strong>
@@ -378,7 +385,7 @@ export default function AuditDetailPage() {
         {isEditing && (
           <div className="card" style={{ padding: "20px", marginTop: "16px", border: "2px solid var(--primary)", background: "rgba(232,82,26,0.02)" }}>
             <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, marginBottom: "8px", color: "var(--text-primary)" }}>
-              Override Notes <span style={{ color: "var(--danger)" }}>*</span>
+              QA Remarks <span style={{ color: "var(--danger)" }}>*</span>
             </label>
             <textarea
               className="input-field"
@@ -393,7 +400,7 @@ export default function AuditDetailPage() {
               <button className="btn btn-primary" onClick={handleSaveElementScores} disabled={isSaving}
                 style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                 {isSaving ? <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> : <Save size={14} />}
-                {isSaving ? "Saving..." : "Save & Verify"}
+                {isSaving ? "Saving..." : "Save Adjustments"}
               </button>
             </div>
           </div>
@@ -431,9 +438,33 @@ export default function AuditDetailPage() {
               </div>
               <div style={{ padding: "24px", overflowY: "auto", maxHeight: "70vh", fontSize: "0.88rem", lineHeight: 1.6, color: "var(--text-secondary)" }}>
                 <p style={{ fontSize: "0.9rem", color: "var(--text-primary)", marginBottom: "16px", fontWeight: 500 }}>
-                  {selectedDim === "timeliness_score"
-                    ? (d.timeliness_explanation || "The review was completed within the expected SLA timeframe. Timeliness is measured from case assignment to final decision submission.")
-                    : `Analysis for ${dimConfig?.label} based on the submitted rationale, clinical evidence, and policy criteria. Score: ${d[selectedDim] ?? 'N/A'}%. Weight contribution: ${Math.round((dimConfig?.weight || 0) * 100)}% of total.`}
+                  {(() => {
+                    const score = d[selectedDim] ?? 0;
+                    const label = dimConfig?.label || "";
+                    let text = "";
+                    if (selectedDim === "timeliness_score") {
+                      if (score >= 90) text = "The review was completed well within the expected SLA timeframe, demonstrating excellent operational efficiency.";
+                      else if (score >= 70) text = "The review was completed near the SLA deadline. Timeliness is acceptable but should be monitored.";
+                      else text = "The review missed the expected SLA timeframe. Immediate action is recommended to improve turnaround times.";
+                    } else if (selectedDim === "clinical_accuracy") {
+                      if (score >= 90) text = "The decision demonstrates a high degree of clinical accuracy, perfectly aligning with the submitted clinical evidence and patient history.";
+                      else if (score >= 70) text = "The decision is generally accurate but lacks strong alignment with some secondary clinical evidence.";
+                      else text = "The decision shows significant deviations from the clinical evidence, indicating a risk of wrongful denial or inappropriate approval.";
+                    } else if (selectedDim === "documentation_completeness") {
+                      if (score >= 90) text = "The submitted rationale is thorough, complete, and clearly references necessary clinical guidelines.";
+                      else if (score >= 70) text = "The documentation is adequate but could benefit from more specific citations of lab values or policy clauses.";
+                      else text = "The documentation is incomplete or vague. Critical clinical justifications are missing from the rationale.";
+                    } else if (selectedDim === "policy_compliance") {
+                      if (score >= 90) text = "The decision strictly adheres to applicable policy criteria with no detected deviations or compliance risks.";
+                      else if (score >= 70) text = "The decision is mostly compliant, though some minor policy conditions were not explicitly addressed in the rationale.";
+                      else text = "The decision fails to meet strict policy criteria, presenting a severe compliance and audit risk. Immediate review required.";
+                    } else if (selectedDim === "consistency_score") {
+                      if (score >= 90) text = "This decision aligns perfectly with historical peer decision patterns for similar cases and diagnoses.";
+                      else if (score >= 70) text = "This decision slightly deviates from typical peer patterns but remains within acceptable clinical variance.";
+                      else text = "This decision is highly anomalous compared to historical peer data. High risk of inconsistency and potential appeal.";
+                    }
+                    return `${text} Score: ${score}%. Weight contribution: ${Math.round((dimConfig?.weight || 0) * 100)}% of total.`;
+                  })()}
                 </p>
 
                 {(() => {
@@ -525,16 +556,9 @@ export default function AuditDetailPage() {
           <Users size={14} /> Request Peer Review
         </button>
         {canOverride && !isVerified && (
-          <button className="btn btn-primary" onClick={handleVerify} disabled={isVerifying}
+          <button className="btn btn-primary" onClick={() => setIsVerifyModalOpen(true)}
             style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-            {isVerifying ? <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> : <Eye size={14} />}
-            {isVerifying ? "Verifying..." : "Verify & Publish Scores"}
-          </button>
-        )}
-        {canOverride && d.case_status === "DECIDED" && (
-          <button className="btn btn-secondary" onClick={handleMarkComplete}
-            style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-            <CheckCircle size={14} /> Mark QA Complete
+            <BadgeCheck size={14} /> Verify & Publish Scores
           </button>
         )}
         {isVerified && (
@@ -551,6 +575,44 @@ export default function AuditDetailPage() {
         onClose={() => setIsPeerReviewOpen(false)}
         onSuccess={(msg) => setActionSuccess(msg)}
       />
+
+      {/* ── Verify & Publish Modal ───────────────────────────────────── */}
+      {isVerifyModalOpen && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+          background: "rgba(0,0,0,0.5)", zIndex: 9999,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          backdropFilter: "blur(2px)"
+        }}>
+          <div className="card" style={{ padding: "24px", width: "90%", maxWidth: "500px" }}>
+            <h3 style={{ marginTop: 0, marginBottom: "16px", color: "var(--text-primary)", display: "flex", alignItems: "center", gap: "8px" }}>
+              <BadgeCheck size={20} style={{ color: "var(--primary)" }} /> Finalize QA Audit
+            </h3>
+            <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginBottom: "16px" }}>
+              Verifying will publish the final scores to the nurse and officially close this case from the QA pipeline. Please provide any final remarks for the nurse below.
+            </p>
+            <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, marginBottom: "8px", color: "var(--text-primary)" }}>
+              QA Remarks <span style={{ color: "var(--danger)" }}>*</span>
+            </label>
+            <textarea
+              className="input-field"
+              rows={4}
+              value={verifyNotes}
+              onChange={e => setVerifyNotes(e.target.value)}
+              placeholder="Great job on this complex case, but remember to cite the specific policy guideline..."
+              style={{ width: "100%", resize: "vertical" }}
+            />
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px", marginTop: "24px" }}>
+              <button className="btn btn-secondary" onClick={() => setIsVerifyModalOpen(false)}>Cancel</button>
+              <button className="btn btn-primary" onClick={handleVerifyAndComplete} disabled={isVerifyingAndCompleting}
+                style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                {isVerifyingAndCompleting ? <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> : <BadgeCheck size={14} />}
+                {isVerifyingAndCompleting ? "Publishing..." : "Publish & Complete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

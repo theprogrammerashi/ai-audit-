@@ -90,8 +90,43 @@ def run_policy_match(case_id: str, diagnosis: str, structured: dict = None, db: 
                 bp_sys = int(bp_val.split("/")[0])
             except:
                 pass
+        
+        # Determine source of infection from clinical summary if possible
+        inf_source = ""
+        summary_lower = (structured.get("clinical_summary") or "").lower()
+        if "uti" in summary_lower or "urinary" in summary_lower:
+            inf_source = " (secondary to UTI)"
+        elif "pneumonia" in summary_lower:
+            inf_source = " (secondary to Pneumonia)"
+        elif "abdominal" in summary_lower:
+            inf_source = " (secondary to Abdominal source)"
+        elif "cellulitis" in summary_lower or "skin" in summary_lower:
+            inf_source = " (secondary to Cellulitis/Skin)"
+
+        # Check for abnormal vitals/labs supporting infection (SIRS criteria)
+        temp = float(vitals.get("temp", 98.6))
+        hr = float(vitals.get("hr", 70))
+        rr = float(vitals.get("rr", 16))
+        procal = float(labs.get("procalcitonin", 0))
+        
+        signs = []
+        if temp > 100.4:
+            signs.append(f"fever ({temp}°F)")
+        if wbc > 12.0 or wbc < 4.0:
+            signs.append(f"leukocytosis (WBC {wbc} K/uL)")
+        if procal > 0.15:
+            signs.append(f"elevated procalcitonin ({procal} ng/mL)")
+        if hr > 100:
+            signs.append(f"tachycardia ({hr} bpm)")
+        if rr > 24:
+            signs.append(f"tachypnea ({rr} breaths/min)")
+            
+        supporting_text = ""
+        if signs:
+            supporting_text = " supported by " + " and ".join(signs[:2])
+
         criteria = [
-            {"criterion": "Suspected Infection", "section": "6A", "status": "MET", "evidence": f"Infection suspected based on diagnosis of {diagnosis}", "confidence": 0.96},
+            {"criterion": "Suspected Infection", "section": "6A", "status": "MET", "evidence": f"Infection suspected{inf_source}{supporting_text} based on diagnosis of {diagnosis}", "confidence": 0.96},
             {"criterion": "Elevated Lactate", "section": "6B", "status": "MET" if lact >= 2.0 else "NOT_MET", "evidence": f"Lactate {lact}", "confidence": 0.99 if lact >= 2.0 else 0.80},
             {"criterion": "Persistent Hypotension", "section": "6C", "status": "MET" if bp_sys < 90 else "NOT_MET", "evidence": f"BP {bp_val}", "confidence": 0.97 if bp_sys < 90 else 0.75},
             {"criterion": "Altered Mental Status", "section": "6D", "status": "MET" if lact > 4.0 else "NOT_MET", "evidence": "Altered Mental Status (AMS) likely" if lact > 4.0 else "Alert", "confidence": 0.95 if lact > 4.0 else 0.80},

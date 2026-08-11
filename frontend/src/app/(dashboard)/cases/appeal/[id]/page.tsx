@@ -67,9 +67,15 @@ export default function AppealView360() {
           </p>
         </div>
         <div style={{ display: "flex", gap: "12px" }}>
-          <span className={`badge ${appeal.appeal_outcome?.includes("Overturn") ? "badge-warning" : "badge-success"}`} style={{ fontSize: "0.9rem", padding: "8px 16px" }}>
-            Current Outcome: {appeal.appeal_outcome}
-          </span>
+          {appeal.appeal_outcome ? (
+            <span className={`badge ${appeal.appeal_outcome.includes("Overturn") ? "badge-warning" : "badge-success"}`} style={{ fontSize: "0.9rem", padding: "8px 16px" }}>
+              Current Outcome: {appeal.appeal_outcome}
+            </span>
+          ) : (
+            <span className="badge badge-warning" style={{ fontSize: "0.9rem", padding: "8px 16px" }}>
+              Status: Pending Review
+            </span>
+          )}
         </div>
       </div>
 
@@ -90,10 +96,6 @@ export default function AppealView360() {
             <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--border-default)", paddingBottom: "8px" }}>
               <span style={{ color: "var(--text-secondary)" }}>Original Denial Reason:</span>
               <span style={{ fontWeight: 500 }}>{appeal.denial_reason_category}</span>
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--border-default)", paddingBottom: "8px" }}>
-              <span style={{ color: "var(--text-secondary)" }}>Disputed Amount:</span>
-              <span style={{ fontWeight: 600 }}>${(appeal.financial_amount_disputed || 0).toLocaleString()}</span>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", paddingBottom: "8px" }}>
               <span style={{ color: "var(--text-secondary)" }}>Turnaround Days:</span>

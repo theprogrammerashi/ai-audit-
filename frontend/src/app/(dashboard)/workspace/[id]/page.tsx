@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Fragment } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   LayoutDashboard, CheckCircle, XCircle, AlertTriangle,
@@ -236,8 +236,8 @@ export default function WorkspaceDetailPage() {
         const role = meRes.data.role;
         setUserRole(role);
 
-        // QA Leads / Admins should not see nurse workspace — redirect to audit
-        if (role === "QA_LEAD" || role === "ADMIN" || role === "EXECUTIVE") {
+        // Admins and Executives should not see nurse workspace — redirect to audit
+        if (role === "ADMIN" || role === "EXECUTIVE") {
           router.replace(`/audit/${caseId}`);
           return;
         }
@@ -524,13 +524,26 @@ export default function WorkspaceDetailPage() {
 
             <div style={{ padding: "20px" }}>
               {/* Summary text */}
-              <p style={{ 
+              <div style={{ 
                 fontSize: "0.92rem", lineHeight: 1.7, color: "var(--text-secondary)", margin: 0,
                 padding: "14px 16px", background: "rgba(15,14,12,0.02)", borderRadius: "var(--radius-md)",
                 borderLeft: "3px solid rgba(139,92,246,0.4)"
               }}>
-                {d.clinical_summary || "No clinical summary available for this case."}
-              </p>
+                {d.clinical_summary ? (
+                  d.clinical_summary.split(/\r?\n|\\n/g).map((line: string, i: number) => (
+                    <Fragment key={i}>
+                      {line.split(/(\*\*.*?\*\*)/g).map((part, j) => 
+                        part.startsWith('**') && part.endsWith('**') 
+                          ? <strong key={j} style={{ color: "var(--text-primary)" }}>{part.slice(2, -2)}</strong> 
+                          : part
+                      )}
+                      {i < d.clinical_summary.split(/\r?\n|\\n/g).length - 1 && <br />}
+                    </Fragment>
+                  ))
+                ) : (
+                  "No clinical summary available for this case."
+                )}
+              </div>
 
               {/* Documentation Gap warning if vitals or labs are missing */}
               {(missingVitals.length > 0 || missingLabs.length > 0) && (
@@ -1093,9 +1106,6 @@ export default function WorkspaceDetailPage() {
           <div className="card" style={{ padding: "20px", border: "2px solid var(--border-default)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
               <h3 style={{ fontSize: "1rem" }}>Decision</h3>
-              <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.85rem", fontWeight: 600, color: "var(--success)" }}>
-                AI Confidence: {Math.round((p.overall_confidence || 0) * 100)}%
-              </div>
             </div>
 
             {/* AI Recommendation Banner */}

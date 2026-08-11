@@ -84,9 +84,11 @@ export default function CasesPage() {
           <h1 style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "6px" }}><FolderOpen size={28} style={{ color: "var(--primary)" }} /> Cases</h1>
           <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>Manage clinical cases and review submissions</p>
         </div>
-        <button className="btn btn-primary" onClick={() => router.push("/cases/new")}>
-          <Plus size={16} /> New Case
-        </button>
+        {user?.role !== "QA_LEAD" && (
+          <button className="btn btn-primary" onClick={() => router.push("/cases/new")}>
+            <Plus size={16} /> New Case
+          </button>
+        )}
       </div>
 
       <div style={{ display: "flex", gap: "16px", borderBottom: "1px solid var(--border-default)", marginBottom: "24px" }}>
@@ -201,7 +203,6 @@ export default function CasesPage() {
                 <th>Type</th>
                 <th>Diagnosis</th>
                 <th>Outcome</th>
-                <th style={{ textAlign: "right" }}>Disputed</th>
                 <th style={{ textAlign: "center" }}>Turnaround</th>
                 <th style={{ textAlign: "center" }}>Action</th>
               </tr>
@@ -214,11 +215,14 @@ export default function CasesPage() {
                   <td>{a.appellant_type}</td>
                   <td>{a.diagnosis_category}</td>
                   <td>
-                    <span className={`badge ${a.appeal_outcome?.includes("Overturn") ? "badge-warning" : "badge-success"}`}>
-                      {a.appeal_outcome}
-                    </span>
+                    {a.appeal_outcome ? (
+                      <span className={`badge ${a.appeal_outcome.includes("Overturn") ? "badge-warning" : "badge-success"}`}>
+                        {a.appeal_outcome}
+                      </span>
+                    ) : (
+                      <span className="badge badge-warning">Pending Review</span>
+                    )}
                   </td>
-                  <td style={{ textAlign: "right", fontWeight: 600 }}>${(a.financial_amount_disputed || 0).toLocaleString()}</td>
                   <td style={{ textAlign: "center" }}>{a.turnaround_days} days</td>
                   <td style={{ textAlign: "center" }}>
                     <button className="btn btn-secondary" style={{ padding: "6px 12px", fontSize: "0.75rem", margin: "0 auto" }} onClick={() => router.push(`/cases/appeal/${a.id}`)}>

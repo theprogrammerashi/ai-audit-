@@ -26,7 +26,7 @@ export default function WorkspacePage() {
   const [qaOverview, setQaOverview] = useState<any>(null);
   const [filterNurse, setFilterNurse] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc" | null>(null);
+  const [sortOrder, setSortOrder] = useState<"high" | "low" | "recent" | null>("recent");
 
   const priorityWeight: Record<string, number> = { URGENT: 3, HIGH: 2, STANDARD: 1 };
 
@@ -45,11 +45,25 @@ export default function WorkspacePage() {
       );
     }
     
-    if (sortOrder) {
+    if (sortOrder === "high") {
       result = [...result].sort((a, b) => {
         const wA = priorityWeight[a.urgency] || 1;
         const wB = priorityWeight[b.urgency] || 1;
-        return sortOrder === "desc" ? wB - wA : wA - wB;
+        return wB - wA;
+      });
+    } else if (sortOrder === "low") {
+      result = [...result].sort((a, b) => {
+        const wA = priorityWeight[a.urgency] || 1;
+        const wB = priorityWeight[b.urgency] || 1;
+        return wA - wB;
+      });
+    } else if (sortOrder === "recent") {
+      result = [...result].sort((a, b) => {
+        let dateA = a.submitted_at;
+        let dateB = b.submitted_at;
+        if (dateA && !dateA.endsWith('Z') && !dateA.includes('+')) dateA = dateA.replace(' ', 'T') + 'Z';
+        if (dateB && !dateB.endsWith('Z') && !dateB.includes('+')) dateB = dateB.replace(' ', 'T') + 'Z';
+        return new Date(dateB).getTime() - new Date(dateA).getTime();
       });
     }
     
@@ -333,15 +347,22 @@ export default function WorkspacePage() {
                   </div>
                   <div style={{ display: "flex", background: "var(--bg-surface)", border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", padding: "2px" }}>
                     <button 
-                      onClick={() => setSortOrder(sortOrder === "desc" ? null : "desc")}
-                      style={{ padding: "4px 8px", background: sortOrder === "desc" ? "var(--primary-light)" : "transparent", color: sortOrder === "desc" ? "var(--primary)" : "var(--text-secondary)", border: "none", borderRadius: "var(--radius-sm)", cursor: "pointer", display: "flex", alignItems: "center", gap: "4px", fontSize: "0.8rem", fontWeight: 500 }}
+                      onClick={() => setSortOrder(sortOrder === "recent" ? null : "recent")}
+                      style={{ padding: "4px 8px", background: sortOrder === "recent" ? "var(--primary-light)" : "transparent", color: sortOrder === "recent" ? "var(--primary)" : "var(--text-secondary)", border: "none", borderRadius: "var(--radius-sm)", cursor: "pointer", display: "flex", alignItems: "center", gap: "4px", fontSize: "0.8rem", fontWeight: 500 }}
+                      title="Sort Most Recent First"
+                    >
+                      <Clock size={12} /> Recent
+                    </button>
+                    <button 
+                      onClick={() => setSortOrder(sortOrder === "high" ? null : "high")}
+                      style={{ padding: "4px 8px", background: sortOrder === "high" ? "var(--primary-light)" : "transparent", color: sortOrder === "high" ? "var(--primary)" : "var(--text-secondary)", border: "none", borderRadius: "var(--radius-sm)", cursor: "pointer", display: "flex", alignItems: "center", gap: "4px", fontSize: "0.8rem", fontWeight: 500 }}
                       title="Sort Highest Priority First"
                     >
                       <ArrowDown size={14} /> High
                     </button>
                     <button 
-                      onClick={() => setSortOrder(sortOrder === "asc" ? null : "asc")}
-                      style={{ padding: "4px 8px", background: sortOrder === "asc" ? "var(--primary-light)" : "transparent", color: sortOrder === "asc" ? "var(--primary)" : "var(--text-secondary)", border: "none", borderRadius: "var(--radius-sm)", cursor: "pointer", display: "flex", alignItems: "center", gap: "4px", fontSize: "0.8rem", fontWeight: 500 }}
+                      onClick={() => setSortOrder(sortOrder === "low" ? null : "low")}
+                      style={{ padding: "4px 8px", background: sortOrder === "low" ? "var(--primary-light)" : "transparent", color: sortOrder === "low" ? "var(--primary)" : "var(--text-secondary)", border: "none", borderRadius: "var(--radius-sm)", cursor: "pointer", display: "flex", alignItems: "center", gap: "4px", fontSize: "0.8rem", fontWeight: 500 }}
                       title="Sort Lowest Priority First"
                     >
                       <ArrowUp size={14} /> Low
@@ -361,7 +382,11 @@ export default function WorkspacePage() {
                   {filteredAndSortedCases.map((c) => {
                     const ps = priorityStyles[c.urgency] || priorityStyles["STANDARD"];
                     
-                    const submittedAt = new Date(c.submitted_at);
+                    let submittedStr = c.submitted_at;
+                    if (submittedStr && !submittedStr.endsWith('Z') && !submittedStr.includes('+')) {
+                      submittedStr = submittedStr.replace(' ', 'T') + 'Z';
+                    }
+                    const submittedAt = new Date(submittedStr);
                     const now = new Date();
                     const diffHrs = Math.floor((now.getTime() - submittedAt.getTime()) / (1000 * 60 * 60));
                     const diffMins = Math.floor(((now.getTime() - submittedAt.getTime()) % (1000 * 60 * 60)) / (1000 * 60));

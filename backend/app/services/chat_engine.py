@@ -116,13 +116,12 @@ def retrieve_data(intent: str, db: sqlite3.Connection, message: str = "") -> dic
                             }
                         
                         # Fetch Appeal
-                        app_row = db.execute("SELECT risk_category, overturn_probability, financial_exposure_estimate, top_risk_factors FROM appeals WHERE decision_id = ?", [dec_id]).fetchone()
+                        app_row = db.execute("SELECT risk_category, overturn_probability, top_risk_factors FROM appeals WHERE decision_id = ?", [dec_id]).fetchone()
                         if app_row:
                             data["specific_case"]["appeal_risk"] = {
                                 "risk_category": app_row[0],
                                 "overturn_probability": app_row[1],
-                                "financial_exposure": app_row[2],
-                                "risk_factors": json.loads(app_row[3]) if app_row[3] else []
+                                "risk_factors": json.loads(app_row[2]) if app_row[2] else []
                             }
                 else:
                     data["specific_case"] = {"error": f"Case {case_no} not found in database."}
@@ -183,7 +182,7 @@ def retrieve_data(intent: str, db: sqlite3.Connection, message: str = "") -> dic
             try:
                 high_risk = db.execute("""
                     SELECT c.case_number, c.patient_name, c.primary_diagnosis_display,
-                           a.risk_category, a.overturn_probability, a.financial_exposure_estimate,
+                           a.risk_category, a.overturn_probability,
                            nd.decision, u.full_name as reviewer
                     FROM appeals a
                     JOIN nurse_decisions nd ON a.decision_id = nd.id
@@ -196,7 +195,7 @@ def retrieve_data(intent: str, db: sqlite3.Connection, message: str = "") -> dic
                     {
                         "case": r[0], "patient": r[1], "diagnosis": r[2],
                         "risk": r[3], "overturn_prob": round(r[4] * 100, 1) if r[4] else 0,
-                        "exposure": r[5], "decision": r[6], "reviewer": r[7]
+                        "decision": r[5], "reviewer": r[6]
                     } for r in high_risk
                 ]
             except Exception as e:
@@ -225,11 +224,9 @@ def retrieve_data(intent: str, db: sqlite3.Connection, message: str = "") -> dic
 
             # Total exposure from appeals table
             try:
-                exp = db.execute("SELECT ROUND(SUM(financial_exposure_estimate), 2), ROUND(AVG(overturn_probability), 3) FROM appeals").fetchone()
-                data["total_exposure"] = exp[0] if exp and exp[0] else 0
-                data["avg_overturn_prob"] = round((exp[1] or 0) * 100, 1)
+                exp = db.execute("SELECT ROUND(AVG(overturn_probability), 3) FROM appeals").fetchone()
+                data["avg_overturn_prob"] = round((exp[0] or 0) * 100, 1)
             except:
-                data["total_exposure"] = 0
                 data["avg_overturn_prob"] = 0
 
         elif intent == "audit_query":
@@ -561,7 +558,7 @@ def format_fallback(intent: str, data: dict) -> str:
                             lines.append(f"  *Recommendation: {f['recommendation']}*")
 
         if appeal:
-            lines.append(f"\n**Appeal Risk:** This case has a **{appeal.get('risk_category', 'Unknown')}** risk of appeal with a **{round((appeal.get('overturn_probability', 0)) * 100, 1)}%** overturn probability and **${appeal.get('financial_exposure', 0):,.0f}** financial exposure.")
+            lines.append(f"\n**Appeal Risk:** This case has a **{appeal.get('risk_category', 'Unknown')}** risk of appeal with a **{round((appeal.get('overturn_probability', 0)) * 100, 1)}%** overturn probability.")
 
         return "\n".join(lines)
 
@@ -632,23 +629,18 @@ def format_fallback(intent: str, data: dict) -> str:
             lines.append(f"| {icon} {risk} | {count} | {pct}% |")
 
         # Financial summary
-        if total_exposure or total_disputed:
-            lines.append(f"\n**Financial Impact:**")
-            if total_exposure:
-                lines.append(f"- Total estimated financial exposure: **${total_exposure:,.0f}**")
-            if total_disputed:
-                lines.append(f"- Total amount currently disputed: **${total_disputed:,.2f}**")
-            if avg_overturn:
-                lines.append(f"- Average overturn probability: **{avg_overturn}%**")
+        if avg_overturn:
+            lines.append(f"\n**Overturn Analytics:**")
+            lines.append(f"- Average overturn probability: **{avg_overturn}%**")
 
         # Individual high-risk cases
         if high_risk_cases:
             lines.append("\n**Highest Risk Cases (most likely to be overturned):**\n")
-            lines.append("| Case | Patient | Diagnosis | Decision | Overturn Risk | Exposure |")
-            lines.append("| --- | --- | --- | --- | --- | --- |")
+            lines.append("| Case | Patient | Diagnosis | Decision | Overturn Risk |")
+            lines.append("| --- | --- | --- | --- | --- |")
             for c in high_risk_cases[:6]:
                 risk_icon = '[!!]' if c['overturn_prob'] >= 70 else '[!]' if c['overturn_prob'] >= 40 else '[OK]'
-                lines.append(f"| {c['case']} | {c['patient']} | {c['diagnosis'][:30]} | {c['decision']} | {risk_icon} {c['overturn_prob']}% | ${c.get('exposure', 0):,.0f} |")
+                lines.append(f"| {c['case']} | {c['patient']} | {c['diagnosis'][:30]} | {c['decision']} | {risk_icon} {c['overturn_prob']}% |")
 
         # Outcomes
         outcomes = data.get("appeal_outcomes", {})
@@ -660,7 +652,7 @@ def format_fallback(intent: str, data: dict) -> str:
 
         # Actionable insight
         if critical > 0:
-            lines.append(f"\n**[ACTION REQUIRED] Immediate Action:** There are **{critical} high/critical risk cases** that should be reviewed urgently to minimize appeal exposure. Focus on denied cases with strong clinical evidence supporting admission.")
+            lines.append(f"\n**[ACTION REQUIRED] Immediate Action:** There are **{critical} high/critical risk cases** that should be reviewed urgently. Focus on denied cases with strong clinical evidence supporting admission.")
         lines.append("\n**[INSIGHT] Recommendation:** Cases with >60% overturn probability should be flagged for Medical Director review before the appeal deadline.")
 
         return "\n".join(lines)

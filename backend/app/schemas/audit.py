@@ -16,6 +16,8 @@ class AuditFinding(BaseModel):
 class AuditResultResponse(BaseModel):
     id: str
     case_id: str
+    case_number: Optional[str] = None
+    patient_name: Optional[str] = None
     case_status: Optional[str] = None
     decision_id: Optional[str] = None
     qa_score: int
