@@ -20,7 +20,7 @@ class AuditResultResponse(BaseModel):
     patient_name: Optional[str] = None
     case_status: Optional[str] = None
     decision_id: Optional[str] = None
-    qa_score: int
+    qa_score: float
     risk_level: str
     audit_result: str
     clinical_accuracy: Optional[int] = None
@@ -30,9 +30,9 @@ class AuditResultResponse(BaseModel):
     timeliness_score: Optional[int] = None
     timeliness_explanation: Optional[str] = None
     qa_ai_explanation: Optional[str] = None
-    effective_score: Optional[int] = None
-    original_ai_score: Optional[int] = None
-    qa_override_score: Optional[int] = None
+    effective_score: Optional[float] = None
+    original_ai_score: Optional[float] = None
+    qa_override_score: Optional[float] = None
     qa_override_notes: Optional[str] = None
     qa_override_by: Optional[str] = None
     qa_override_at: Optional[datetime] = None
@@ -54,7 +54,7 @@ class AuditQueueItem(BaseModel):
     diagnosis: str
     reviewer_name: Optional[str] = None
     decision: str
-    qa_score: Optional[int] = None
+    qa_score: Optional[float] = None
     risk_level: Optional[str] = None
     qa_verified: Optional[bool] = False
     case_type: Optional[str] = "prior_auth"

@@ -329,7 +329,7 @@ async def element_score_override(
             raise HTTPException(status_code=400, detail=f"{name} must be 0-100")
 
     # Auto-calculate weighted total
-    total = round(int(ca) * 0.40 + int(dc) * 0.20 + int(pc) * 0.20 + int(cs) * 0.10 + int(ts) * 0.10)
+    total = round(float(ca) * 0.40 + float(dc) * 0.20 + float(pc) * 0.20 + float(cs) * 0.10 + float(ts) * 0.10, 2)
 
     # Determine risk level and result
     if total >= 90:

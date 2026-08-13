@@ -253,7 +253,8 @@ def compute_qa_audit(
         documentation_completeness * 0.20 +
         policy_compliance          * 0.20 +
         consistency_score          * 0.10 +
-        timeliness_score           * 0.10
+        timeliness_score           * 0.10,
+        2
     )
 
     # ── Risk Level & Audit Result ───────────────────────────────────────────

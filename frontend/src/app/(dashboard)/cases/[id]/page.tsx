@@ -82,7 +82,80 @@ const ABNORMAL_EXPLANATIONS: Record<string, { title: string; range: string; mean
     range: "55% - 70%",
     meaning: "Reduced left ventricular ejection fraction (< 40%).",
     significance: "Indicates systolic heart failure with high risk for clinical instability."
+  },
+  ph: {
+    title: "Abnormal Lab: ABG pH (Acidosis/Alkalosis)",
+    range: "7.35 - 7.45",
+    meaning: "Blood pH is outside the normal physiological range.",
+    significance: "Indicates respiratory or metabolic acid-base disturbance. A pH < 7.35 indicates acidosis."
+  },
+  pco2: {
+    title: "Abnormal Lab: ABG pCO2 (Hypercapnia)",
+    range: "35 - 45 mmHg",
+    meaning: "Partial pressure of carbon dioxide in arterial blood is elevated.",
+    significance: "High pCO2 (>45 mmHg) indicates hypercapnia, typical of respiratory failure or COPD exacerbation."
+  },
+  po2: {
+    title: "Abnormal Lab: ABG pO2 (Hypoxemia)",
+    range: "75 - 100 mmHg",
+    meaning: "Partial pressure of oxygen in arterial blood is low.",
+    significance: "Low pO2 (<75 mmHg) indicates arterial hypoxemia, requiring oxygen therapy."
   }
+};
+
+const parseClinicalSummaryForLabs = (summaryText: string, currentLabs: Record<string, any>) => {
+  const labs = { ...currentLabs };
+  const text = (summaryText || "").toLowerCase();
+
+  // 1. pH
+  if (labs.ph === undefined || labs.ph === null || labs.ph === "") {
+    const phMatch = text.match(/ph\s*(?:of|is|=)?\s*(\d+\.\d+)/i);
+    if (phMatch && phMatch[1]) {
+      labs.ph = phMatch[1];
+    }
+  }
+
+  // 2. pCO2
+  if (labs.pco2 === undefined || labs.pco2 === null || labs.pco2 === "") {
+    const pco2Match = text.match(/pco2\s*(?:of|is|=)?\s*(\d+)/i);
+    if (pco2Match && pco2Match[1]) {
+      labs.pco2 = pco2Match[1];
+    }
+  }
+
+  // 3. pO2
+  if (labs.po2 === undefined || labs.po2 === null || labs.po2 === "") {
+    const po2Match = text.match(/po2\s*(?:of|is|=)?\s*(\d+)/i);
+    if (po2Match && po2Match[1]) {
+      labs.po2 = po2Match[1];
+    }
+  }
+
+  // 4. Lactate
+  if (labs.lactate === undefined || labs.lactate === null || labs.lactate === "") {
+    const lactateMatch = text.match(/lactate\s*(?:of|is|=)?\s*(\d+(?:\.\d+)?)/i);
+    if (lactateMatch && lactateMatch[1]) {
+      labs.lactate = lactateMatch[1];
+    }
+  }
+
+  // 5. BNP
+  if (labs.bnp === undefined || labs.bnp === null || labs.bnp === "") {
+    const bnpMatch = text.match(/bnp\s*(?:of|is|=)?\s*(\d+)/i);
+    if (bnpMatch && bnpMatch[1]) {
+      labs.bnp = bnpMatch[1];
+    }
+  }
+
+  // 6. Procalcitonin
+  if (labs.procalcitonin === undefined || labs.procalcitonin === null || labs.procalcitonin === "") {
+    const proMatch = text.match(/procalcitonin\s*(?:of|is|=)?\s*(\d+(?:\.\d+)?)/i);
+    if (proMatch && proMatch[1]) {
+      labs.procalcitonin = proMatch[1];
+    }
+  }
+
+  return labs;
 };
 
 const formatRiskSignal = (s: string): string => {
@@ -433,7 +506,25 @@ export default function CaseDetailPage() {
   const missingVitals: string[] = [];
   Object.entries(expectedVitals).forEach(([key, name]) => {
     if (vitals[key] === undefined || vitals[key] === null || vitals[key] === "") {
-      missingVitals.push(name);
+      const summaryText = (d.clinical_summary || "").toLowerCase();
+      const vitalNameLower = name.toLowerCase();
+      let isFound = false;
+      if (key === "o2_sat") {
+        isFound = summaryText.includes("o2") || summaryText.includes("oxygen") || summaryText.includes("sat");
+      } else if (key === "temp") {
+        isFound = summaryText.includes("temp") || summaryText.includes("temperature");
+      } else if (key === "bp") {
+        isFound = summaryText.includes("bp") || summaryText.includes("blood pressure") || summaryText.includes("bp ");
+      } else if (key === "hr") {
+        isFound = summaryText.includes("hr ") || summaryText.includes("heart rate") || summaryText.includes("pulse");
+      } else if (key === "rr") {
+        isFound = summaryText.includes("rr ") || summaryText.includes("respiratory rate") || summaryText.includes("respirations");
+      } else {
+        isFound = summaryText.includes(vitalNameLower);
+      }
+      if (!isFound) {
+        missingVitals.push(name);
+      }
     }
   });
 
@@ -444,21 +535,57 @@ export default function CaseDetailPage() {
     const sepsisLabs = { wbc: "WBC", lactate: "Lactate", creatinine: "Creatinine" };
     Object.entries(sepsisLabs).forEach(([key, name]) => {
       if (labs[key] === undefined || labs[key] === null || labs[key] === "") {
-        missingLabs.push(name);
+        const summaryText = (d.clinical_summary || "").toLowerCase();
+        const labNameLower = name.toLowerCase();
+        let isFoundInSummary = false;
+        if (key === "pco2") {
+          isFoundInSummary = summaryText.includes("pco2") || summaryText.includes("co2");
+        } else if (key === "ef") {
+          isFoundInSummary = summaryText.includes("ef ") || summaryText.includes("ef%") || summaryText.includes("ejection fraction");
+        } else {
+          isFoundInSummary = summaryText.includes(labNameLower);
+        }
+        if (!isFoundInSummary) {
+          missingLabs.push(name);
+        }
       }
     });
   } else if (policyCode.includes("CHF") || policyCode.includes("HEART")) {
     const chfLabs = { bnp: "BNP", troponin: "Troponin", creatinine: "Creatinine", potassium: "Potassium", ef: "Ejection Fraction (EF)" };
     Object.entries(chfLabs).forEach(([key, name]) => {
       if (labs[key] === undefined || labs[key] === null || labs[key] === "") {
-        missingLabs.push(name);
+        const summaryText = (d.clinical_summary || "").toLowerCase();
+        const labNameLower = name.toLowerCase();
+        let isFoundInSummary = false;
+        if (key === "pco2") {
+          isFoundInSummary = summaryText.includes("pco2") || summaryText.includes("co2");
+        } else if (key === "ef") {
+          isFoundInSummary = summaryText.includes("ef ") || summaryText.includes("ef%") || summaryText.includes("ejection fraction");
+        } else {
+          isFoundInSummary = summaryText.includes(labNameLower);
+        }
+        if (!isFoundInSummary) {
+          missingLabs.push(name);
+        }
       }
     });
   } else if (policyCode.includes("COPD")) {
     const copdLabs = { wbc: "WBC", pco2: "pCO2" };
     Object.entries(copdLabs).forEach(([key, name]) => {
       if (labs[key] === undefined || labs[key] === null || labs[key] === "") {
-        missingLabs.push(name);
+        const summaryText = (d.clinical_summary || "").toLowerCase();
+        const labNameLower = name.toLowerCase();
+        let isFoundInSummary = false;
+        if (key === "pco2") {
+          isFoundInSummary = summaryText.includes("pco2") || summaryText.includes("co2");
+        } else if (key === "ef") {
+          isFoundInSummary = summaryText.includes("ef ") || summaryText.includes("ef%") || summaryText.includes("ejection fraction");
+        } else {
+          isFoundInSummary = summaryText.includes(labNameLower);
+        }
+        if (!isFoundInSummary) {
+          missingLabs.push(name);
+        }
       }
     });
   }
@@ -813,13 +940,35 @@ export default function CaseDetailPage() {
             </div>
             <div className="label" style={{ marginBottom: "8px" }}>Lab Results</div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
-              {Object.keys(labs).length > 0 ? Object.entries(labs).map(([key, val]) => {
-                if (val === null) return null;
+              {Object.keys(parseClinicalSummaryForLabs(d.clinical_summary, labs)).length > 0 ? Object.entries(parseClinicalSummaryForLabs(d.clinical_summary, labs)).map(([key, val]) => {
+                if (val === null || val === "") return null;
                 const lowerKey = key.toLowerCase();
-                const labName = (lowerKey === "bnp" || lowerKey === "ef" || lowerKey === "wbc") 
-                  ? lowerKey.toUpperCase() 
-                  : key.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
-                const isLabAbnormal = (lowerKey === "bnp" && Number(val) > 500) || (lowerKey === "wbc" && (Number(val) > 12 || Number(val) < 4)) || (lowerKey === "lactate" && Number(val) >= 2.0) || (lowerKey === "creatinine" && Number(val) > 1.5) || (lowerKey === "troponin" && Number(val) > 0.04) || (lowerKey === "potassium" && Number(val) > 5.5) || (lowerKey === "ef" && Number(val) < 40);
+                
+                let labName = key;
+                if (lowerKey === "bnp" || lowerKey === "ef" || lowerKey === "wbc") {
+                  labName = lowerKey.toUpperCase();
+                } else if (lowerKey === "pco2") {
+                  labName = "pCO2";
+                } else if (lowerKey === "po2") {
+                  labName = "pO2";
+                } else if (lowerKey === "ph") {
+                  labName = "pH";
+                } else {
+                  labName = key.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
+                }
+
+                const numVal = parseFloat(String(val));
+                const isLabAbnormal = 
+                  (lowerKey === "bnp" && numVal > 500) || 
+                  (lowerKey === "wbc" && (numVal > 12 || numVal < 4)) || 
+                  (lowerKey === "lactate" && numVal >= 2.0) || 
+                  (lowerKey === "creatinine" && numVal > 1.5) || 
+                  (lowerKey === "troponin" && numVal > 0.04) || 
+                  (lowerKey === "potassium" && numVal > 5.5) || 
+                  (lowerKey === "ef" && numVal < 40) ||
+                  (lowerKey === "pco2" && (numVal > 45 || numVal < 35)) ||
+                  (lowerKey === "po2" && numVal < 75) ||
+                  (lowerKey === "ph" && (numVal > 7.45 || numVal < 7.35));
                 
                 const handleLabClick = () => {
                   if (!isLabAbnormal) return;

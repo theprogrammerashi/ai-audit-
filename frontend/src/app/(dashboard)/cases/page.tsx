@@ -166,7 +166,11 @@ export default function CasesPage() {
             </thead>
             <tbody>
               {filtered.map((c) => {
-                const d = new Date(c.submitted_at);
+                let submittedStr = c.submitted_at;
+                if (submittedStr && !submittedStr.endsWith('Z') && !submittedStr.includes('+')) {
+                  submittedStr = submittedStr.replace(' ', 'T') + 'Z';
+                }
+                const d = new Date(submittedStr);
                 const dateStr = d.toLocaleDateString();
                 const isNew = (new Date().getTime() - d.getTime()) < 5 * 60 * 1000; // Less than 5 mins
                 return (

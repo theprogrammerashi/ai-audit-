@@ -75,7 +75,11 @@ export default function WorkspacePage() {
     if (queueCases.length === 0) return "0h 0m";
     const now = new Date().getTime();
     const totalMs = queueCases.reduce((acc, c) => {
-      return acc + (now - new Date(c.submitted_at).getTime());
+      let submittedStr = c.submitted_at;
+      if (submittedStr && !submittedStr.endsWith('Z') && !submittedStr.includes('+')) {
+        submittedStr = submittedStr.replace(' ', 'T') + 'Z';
+      }
+      return acc + (now - new Date(submittedStr).getTime());
     }, 0);
     const avgMs = totalMs / queueCases.length;
     const hrs = Math.floor(avgMs / (1000 * 60 * 60));
@@ -511,7 +515,7 @@ export default function WorkspacePage() {
                             <span className="badge badge-warning" style={{ fontSize: '0.75rem' }}>Pending QA Review</span>
                           ) : (
                             <div style={{ fontWeight: 600, color: h.qa_score >= 80 ? "var(--success)" : "var(--danger)" }}>
-                              {h.qa_score ? `${h.qa_score}%` : "Pending"}
+                              {h.qa_score ? `${typeof h.qa_score === 'number' ? (h.qa_score % 1 === 0 ? h.qa_score : h.qa_score.toFixed(2)) : h.qa_score}%` : "Pending"}
                             </div>
                           )}
                         </div>

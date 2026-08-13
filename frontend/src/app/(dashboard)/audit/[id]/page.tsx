@@ -26,6 +26,24 @@ const DIMENSION_CONFIG = [
   { key: "timeliness_score", label: "Timeliness", weight: 0.10, icon: Clock, desc: "Review completed within SLA timeframe" },
 ];
 
+const getSavedRemarkForDimension = (notes: string | null, dimLabel: string) => {
+  if (!notes) return null;
+  const lines = notes.split("\n");
+  for (const line of lines) {
+    if (line.includes(dimLabel)) {
+      const parts = line.split("| Remark: ");
+      if (parts[1]) {
+        let remark = parts[1].trim();
+        if (remark.startsWith('"') && remark.endsWith('"')) {
+          remark = remark.slice(1, -1);
+        }
+        return remark;
+      }
+    }
+  }
+  return null;
+};
+
 export default function AuditDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -43,6 +61,8 @@ export default function AuditDetailPage() {
   // Element-level editing
   const [isEditing, setIsEditing] = useState(false);
   const [editScores, setEditScores] = useState<Record<string, number>>({});
+  const [originalScores, setOriginalScores] = useState<Record<string, number>>({});
+  const [editRemarks, setEditRemarks] = useState<Record<string, string>>({});
   const [editNotes, setEditNotes] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
@@ -55,9 +75,8 @@ export default function AuditDetailPage() {
 
   // Auto-calculate weighted total
   const computeTotal = (scores: Record<string, number>) => {
-    return Math.round(
-      DIMENSION_CONFIG.reduce((sum, dim) => sum + (scores[dim.key] || 0) * dim.weight, 0)
-    );
+    const raw = DIMENSION_CONFIG.reduce((sum, dim) => sum + (scores[dim.key] || 0) * dim.weight, 0);
+    return Number(raw.toFixed(2));
   };
 
   const editTotal = computeTotal(editScores);
@@ -68,20 +87,43 @@ export default function AuditDetailPage() {
       scores[dim.key] = d?.[dim.key] ?? 80;
     });
     setEditScores(scores);
+    setOriginalScores(scores);
+    setEditRemarks({});
     setEditNotes("");
     setIsEditing(true);
   };
 
   const handleSaveElementScores = async () => {
-    if (editNotes.trim().length < 10) {
-      alert("Please provide notes explaining your score adjustments (min 10 chars).");
+    const changedDims = DIMENSION_CONFIG.filter(
+      dim => (editScores[dim.key] ?? 80) !== (originalScores[dim.key] ?? 80)
+    );
+    if (changedDims.length === 0) {
+      alert("No scores were modified. Adjust at least one score or cancel.");
       return;
     }
+
+    // Validate that each changed dimension has a remark
+    for (const dim of changedDims) {
+      const remark = editRemarks[dim.key] || "";
+      if (remark.trim().length < 5) {
+        alert(`Please provide an adjustment remark for ${dim.label} (min 5 chars).`);
+        return;
+      }
+    }
+
+    // Concatenate into a human-readable list of remarks
+    const combinedNotes = changedDims.map(dim => {
+      const orig = originalScores[dim.key];
+      const updated = editScores[dim.key];
+      const remark = editRemarks[dim.key].trim();
+      return `• ${dim.label}: ${orig}% → ${updated}% | Remark: "${remark}"`;
+    }).join("\n");
+
     setIsSaving(true);
     try {
       await api.post(`/audit/${caseId}/element-score-override`, {
         ...editScores,
-        notes: editNotes,
+        notes: combinedNotes,
       });
       setIsEditing(false);
       setActionSuccess("Element-level scores updated and verified successfully.");
@@ -156,7 +198,8 @@ export default function AuditDetailPage() {
     );
   }
 
-  const effectiveScore = d.effective_score || d.qa_score;
+  const rawScore = d.effective_score || d.qa_score;
+  const effectiveScore = typeof rawScore === "number" ? Number(rawScore.toFixed(2)) : rawScore;
   const scoreColor = effectiveScore >= 80 ? "var(--success)" : "var(--danger)";
   const isVerified = d.qa_verified === true;
 
@@ -230,7 +273,22 @@ export default function AuditDetailPage() {
             width: "126px", height: "126px", borderRadius: "50%", background: "var(--bg-surface)",
             display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column"
           }}>
-            <span style={{ fontSize: "2.5rem", fontWeight: 700, color: scoreColor, lineHeight: 1 }}>{effectiveScore}</span>
+            {(() => {
+              const scoreStr = typeof effectiveScore === "number" ? effectiveScore.toString() : String(effectiveScore || "0");
+              const scoreParts = scoreStr.split(".");
+              const integerPart = scoreParts[0];
+              const decimalPart = scoreParts[1] ? `.${scoreParts[1]}` : "";
+              return (
+                <span style={{ fontSize: "2.5rem", fontWeight: 700, color: scoreColor, lineHeight: 1, display: "inline-flex", alignItems: "baseline" }}>
+                  {integerPart}
+                  {decimalPart && (
+                    <span style={{ fontSize: "1.4rem", fontWeight: 600, color: scoreColor, marginLeft: "1px" }}>
+                      {decimalPart}
+                    </span>
+                  )}
+                </span>
+              );
+            })()}
             <span style={{ fontSize: "0.7rem", color: "var(--text-tertiary)", marginTop: "4px", textTransform: "uppercase", letterSpacing: "1px" }}>QA Score</span>
           </div>
         </div>
@@ -256,8 +314,8 @@ export default function AuditDetailPage() {
               Original AI Score: <strong>{d.original_ai_score}</strong> → Adjusted Score: <strong>{d.qa_override_score}</strong>
             </p>
             {d.qa_override_notes && (
-              <p style={{ fontSize: "0.8rem", color: "var(--text-tertiary)", marginTop: "4px", fontStyle: "italic" }}>
-                "{d.qa_override_notes}"
+              <p style={{ fontSize: "0.8rem", color: "var(--text-tertiary)", marginTop: "4px", fontStyle: "italic", whiteSpace: "pre-line" }}>
+                {d.qa_override_notes}
               </p>
             )}
           </div>
@@ -380,6 +438,25 @@ export default function AuditDetailPage() {
                   {dim.desc}
                 </p>
 
+                {isEditing && (editScores[dim.key] ?? 80) !== (originalScores[dim.key] ?? 80) && (
+                  <div style={{ marginTop: "12px", display: "flex", flexDirection: "column", gap: "6px" }} onClick={e => e.stopPropagation()}>
+                    <label style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--primary)", display: "flex", alignItems: "center", gap: "4px" }}>
+                      <Edit3 size={10} /> Adjustment Remark <span style={{ color: "var(--danger)" }}>*</span>
+                    </label>
+                    <textarea
+                      className="input-field"
+                      rows={2}
+                      value={editRemarks[dim.key] ?? ""}
+                      onChange={(e) => setEditRemarks(prev => ({
+                        ...prev,
+                        [dim.key]: e.target.value
+                      }))}
+                      placeholder={`Explain the score change for ${dim.label}...`}
+                      style={{ fontSize: "0.78rem", width: "100%", resize: "none", padding: "6px 8px", background: "var(--bg-body)", border: "1px solid var(--border-default)" }}
+                    />
+                  </div>
+                )}
+
                 {!isEditing && !isSelected && (
                   <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "4px" }}>
                     <ChevronDown size={12} style={{ color: "var(--text-tertiary)" }} />
@@ -393,24 +470,18 @@ export default function AuditDetailPage() {
         {/* Editing: Notes + Save */}
         {isEditing && (
           <div className="card" style={{ padding: "20px", marginTop: "16px", border: "2px solid var(--primary)", background: "rgba(232,82,26,0.02)" }}>
-            <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, marginBottom: "8px", color: "var(--text-primary)" }}>
-              QA Remarks <span style={{ color: "var(--danger)" }}>*</span>
-            </label>
-            <textarea
-              className="input-field"
-              rows={3}
-              value={editNotes}
-              onChange={e => setEditNotes(e.target.value)}
-              placeholder="Explain the reason for your score adjustments (min 10 characters)..."
-              style={{ width: "100%", resize: "vertical" }}
-            />
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px", marginTop: "16px" }}>
-              <button className="btn btn-secondary" onClick={() => setIsEditing(false)}>Cancel</button>
-              <button className="btn btn-primary" onClick={handleSaveElementScores} disabled={isSaving}
-                style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                {isSaving ? <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> : <Save size={14} />}
-                {isSaving ? "Saving..." : "Save Adjustments"}
-              </button>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
+              <span style={{ fontSize: "0.82rem", color: "var(--text-secondary)", fontWeight: 500 }}>
+                💡 Provide an adjustment remark inside each modified dimension card.
+              </span>
+              <div style={{ display: "flex", gap: "12px" }}>
+                <button className="btn btn-secondary" onClick={() => setIsEditing(false)}>Cancel</button>
+                <button className="btn btn-primary" onClick={handleSaveElementScores} disabled={isSaving}
+                  style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  {isSaving ? <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> : <Save size={14} />}
+                  {isSaving ? "Saving..." : "Save Adjustments"}
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -446,79 +517,189 @@ export default function AuditDetailPage() {
                 </button>
               </div>
               <div style={{ padding: "24px", overflowY: "auto", maxHeight: "70vh", fontSize: "0.88rem", lineHeight: 1.6, color: "var(--text-secondary)" }}>
-                <p style={{ fontSize: "0.9rem", color: "var(--text-primary)", marginBottom: "16px", fontWeight: 500 }}>
-                  {(() => {
-                    const score = d[selectedDim] ?? 0;
-                    const label = dimConfig?.label || "";
-                    let text = "";
-                    if (selectedDim === "timeliness_score") {
-                      if (score >= 90) text = "The review was completed well within the expected SLA timeframe, demonstrating excellent operational efficiency.";
-                      else if (score >= 70) text = "The review was completed near the SLA deadline. Timeliness is acceptable but should be monitored.";
-                      else text = "The review missed the expected SLA timeframe. Immediate action is recommended to improve turnaround times.";
-                    } else if (selectedDim === "clinical_accuracy") {
-                      if (score >= 90) text = "The decision demonstrates a high degree of clinical accuracy, perfectly aligning with the submitted clinical evidence and patient history.";
-                      else if (score >= 70) text = "The decision is generally accurate but lacks strong alignment with some secondary clinical evidence.";
-                      else text = "The decision shows significant deviations from the clinical evidence, indicating a risk of wrongful denial or inappropriate approval.";
-                    } else if (selectedDim === "documentation_completeness") {
-                      if (score >= 90) text = "The submitted rationale is thorough, complete, and clearly references necessary clinical guidelines.";
-                      else if (score >= 70) text = "The documentation is adequate but could benefit from more specific citations of lab values or policy clauses.";
-                      else text = "The documentation is incomplete or vague. Critical clinical justifications are missing from the rationale.";
-                    } else if (selectedDim === "policy_compliance") {
-                      if (score >= 90) text = "The decision strictly adheres to applicable policy criteria with no detected deviations or compliance risks.";
-                      else if (score >= 70) text = "The decision is mostly compliant, though some minor policy conditions were not explicitly addressed in the rationale.";
-                      else text = "The decision fails to meet strict policy criteria, presenting a severe compliance and audit risk. Immediate review required.";
-                    } else if (selectedDim === "consistency_score") {
-                      if (score >= 90) text = "This decision aligns perfectly with historical peer decision patterns for similar cases and diagnoses.";
-                      else if (score >= 70) text = "This decision slightly deviates from typical peer patterns but remains within acceptable clinical variance.";
-                      else text = "This decision is highly anomalous compared to historical peer data. High risk of inconsistency and potential appeal.";
-                    }
-                    return `${text} Score: ${score}%. Weight contribution: ${Math.round((dimConfig?.weight || 0) * 100)}% of total.`;
-                  })()}
-                </p>
-
                 {(() => {
-                  const getDimFindings = () => {
-                    if (!d.findings || d.findings.length === 0) return [];
-                    return d.findings.filter((f: any) => {
-                      const type = f.type || "";
-                      const desc = (f.description || "").toLowerCase();
-                      
-                      if (selectedDim === "clinical_accuracy") {
-                        return type === "POLICY_MISMATCH" || type === "CLINICAL_MISS";
-                      }
-                      if (selectedDim === "documentation_completeness") {
-                        return type === "DOCUMENTATION_GAP" && !desc.includes("policy code");
-                      }
-                      if (selectedDim === "policy_compliance") {
-                        return type === "DOCUMENTATION_GAP" && desc.includes("policy code");
-                      }
-                      if (selectedDim === "consistency_score") {
-                        return type === "CONSISTENCY_FLAG";
-                      }
-                      if (selectedDim === "timeliness_score") {
-                        return type === "SLA_BREACH";
-                      }
-                      return false;
-                    });
-                  };
-                  
-                  const dimFindings = getDimFindings();
+                  const score = d[selectedDim] ?? 0;
+                  const label = dimConfig?.label || "";
+                  const weightPct = Math.round((dimConfig?.weight || 0) * 100);
+                  const valColor = score >= 80 ? "var(--success)" : "var(--danger)";
+
+                  // Filter findings for this dimension
+                  const dimFindings = (d.findings || []).filter((f: any) => {
+                    const type = f.type || "";
+                    const desc = (f.description || "").toLowerCase();
+                    if (selectedDim === "clinical_accuracy") {
+                      return type === "POLICY_MISMATCH" || type === "CLINICAL_MISS";
+                    }
+                    if (selectedDim === "documentation_completeness") {
+                      return type === "DOCUMENTATION_GAP" && !desc.includes("policy code");
+                    }
+                    if (selectedDim === "policy_compliance") {
+                      return type === "DOCUMENTATION_GAP" && desc.includes("policy code");
+                    }
+                    if (selectedDim === "consistency_score") {
+                      return type === "CONSISTENCY_FLAG";
+                    }
+                    if (selectedDim === "timeliness_score") {
+                      return type === "SLA_BREACH";
+                    }
+                    return false;
+                  });
+
+                  let aiRationale = "";
+                  let remark = "";
+
+                  if (selectedDim === "clinical_accuracy") {
+                    if (score >= 90) {
+                      aiRationale = `The clinical accuracy score of ${score}% indicates that the reviewer's decision fully aligns with the medical necessity criteria and clinical evidence extracted by the AI engine. All core clinical indicators were properly interpreted.`;
+                      remark = "Excellent clinical alignment. No adjustments or corrections are required for this case. Maintain this standard of clinical decision-making.";
+                    } else if (score >= 70) {
+                      aiRationale = `The clinical accuracy score of ${score}% reflects minor discrepancies in matching clinical criteria. While the overall decision aligns, some secondary clinical guidelines were not fully met or documented in detail.`;
+                      remark = "Ensure all minor clinical criteria are verified. While the core decision is supported, double-checking secondary criteria will prevent prospective denial risks.";
+                    } else {
+                      const policyMismatch = dimFindings.find((f: any) => f.type === "POLICY_MISMATCH");
+                      const recRecommended = policyMismatch?.description?.includes("recommended DENIED") ? "DENIED" : "APPROVED";
+                      const reviewerDecision = policyMismatch?.description?.includes("Reviewer DENIED") ? "DENIED" : "APPROVED";
+                      aiRationale = `The clinical accuracy score of ${score}% is low because of a critical policy mismatch: the AI recommended ${recRecommended} based on the policy criteria, but the reviewer chose ${reviewerDecision}. Only a low portion of the required admission guidelines were fulfilled.`;
+                      remark = "CRITICAL ACTION REQUIRED: Re-examine the clinical evidence against the policy criteria. A mismatch of this severity indicates a high likelihood of wrongful determination, which could lead to audit failure or immediate provider appeals.";
+                    }
+                  } else if (selectedDim === "documentation_completeness") {
+                    if (score >= 90) {
+                      aiRationale = `The documentation score of ${score}% indicates a highly detailed, structured rationale. The clinical narrative exceeds length requirements, references all key lab/vital parameters, and cites relevant guidelines clearly.`;
+                      remark = "Superb clinical documentation. The thorough description and specific clinical facts make this audit-proof. Continue using this structure.";
+                    } else if (score >= 70) {
+                      const gaps = dimFindings.map((f: any) => f.description).join("; ");
+                      aiRationale = `The documentation score of ${score}% shows that while the rationale is sufficient to understand the decision, some details are missing. ${gaps ? "Specifically: " + gaps : "There is a minor lack of detail in lab references or rationale length."}`;
+                      remark = "Consider adding specific lab/vital values (e.g., BNP, O2 sat, lactate) to the rationale to strengthen the documentation completeness.";
+                    } else {
+                      aiRationale = `The documentation score of ${score}% is critically low. The clinical rationale is either extremely brief (under 15 words) or completely lacks key medical parameters and evidence justifying the decision.`;
+                      remark = "IMMEDIATE RE-WRITE REQUIRED: Expand the clinical rationale to at least 30 words. You must explicitly reference patient vitals, lab values, and clinical history that justify your decision.";
+                    }
+                  } else if (selectedDim === "policy_compliance") {
+                    if (score >= 90) {
+                      aiRationale = `The policy compliance score of ${score}% confirms that the clinical rationale directly cites the correct medical policy and references applicable criteria sections.`;
+                      remark = "Full compliance achieved. Citations are accurate and appropriately matched to the patient's condition. Keep referencing policy codes on all cases.";
+                    } else if (score >= 70) {
+                      aiRationale = `The policy compliance score of ${score}% indicates that the policy guidelines were followed, but the specific policy code or section was not clearly cited in the rationale text.`;
+                      remark = "Make sure to explicitly write the policy ID and code name in the rationale. This ensures that the final letter clearly points to the audited guidelines.";
+                    } else {
+                      aiRationale = `The policy compliance score of ${score}% is low because there is no reference to the applicable policy code or guidelines in the rationale, representing a significant compliance risk.`;
+                      remark = "ACTION REQUIRED: Locate and cite the appropriate policy code (e.g., UM-GEN-001 or equivalent) within the clinical narrative. Audit standards require explicit citation of policy guidelines.";
+                    }
+                  } else if (selectedDim === "consistency_score") {
+                    if (score >= 90) {
+                      aiRationale = `The consistency score of ${score}% shows this case's outcome aligns perfectly with historical patterns and decisions made by peer reviewers for similar diagnoses.`;
+                      remark = "Great consistency. This decision follows established institutional guidelines and consensus, reducing the risk of clinical variance.";
+                    } else if (score >= 70) {
+                      aiRationale = `The consistency score of ${score}% indicates a slight deviation from typical peer patterns, which might be justified by unique clinical parameters in this patient's presentation.`;
+                      remark = "No immediate action required, but review the case details during team syncs to ensure we maintain unified decision-making.";
+                    } else {
+                      aiRationale = `The consistency score of ${score}% is low. This decision is highly anomalous compared to peer data and historical determinations for similar diagnoses, presenting an appeal risk.`;
+                      remark = "RECOMMENDATION: Request a peer calibration review. Discuss this case with the QA Lead or senior clinical staff to resolve the reasoning mismatch.";
+                    }
+                  } else if (selectedDim === "timeliness_score") {
+                    if (score >= 90) {
+                      aiRationale = `The timeliness score of ${score}% confirms the review was completed well within the 24-hour SLA window, demonstrating excellent efficiency.`;
+                      remark = "Excellent turnaround time. Quick case processing helps maintain operational metrics and meets clinical timelines.";
+                    } else if (score >= 70) {
+                      aiRationale = `The timeliness score of ${score}% indicates that the review exceeded the 24-hour warning threshold or 48-hour SLA, which can delay patient care decisions.`;
+                      remark = "Identify and document any operational bottlenecks or clinical delays that caused the turnaround time to slip beyond 24/48 hours.";
+                    } else {
+                      aiRationale = `The timeliness score of ${score}% indicates a severe SLA breach (turnaround time exceeded 72 hours). This is a critical operational failure.`;
+                      remark = "URGENT: Review the process bottleneck immediately. Investigate why this case was delayed, and put corrective actions in place.";
+                    }
+                  }
 
                   return (
-                    <>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+                      {/* Dimension Header Summary Card */}
+                      <div style={{
+                        padding: "16px 20px",
+                        background: "linear-gradient(135deg, var(--bg-surface), rgba(0,0,0,0.02))",
+                        borderRadius: "var(--radius-md)",
+                        border: "1px solid var(--border-default)",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "12px"
+                      }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <div>
+                            <span style={{ fontSize: "1.1rem", fontWeight: 700, color: "var(--text-primary)" }}>{label}</span>
+                            <span style={{ display: "block", fontSize: "0.75rem", color: "var(--text-tertiary)", marginTop: "2px" }}>
+                              Weight contribution: {weightPct}% of overall QA score
+                            </span>
+                          </div>
+                          <span style={{ fontSize: "1.8rem", fontWeight: 800, color: valColor }}>{score}%</span>
+                        </div>
+                        
+                        {/* Progress Bar inside Popup */}
+                        <div style={{ height: "8px", background: "var(--border-default)", borderRadius: "4px", overflow: "hidden" }}>
+                          <div style={{
+                            height: "100%", width: `${score}%`, borderRadius: "4px",
+                            background: valColor,
+                            transition: "width 0.5s ease"
+                          }} />
+                        </div>
+                      </div>
+
+                      {/* AI Rationale Card */}
+                      <div style={{
+                        padding: "16px",
+                        background: "linear-gradient(135deg, rgba(232,82,26,0.05), rgba(232,82,26,0.01))",
+                        borderRadius: "var(--radius-md)",
+                        borderLeft: "4px solid var(--primary)",
+                        borderTop: "1px solid var(--border-default)",
+                        borderRight: "1px solid var(--border-default)",
+                        borderBottom: "1px solid var(--border-default)"
+                      }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+                          <Lightbulb size={16} style={{ color: "var(--primary)" }} />
+                          <strong style={{ color: "var(--primary)", fontSize: "0.85rem" }}>AI Score Rationale</strong>
+                        </div>
+                        <p style={{ margin: 0, fontSize: "0.85rem", lineHeight: 1.5, color: "var(--text-secondary)" }}>
+                          {aiRationale}
+                        </p>
+                      </div>
+
+                      {/* Auditor Saved Custom Remark Card (Only shown if a custom remark exists for this dimension) */}
+                      {(() => {
+                        const savedRemark = getSavedRemarkForDimension(d.qa_override_notes, label);
+                        if (!savedRemark) return null;
+                        return (
+                          <div style={{
+                            padding: "16px",
+                            background: "linear-gradient(135deg, rgba(217,119,6,0.05), rgba(217,119,6,0.01))",
+                            borderRadius: "var(--radius-md)",
+                            borderLeft: "4px solid var(--warning)",
+                            borderTop: "1px solid var(--border-default)",
+                            borderRight: "1px solid var(--border-default)",
+                            borderBottom: "1px solid var(--border-default)"
+                          }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+                              <Edit3 size={16} style={{ color: "var(--warning)" }} />
+                              <strong style={{ color: "var(--warning)", fontSize: "0.85rem" }}>
+                                QA Lead Adjustment Remark
+                              </strong>
+                            </div>
+                            <p style={{ margin: 0, fontSize: "0.85rem", lineHeight: 1.5, color: "var(--text-secondary)" }}>
+                              {savedRemark}
+                            </p>
+                          </div>
+                        );
+                      })()}
+
+                      {/* Findings Section */}
                       {dimFindings.length > 0 && (
                         <div style={{
                           background: "rgba(239, 68, 68, 0.04)",
-                          padding: "14px", borderRadius: "var(--radius-md)", border: "1px solid rgba(239, 68, 68, 0.15)",
-                          marginBottom: "16px"
+                          padding: "14px", borderRadius: "var(--radius-md)", border: "1px solid rgba(239, 68, 68, 0.15)"
                         }}>
                           <strong style={{ color: "var(--danger)", fontSize: "0.82rem", display: "flex", alignItems: "center", gap: "6px", marginBottom: "8px" }}>
-                            <AlertTriangle size={14} /> Audit Findings ({dimFindings.length})
+                            <AlertTriangle size={14} /> Audit Gaps & Findings ({dimFindings.length})
                           </strong>
                           <ul style={{ margin: 0, paddingLeft: "20px", fontSize: "0.82rem", color: "var(--text-secondary)", listStyleType: "disc" }}>
                             {dimFindings.map((f: any, i: number) => (
                               <li key={i} style={{ marginBottom: "6px" }}>
-                                <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>[{f.severity}]</span> {f.description}
+                                {f.description}
                                 {f.recommendation && (
                                   <div style={{ color: "var(--primary)", marginTop: "2px", fontStyle: "italic" }}>
                                     💡 Recommendation: {f.recommendation}
@@ -530,20 +711,21 @@ export default function AuditDetailPage() {
                         </div>
                       )}
 
+                      {/* Missing Evidence Section */}
                       {selectedDim === "documentation_completeness" && d.missing_evidence && d.missing_evidence.length > 0 && (
                         <div style={{
                           background: "linear-gradient(135deg, rgba(220,38,38,0.06), rgba(220,38,38,0.02))",
                           padding: "14px", borderRadius: "var(--radius-md)", border: "1px solid rgba(220,38,38,0.15)"
                         }}>
                           <strong style={{ color: "var(--danger)", fontSize: "0.82rem", display: "flex", alignItems: "center", gap: "6px", marginBottom: "8px" }}>
-                            <XCircle size={14} /> Missing Evidence
+                            <XCircle size={14} /> Missing Clinical Evidence
                           </strong>
                           <ul style={{ margin: 0, paddingLeft: "20px", fontSize: "0.82rem", color: "var(--text-secondary)", listStyleType: "disc" }}>
                             {d.missing_evidence.map((e: string, i: number) => <li key={i} style={{ marginBottom: "4px" }}>{e}</li>)}
                           </ul>
                         </div>
                       )}
-                    </>
+                    </div>
                   );
                 })()}
               </div>

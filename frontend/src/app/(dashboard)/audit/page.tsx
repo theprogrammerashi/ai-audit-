@@ -349,7 +349,7 @@ export default function AuditPage() {
                     </td>
                     <td style={{ textAlign: "center" }}>
                       <div style={{ fontSize: "1.05rem", fontWeight: 600, color: c.qa_score >= 80 ? "var(--success)" : "var(--danger)" }}>
-                        {c.qa_score}%
+                        {typeof c.qa_score === 'number' ? (c.qa_score % 1 === 0 ? c.qa_score : c.qa_score.toFixed(2)) : c.qa_score}%
                       </div>
                       <div style={{ marginTop: "4px" }}>
                         <span className={`badge ${auditResult === "PASS" ? "badge-success" : "badge-danger"}`} style={{ padding: "2px 6px", fontSize: "0.65rem" }}>{auditResult}</span>
