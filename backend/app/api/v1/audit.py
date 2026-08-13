@@ -230,16 +230,28 @@ async def override_qa_score(
     current_qa_score = audit[1]
     original_ai_score = audit[2] if audit[2] is not None else current_qa_score
 
+    # Determine standard risk level and result
+    if int(score) >= 90:
+        risk, result = "LOW", "PASS"
+    elif int(score) >= 80:
+        risk, result = "MEDIUM", "PASS"
+    elif int(score) >= 60:
+        risk, result = "HIGH", "FAIL"
+    else:
+        risk, result = "CRITICAL", "FAIL"
+
     db.execute("""
         UPDATE audit_results
            SET qa_score          = ?,
+               risk_level        = ?,
+               audit_result      = ?,
                original_ai_score = ?,
                qa_override_score = ?,
                qa_override_notes = ?,
                qa_override_by    = ?,
                qa_override_at    = ?
          WHERE id = ?
-    """, [int(score), original_ai_score, int(score), notes.strip(), user["id"], datetime.now(timezone.utc), audit_id])
+    """, [int(score), risk, result, original_ai_score, int(score), notes.strip(), user["id"], datetime.now(timezone.utc), audit_id])
 
     reviewer_id = get_reviewer_id_for_case(db, case_id)
     if reviewer_id:
@@ -249,9 +261,7 @@ async def override_qa_score(
         "success": True,
         "audit_id": audit_id,
         "case_id": case_id,
-        "original_score": db.execute(
-            "SELECT qa_score FROM audit_results WHERE id = ?", [audit_id]
-        ).fetchone()[0],
+        "original_score": original_ai_score,
         "override_score": int(score),
         "override_by": user["full_name"],
         "notes": notes,
@@ -322,8 +332,14 @@ async def element_score_override(
     total = round(int(ca) * 0.40 + int(dc) * 0.20 + int(pc) * 0.20 + int(cs) * 0.10 + int(ts) * 0.10)
 
     # Determine risk level and result
-    risk = "LOW" if total >= 85 else "MEDIUM" if total >= 70 else "HIGH" if total >= 50 else "CRITICAL"
-    result = "PASS" if total >= 80 else "FAIL"
+    if total >= 90:
+        risk, result = "LOW", "PASS"
+    elif total >= 80:
+        risk, result = "MEDIUM", "PASS"
+    elif total >= 60:
+        risk, result = "HIGH", "FAIL"
+    else:
+        risk, result = "CRITICAL", "FAIL"
 
     now = datetime.now(timezone.utc)
     db.execute("""
@@ -363,6 +379,7 @@ async def element_score_override(
 @router.post("/{case_id}/verify")
 async def verify_qa_audit(
     case_id: str,
+    body: dict = None,
     user: dict = Depends(require_qa_lead_or_admin()),
     db: sqlite3.Connection = Depends(get_db),
 ):
@@ -377,12 +394,13 @@ async def verify_qa_audit(
     if not audit:
         raise HTTPException(status_code=404, detail="No audit result found for this case.")
 
+    notes = body.get("notes", "") if body else ""
     now = datetime.now(timezone.utc)
     db.execute("""
         UPDATE audit_results
-           SET qa_verified = TRUE, qa_verified_by = ?, qa_verified_at = ?
+           SET qa_verified = TRUE, qa_verified_by = ?, qa_verified_at = ?, qa_verification_notes = ?
          WHERE id = ?
-    """, [user["id"], now, audit[0]])
+    """, [user["id"], now, notes.strip() if notes else None, audit[0]])
 
     db.execute("UPDATE cases SET status = 'AUDITED' WHERE id = ?", [case_id])
 

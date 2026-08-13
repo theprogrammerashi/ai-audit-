@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ShieldCheck, ChevronRight, Clock, AlertTriangle, Loader2, Search, Filter, X, FolderOpen, FileText, BadgeCheck, EyeOff } from "lucide-react";
 import api from "@/lib/api";
 import CustomDropdown from "@/components/shared/CustomDropdown";
+import { useAuthStore } from "@/store/authStore";
 
 type FilterState = {
   search: string;
@@ -17,6 +18,8 @@ type FilterState = {
 
 export default function AuditPage() {
   const router = useRouter();
+  const { user } = useAuthStore();
+  const isNurse = user?.role === "NURSE";
   const [cases, setCases] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [caseTypeTab, setCaseTypeTab] = useState<"prior_auth" | "appeal">("prior_auth");
@@ -178,13 +181,12 @@ export default function AuditPage() {
       </div>
 
       {/* Summary Cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "16px", marginBottom: "28px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: `repeat(4, 1fr)`, gap: "16px", marginBottom: "28px" }}>
         {[
           { label: "Total Audited", value: tabCases.length, color: "var(--primary)", icon: ShieldCheck, bg: "var(--primary-light)" },
           { label: "Passed (≥80%)", value: passCount, color: "var(--success)", icon: ShieldCheck, bg: "var(--success-light)" },
           { label: "Failed (<80%)", value: failCount, color: "var(--danger)", icon: AlertTriangle, bg: "var(--danger-light)" },
           { label: "Avg QA Score", value: `${avgScore}%`, color: "var(--warning)", icon: ShieldCheck, bg: "var(--warning-light)" },
-          { label: "High/Critical Risk", value: criticalCount, color: "var(--danger)", icon: AlertTriangle, bg: "var(--danger-light)" },
         ].map((m) => {
           const Icon = m.icon;
           return (
@@ -244,8 +246,7 @@ export default function AuditPage() {
             { value: "newest", label: "Newest First" },
             { value: "oldest", label: "Oldest First" },
             { value: "qa_high", label: "QA Score: High → Low" },
-            { value: "qa_low", label: "QA Score: Low → High" },
-            { value: "risk_high", label: "Risk: High → Low" }
+            { value: "qa_low", label: "QA Score: Low → High" }
           ]}
           width="160px"
         />
@@ -266,21 +267,6 @@ export default function AuditPage() {
             />
           </div>
 
-          <div style={{ flex: 1, minWidth: "120px" }}>
-            <label className="label" style={{ display: "block", marginBottom: "4px" }}>Risk Level</label>
-            <CustomDropdown
-              value={filters.risk}
-              onChange={(val) => setFilters((p) => ({ ...p, risk: val }))}
-              options={[
-                { value: "", label: "All Risk Levels" },
-                { value: "LOW", label: "Low" },
-                { value: "MEDIUM", label: "Medium" },
-                { value: "HIGH", label: "High" },
-                { value: "CRITICAL", label: "Critical" }
-              ]}
-              width="100%"
-            />
-          </div>
 
           <div style={{ flex: 1, minWidth: "120px" }}>
             <label className="label" style={{ display: "block", marginBottom: "4px" }}>QA Result</label>
@@ -318,7 +304,7 @@ export default function AuditPage() {
 
       {/* Results count */}
       <div style={{ marginBottom: "12px", fontSize: "0.85rem", color: "var(--text-secondary)" }}>
-        Showing <strong>{filtered.length}</strong> of {cases.length} audit reports
+        Showing <strong>{filtered.length}</strong> of {tabCases.length} audit reports
         {activeFilterCount > 0 && <span> ({activeFilterCount} filter{activeFilterCount > 1 ? "s" : ""} active)</span>}
       </div>
 
@@ -341,7 +327,6 @@ export default function AuditPage() {
                 <th>Diagnosis</th>
                 <th>Reviewer</th>
                 <th style={{ textAlign: "center" }}>Decision</th>
-                <th style={{ textAlign: "center" }}>Risk</th>
                 <th style={{ textAlign: "center" }}>QA Score</th>
                 <th style={{ textAlign: "center" }}>Date</th>
                 <th style={{ textAlign: "center" }}>Action</th>
@@ -363,10 +348,7 @@ export default function AuditPage() {
                       <span className={`badge ${c.decision === "APPROVED" ? "badge-success" : c.decision === "DENIED" ? "badge-danger" : "badge-warning"}`}>{c.decision}</span>
                     </td>
                     <td style={{ textAlign: "center" }}>
-                      <span className={`badge ${c.risk_level === "CRITICAL" || c.risk_level === "HIGH" ? "badge-danger" : c.risk_level === "MEDIUM" ? "badge-warning" : "badge-success"}`}>{c.risk_level}</span>
-                    </td>
-                    <td style={{ textAlign: "center" }}>
-                      <div style={{ fontSize: "1.05rem", fontWeight: 600, color: c.qa_score >= 90 ? "var(--success)" : c.qa_score >= 75 ? "var(--warning)" : "var(--danger)" }}>
+                      <div style={{ fontSize: "1.05rem", fontWeight: 600, color: c.qa_score >= 80 ? "var(--success)" : "var(--danger)" }}>
                         {c.qa_score}%
                       </div>
                       <div style={{ marginTop: "4px" }}>

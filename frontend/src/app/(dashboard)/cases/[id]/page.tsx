@@ -697,8 +697,13 @@ export default function CaseDetailPage() {
         <div style={{ flex: 1 }}>
           <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "4px" }}>
             <h1 style={{ fontSize: "1.4rem" }}>{c.case_number}</h1>
-            <span className={`badge ${decisionColor === "var(--success)" ? "badge-success" : decisionColor === "var(--danger)" ? "badge-danger" : "badge-warning"}`}>{decisionStr}</span>
-            <span className="badge badge-info">{c.status.replace("_", " ")}</span>
+            {c.status === "PENDING_REVIEW" ? (
+              <span className="badge badge-warning">PENDING REVIEW</span>
+            ) : (
+              <span className={`badge ${decisionColor === "var(--success)" ? "badge-success" : decisionColor === "var(--danger)" ? "badge-danger" : "badge-warning"}`}>
+                {decisionStr}
+              </span>
+            )}
           </div>
           <p style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}>{patient.name || "Unknown Patient"} — {diagnosis.display}</p>
         </div>

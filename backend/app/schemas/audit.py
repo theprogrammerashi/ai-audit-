@@ -36,6 +36,7 @@ class AuditResultResponse(BaseModel):
     qa_override_notes: Optional[str] = None
     qa_override_by: Optional[str] = None
     qa_override_at: Optional[datetime] = None
+    qa_verification_notes: Optional[str] = None
     qa_verified: Optional[bool] = False
     qa_verified_by: Optional[str] = None
     qa_verified_at: Optional[datetime] = None

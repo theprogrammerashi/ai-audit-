@@ -1,12 +1,14 @@
 """
 CareAudit AI - Appeal Schemas
 """
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional, List
 from datetime import datetime
 
 
 class AppealRiskResponse(BaseModel):
+    model_config = ConfigDict(protected_namespaces=())
+    
     case_id: str
     appeal_overturn_probability: float
     risk_category: str
@@ -17,6 +19,8 @@ class AppealRiskResponse(BaseModel):
 
 
 class AppealDashboardItem(BaseModel):
+    model_config = ConfigDict(protected_namespaces=())
+
     case_id: str
     case_number: str
     patient_name: Optional[str] = None

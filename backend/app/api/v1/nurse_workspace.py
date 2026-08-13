@@ -187,8 +187,12 @@ async def get_decision_history(
     placeholders = ",".join(["?" for _ in nurse_ids])
     results = db.execute(f"""
         SELECT c.id, c.case_number, c.patient_name, c.primary_diagnosis_display,
-               nd.decision, nd.decision_timestamp, ar.qa_score, ar.risk_level,
-               ar.audit_result, u.full_name AS reviewer_name
+               nd.decision, nd.decision_timestamp,
+               CASE WHEN ar.qa_verified = 1 THEN ar.qa_score ELSE NULL END AS qa_score,
+               CASE WHEN ar.qa_verified = 1 THEN ar.risk_level ELSE NULL END AS risk_level,
+               CASE WHEN ar.qa_verified = 1 THEN ar.audit_result ELSE NULL END AS audit_result,
+               COALESCE(ar.qa_verified, 0) as qa_verified,
+               u.full_name AS reviewer_name
         FROM cases c
         LEFT JOIN nurse_decisions nd ON nd.case_id = c.id
         LEFT JOIN audit_results ar ON ar.case_id = c.id
@@ -236,6 +240,7 @@ async def get_nurse_qa_reports(
             COALESCE(ar.qa_verified, FALSE) as qa_verified,
             ar.qa_verified_by, ar.qa_verified_at,
             ar.qa_override_notes,
+            ar.qa_verification_notes,
             u.full_name as reviewer_name
         FROM cases c
         LEFT JOIN nurse_decisions nd ON nd.case_id = c.id
@@ -265,7 +270,8 @@ async def get_nurse_qa_reports(
         # CRITICAL: Only expose QA scores if QA has verified
         qa_verified = d.get('qa_verified', False)
         if qa_verified:
-            d['effective_score'] = d.get('qa_override_score') or d.get('ai_qa_score')
+            override = d.get('qa_override_score')
+            d['effective_score'] = override if override is not None else d.get('ai_qa_score')
             d['score_status'] = 'QA_APPROVED'
         else:
             # Hide actual scores from nurses until QA approves
@@ -690,8 +696,9 @@ async def submit_decision(
     else:
         urgency = "STANDARD"
 
-    # Route Urgent/High to QA Lead (DECIDED), bypass for Standard (AUDITED)
-    new_status = "DECIDED" if urgency in ["URGENT", "HIGH"] else "AUDITED"
+    # All cases go to DECIDED status, waiting for QA Lead review.
+    # The urgency level determines the order they appear in the QA queue.
+    new_status = "DECIDED"
     db.execute("UPDATE cases SET status = ? WHERE id = ?", [new_status, case_id])
     policy_result = db.execute("""
         SELECT * FROM policy_matches WHERE case_id = ? ORDER BY created_at DESC LIMIT 1
@@ -709,7 +716,7 @@ async def submit_decision(
         )
         qa_score = qa_result["qa_score"]
     except Exception:
-        qa_score = 75
+        qa_score = 80
 
     try:
         classify_appeal_risk(

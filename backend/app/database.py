@@ -163,6 +163,7 @@ def init_database():
             qa_override_notes TEXT,
             qa_override_by VARCHAR,
             qa_override_at TIMESTAMP,
+            qa_verification_notes TEXT,
             audited_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
@@ -384,6 +385,12 @@ def init_database():
             number_of_clinical_criteria_matched INTEGER
         )
     """)
+
+    # ── Migrations for existing databases ──
+    try:
+        conn.execute("ALTER TABLE audit_results ADD COLUMN qa_verification_notes TEXT")
+    except Exception:
+        pass
 
     print("[OK] DuckDB schema initialized successfully")
 

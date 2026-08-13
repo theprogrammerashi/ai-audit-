@@ -142,7 +142,6 @@ export default function WorkspaceAppealPage() {
             <div style={{ fontSize: "0.75rem", color: "var(--text-tertiary)", marginBottom: "2px" }}>Original Denial Reason</div>
             <div style={{ fontSize: "0.9rem", fontWeight: 600, color: "var(--text-primary)" }}>{data.denial_reason_category}</div>
           </div>
-          </div>
         </div>
 
         {/* CENTER WORKSPACE */}

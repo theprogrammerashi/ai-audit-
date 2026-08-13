@@ -39,8 +39,7 @@ export function getRiskColor(level: string): string {
 }
 
 export function getScoreColor(score: number): string {
-  if (score >= 90) return "var(--success)";
-  if (score >= 75) return "var(--warning)";
+  if (score >= 80) return "var(--success)";
   return "var(--danger)";
 }
 

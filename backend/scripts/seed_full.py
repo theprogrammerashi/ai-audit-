@@ -756,7 +756,7 @@ def build_audit_results(decisions, cases):
 
         if qa_score >= 90:
             risk_level, audit_result = "LOW", "PASS"
-        elif qa_score >= 75:
+        elif qa_score >= 80:
             risk_level, audit_result = "MEDIUM", "PASS"
         elif qa_score >= 60:
             risk_level, audit_result = "HIGH", "FAIL"
@@ -785,7 +785,7 @@ def build_audit_results(decisions, cases):
             "policy_compliance": policy_compliance,
             "consistency_score": consistency,
             "timeliness_score": random.randint(70, 100),
-            "qa_ai_explanation": f"The QA score of {qa_score} reflects {'excellent' if qa_score >= 90 else 'adequate' if qa_score >= 75 else 'poor'} clinical decision making. The reviewer {'accurately' if clinical_accuracy >= 80 else 'inaccurately'} assessed the patient's condition. Documentation was {'thorough' if doc_completeness >= 80 else 'lacking specific details'}. Policy alignment was {'strong' if policy_compliance >= 80 else 'weak'}.",
+            "qa_ai_explanation": f"The QA score of {qa_score} reflects {'excellent' if qa_score >= 90 else 'adequate' if qa_score >= 80 else 'poor'} clinical decision making. The reviewer {'accurately' if clinical_accuracy >= 80 else 'inaccurately'} assessed the patient's condition. Documentation was {'thorough' if doc_completeness >= 80 else 'lacking specific details'}. Policy alignment was {'strong' if policy_compliance >= 80 else 'weak'}.",
             "findings": json.dumps(findings),
             "policy_alignment": "ALIGNED" if dec["decision"] == "APPROVED" else "MISALIGNED",
             "missing_evidence": json.dumps(missing),

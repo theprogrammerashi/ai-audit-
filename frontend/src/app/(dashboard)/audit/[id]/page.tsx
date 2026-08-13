@@ -101,14 +101,11 @@ export default function AuditDetailPage() {
     }
     setIsVerifyingAndCompleting(true);
     try {
-      // 1. Save the remark
-      await api.post(`/audit/${caseId}/score-override`, {
-        score: d.qa_override_score ?? d.qa_score,
+      // 1. Verify (publishes scores & saves verification remarks)
+      await api.post(`/audit/${caseId}/verify`, {
         notes: verifyNotes
       });
-      // 2. Verify (publishes scores)
-      await api.post(`/audit/${caseId}/verify`);
-      // 3. Complete (closes case)
+      // 2. Complete (closes case)
       await api.post(`/audit/${caseId}/complete`);
       
       setActionSuccess("QA Audit verified, published, and marked as complete.");
@@ -253,16 +250,32 @@ export default function AuditDetailPage() {
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "6px" }}>
               <Edit3 size={14} style={{ color: "var(--warning)" }} />
-              <strong style={{ color: "var(--warning)", fontSize: "0.85rem" }}>QA Lead Adjustment</strong>
+              <strong style={{ color: "var(--warning)", fontSize: "0.85rem" }}>QA Lead Adjustment Remarks</strong>
             </div>
             <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", margin: 0 }}>
               Original AI Score: <strong>{d.original_ai_score}</strong> → Adjusted Score: <strong>{d.qa_override_score}</strong>
             </p>
             {d.qa_override_notes && (
               <p style={{ fontSize: "0.8rem", color: "var(--text-tertiary)", marginTop: "4px", fontStyle: "italic" }}>
-                {d.qa_override_notes}
+                "{d.qa_override_notes}"
               </p>
             )}
+          </div>
+        )}
+
+        {d.qa_verification_notes && (
+          <div style={{
+            marginTop: "20px", padding: "14px 20px",
+            background: "linear-gradient(135deg, rgba(22,163,74,0.06), rgba(22,163,74,0.02))",
+            borderRadius: "var(--radius-md)", border: "1px solid rgba(22,163,74,0.2)", textAlign: "left"
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "6px" }}>
+              <BadgeCheck size={14} style={{ color: "var(--success)" }} />
+              <strong style={{ color: "var(--success)", fontSize: "0.85rem" }}>QA Verification Remarks</strong>
+            </div>
+            <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", margin: 0, fontStyle: "italic" }}>
+              "{d.qa_verification_notes}"
+            </p>
           </div>
         )}
       </div>
@@ -297,7 +310,7 @@ export default function AuditDetailPage() {
               <span style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>Auto-calculated Total:</span>
               <span style={{
                 fontSize: "1.4rem", fontWeight: 700,
-                color: editTotal >= 90 ? "var(--success)" : editTotal >= 75 ? "var(--warning)" : "var(--danger)"
+                color: editTotal >= 80 ? "var(--success)" : "var(--danger)"
               }}>{editTotal}%</span>
             </div>
           )}
@@ -307,7 +320,7 @@ export default function AuditDetailPage() {
           {DIMENSION_CONFIG.map((dim) => {
             const Icon = dim.icon;
             const currentVal = isEditing ? (editScores[dim.key] ?? 80) : (d[dim.key] ?? 0);
-            const valColor = currentVal >= 90 ? "var(--success)" : currentVal >= 75 ? "var(--warning)" : "var(--danger)";
+            const valColor = currentVal >= 80 ? "var(--success)" : "var(--danger)";
             const isSelected = selectedDim === dim.key;
 
             return (

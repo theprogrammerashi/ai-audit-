@@ -510,7 +510,7 @@ export default function WorkspacePage() {
                           {h.qa_verified === false || !h.qa_verified ? (
                             <span className="badge badge-warning" style={{ fontSize: '0.75rem' }}>Pending QA Review</span>
                           ) : (
-                            <div style={{ fontWeight: 600, color: h.qa_score >= 90 ? "var(--success)" : h.qa_score >= 75 ? "var(--warning)" : "var(--danger)" }}>
+                            <div style={{ fontWeight: 600, color: h.qa_score >= 80 ? "var(--success)" : "var(--danger)" }}>
                               {h.qa_score ? `${h.qa_score}%` : "Pending"}
                             </div>
                           )}
@@ -573,16 +573,15 @@ export default function WorkspacePage() {
                                 <th>Decision</th>
                                 <th>QA Score</th>
                                 <th>Result</th>
-                                <th>Risk Level</th>
                                 <th>Key Findings</th>
                                 <th></th>
                               </tr>
                             </thead>
                             <tbody>
                               {approved.map((r: any) => {
-                                const score = r.effective_score || 0;
+                                const score = r.effective_score != null ? r.effective_score : 0;
                                 const passed = score >= 80;
-                                const scoreColor = score >= 90 ? "var(--success)" : score >= 75 ? "var(--warning)" : "var(--danger)";
+                                const scoreColor = score >= 80 ? "var(--success)" : "var(--danger)";
                                 const findings: any[] = r.findings || [];
                                 const topFinding = findings.length > 0 ? (findings[0].description || findings[0]) : "No issues found";
                                 return (
@@ -605,11 +604,6 @@ export default function WorkspacePage() {
                                       <span className={`badge ${passed ? 'badge-success' : 'badge-danger'}`} style={{ display: "flex", alignItems: "center", gap: "4px", width: "fit-content" }}>
                                         {passed ? <CheckCircle size={12} /> : <XCircle size={12} />}
                                         {passed ? "PASS" : "FAIL"}
-                                      </span>
-                                    </td>
-                                    <td>
-                                      <span className={`badge ${r.risk_level === 'HIGH' || r.risk_level === 'CRITICAL' ? 'badge-danger' : r.risk_level === 'MEDIUM' ? 'badge-warning' : 'badge-success'}`}>
-                                        {r.risk_level || "N/A"}
                                       </span>
                                     </td>
                                     <td style={{ fontSize: "0.82rem", maxWidth: "200px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--text-secondary)" }}>

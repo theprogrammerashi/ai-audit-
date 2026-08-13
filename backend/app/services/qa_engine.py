@@ -108,7 +108,12 @@ def compute_qa_audit(
         criteria_met_count = sum(1 for c in mc if c.get("status") == "MET")
         total_criteria = max(len(mc), 1)
         rec = policy_match.get("recommendation", "APPROVED")
-        ai_recommendation = rec if rec in ("APPROVED", "DENIED") else "APPROVED"
+        if rec == "INPATIENT_ADMISSION_SUPPORTED" or rec == "APPROVED":
+            ai_recommendation = "APPROVED"
+        elif rec == "OBSERVATION_RECOMMENDED" or rec == "DENIED":
+            ai_recommendation = "DENIED"
+        else:
+            ai_recommendation = "APPROVED"
 
     criteria_ratio = criteria_met_count / total_criteria
 
@@ -243,7 +248,7 @@ def compute_qa_audit(
         timeliness_explanation = "SLA warning (>24h)."
 
     # ── Overall QA Score ────────────────────────────────────────────────────
-    qa_score = int(
+    qa_score = round(
         clinical_accuracy          * 0.40 +
         documentation_completeness * 0.20 +
         policy_compliance          * 0.20 +
@@ -254,7 +259,7 @@ def compute_qa_audit(
     # ── Risk Level & Audit Result ───────────────────────────────────────────
     if qa_score >= 90:
         risk_level, audit_result = "LOW",      "PASS"
-    elif qa_score >= 75:
+    elif qa_score >= 80:
         risk_level, audit_result = "MEDIUM",   "PASS"
     elif qa_score >= 60:
         risk_level, audit_result = "HIGH",     "FAIL"
