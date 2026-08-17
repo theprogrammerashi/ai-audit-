@@ -45,6 +45,7 @@ async def create_case(case: CaseCreate, user: dict = Depends(get_current_user), 
     ])
     
     # Auto-assign case to the least loaded nurse (or to the uploading nurse)
+    assigned_nurse_id = user["id"]
     if user.get("role") == "NURSE":
         db.execute(
             "UPDATE cases SET assigned_nurse_id = ? WHERE id = ?",
@@ -52,6 +53,40 @@ async def create_case(case: CaseCreate, user: dict = Depends(get_current_user), 
         )
     else:
         assign_single_case(case_id, db)
+        row = db.execute("SELECT assigned_nurse_id FROM cases WHERE id = ?", [case_id]).fetchone()
+        if row and row[0]:
+            assigned_nurse_id = row[0]
+
+    # If it is an appeal document, insert it into appeal_intake_cases so that it shows up in the appeals workflow
+    if case.document_type == "APPEAL_DOCUMENT":
+        appeal_id = str(uuid.uuid4())
+        diag_display = (case.primary_diagnosis_display or case.primary_diagnosis_code or "").lower()
+        diag_code = (case.primary_diagnosis_code or "").upper()
+        
+        if diag_code.startswith("I50") or "heart" in diag_display or "cardio" in diag_display:
+            diag_category = "Cardiovascular"
+        elif diag_code.startswith("J44") or "copd" in diag_display or "respiratory" in diag_display:
+            diag_category = "Respiratory"
+        elif diag_code.startswith("A41") or "sepsis" in diag_display or "infection" in diag_display:
+            diag_category = "Infectious Disease"
+        else:
+            diag_category = "General Medicine"
+
+        db.execute("""
+            INSERT INTO appeal_intake_cases (
+                id, case_id, member_id, appellant_type, appeal_received_date,
+                appeal_level, denial_reason_category, clinical_rationale_provided,
+                requested_service, diagnosis_category, financial_amount_disputed,
+                reviewer_assigned, original_nurse_id
+            ) VALUES (?, ?, ?, 'Provider', ?, 'Level 1 - Internal', 'Medical Necessity', ?, ?, ?, 15000.0, ?, 'SYSTEM')
+        """, [
+            appeal_id, case_id, case.patient_mrn,
+            datetime.now().strftime("%Y-%m-%d"),
+            case.clinical_notes or "No clinical rationale provided.",
+            f"Inpatient Admission - {case.primary_diagnosis_display or case.primary_diagnosis_code}",
+            diag_category, assigned_nurse_id
+        ])
+
 
     # Trigger policy engine
     try:

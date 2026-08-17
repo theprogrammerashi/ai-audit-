@@ -124,6 +124,7 @@ export default function WorkspaceAppealPage() {
         <div style={{ borderRight: "1px solid var(--border-default)", overflowY: "auto", padding: "20px", background: "var(--bg-surface)" }}>
           <h4 style={{ marginBottom: "16px", fontSize: "0.85rem", textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-secondary)" }}>Appeal Info</h4>
           {[
+            ["Patient Name", data.patient_name],
             ["Member ID", data.member_id], 
             ["Type", data.appellant_type], 
             ["Level", data.appeal_level], 

@@ -200,6 +200,10 @@ async def submit_appeal_decision(id: str, decision_data: AppealDecisionSubmit, u
             WHERE id = ?
         """, [decision_data.decision, decision_data.rationale, resolution_date, turnaround, id])
 
+        if appeal_dict.get("case_id"):
+            db.execute("UPDATE cases SET status = 'DECIDED' WHERE id = ?", [appeal_dict["case_id"]])
+
+
         # Record in audit_log for HIPAA compliance
         db.execute("""
             INSERT INTO audit_log (id, user_id, action, resource_type, resource_id, timestamp)
@@ -245,7 +249,12 @@ async def reassign_appeal_case(id: str, user: dict = Depends(get_current_user), 
 @router.get("/intake-cases/{id}", response_model=AppealIntakeItem)
 async def get_appeal_intake_case(id: str, user: dict = Depends(get_current_user), db=Depends(get_db)):
     try:
-        result = db.execute("SELECT * FROM appeal_intake_cases WHERE id = ?", [id]).fetchone()
+        result = db.execute("""
+            SELECT a.*, c.patient_name
+            FROM appeal_intake_cases a
+            LEFT JOIN cases c ON a.case_id = c.id
+            WHERE a.id = ?
+        """, [id]).fetchone()
         if not result:
             raise HTTPException(status_code=404, detail="Appeal case not found")
         columns = [desc[0] for desc in db.description]

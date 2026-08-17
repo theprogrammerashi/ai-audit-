@@ -45,16 +45,18 @@ async def get_review_queue(
             LEFT JOIN users u ON c.submitted_by = u.id
             WHERE c.status IN ('PENDING_REVIEW', 'IN_REVIEW')
               AND c.submitted_by = ?
+              AND (c.document_type IS NULL OR c.document_type != 'APPEAL_DOCUMENT')
             ORDER BY c.submitted_at ASC
         """, [user["id"]]).fetchall()
         
         # Appeals assigned to nurse
         appeals = db.execute("""
-            SELECT a.id, a.case_id AS case_number, '' AS patient_name, a.member_id AS patient_mrn,
+            SELECT a.id, a.case_id AS case_number, c.patient_name, a.member_id AS patient_mrn,
                    a.diagnosis_category AS primary_diagnosis_display, 'PENDING_REVIEW' AS status, a.appeal_received_date AS submitted_at,
                    a.reviewer_assigned AS assigned_nurse_id, u.full_name AS assigned_to,
                    'HIGH' AS urgency
             FROM appeal_intake_cases a
+            LEFT JOIN cases c ON a.case_id = c.id
             LEFT JOIN users u ON a.reviewer_assigned = u.id
             WHERE a.reviewer_assigned = ? AND a.appeal_outcome IS NULL
         """, [user["id"]]).fetchall()
@@ -74,15 +76,17 @@ async def get_review_queue(
             FROM cases c
             LEFT JOIN users u ON c.submitted_by = u.id
             WHERE c.status IN ('PENDING_REVIEW', 'IN_REVIEW')
+              AND (c.document_type IS NULL OR c.document_type != 'APPEAL_DOCUMENT')
             ORDER BY c.submitted_at ASC
         """).fetchall()
         
         appeals = db.execute("""
-            SELECT a.id, a.case_id AS case_number, '' AS patient_name, a.member_id AS patient_mrn,
+            SELECT a.id, a.case_id AS case_number, c.patient_name, a.member_id AS patient_mrn,
                    a.diagnosis_category AS primary_diagnosis_display, 'PENDING_REVIEW' AS status, a.appeal_received_date AS submitted_at,
                    a.reviewer_assigned AS assigned_nurse_id, u.full_name AS assigned_to,
                    'HIGH' AS urgency
             FROM appeal_intake_cases a
+            LEFT JOIN cases c ON a.case_id = c.id
             LEFT JOIN users u ON a.reviewer_assigned = u.id
             WHERE a.appeal_outcome IS NULL
         """).fetchall()

@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import {
   Upload, FileText, User, Calendar, Stethoscope,
   ArrowLeft, CheckCircle, Loader2, Plus, X, ClipboardList,
-  AlertTriangle, Sparkles, Activity, Brain, Scan, Image as ImageIcon
+  AlertTriangle, Sparkles, Activity, Brain, Scan, Image as ImageIcon,
+  Pencil, Trash2, Save, PlusCircle
 } from "lucide-react";
 import api from "@/lib/api";
 
@@ -223,6 +224,57 @@ export default function NewCasePage() {
   const [riskSignals, setRiskSignals] = useState<string[]>([]);
   const [abnormalExplanation, setAbnormalExplanation] = useState<any | null>(null);
 
+  // Inline-edit state for vitals/labs
+  const [editingVital, setEditingVital] = useState<{ key: string; value: string } | null>(null);
+  const [editingLab, setEditingLab]     = useState<{ key: string; value: string } | null>(null);
+
+  // Add-new modal state
+  const [addModal, setAddModal] = useState<{ section: "vitals" | "labs" } | null>(null);
+  const [newEntryKey, setNewEntryKey]   = useState("");
+  const [newEntryVal, setNewEntryVal]   = useState("");
+
+  const saveVitalEdit = () => {
+    if (!editingVital) return;
+    setExtractedVitals((prev: any) => ({ ...prev, [editingVital.key]: editingVital.value }));
+    setEditingVital(null);
+  };
+
+  const deleteVital = (key: string) => {
+    setExtractedVitals((prev: any) => {
+      const next = { ...prev };
+      delete next[key];
+      return Object.keys(next).length > 0 ? next : null;
+    });
+  };
+
+  const saveLabEdit = () => {
+    if (!editingLab) return;
+    setExtractedLabs((prev: any) => ({ ...prev, [editingLab.key]: editingLab.value }));
+    setEditingLab(null);
+  };
+
+  const deleteLab = (key: string) => {
+    setExtractedLabs((prev: any) => {
+      const next = { ...prev };
+      delete next[key];
+      return Object.keys(next).length > 0 ? next : null;
+    });
+  };
+
+  const commitNewEntry = () => {
+    if (!addModal || !newEntryKey.trim() || !newEntryVal.trim()) return;
+    const k = newEntryKey.trim();
+    const v = newEntryVal.trim();
+    if (addModal.section === "vitals") {
+      setExtractedVitals((prev: any) => ({ ...(prev || {}), [k]: v }));
+    } else {
+      setExtractedLabs((prev: any) => ({ ...(prev || {}), [k]: v }));
+    }
+    setAddModal(null);
+    setNewEntryKey("");
+    setNewEntryVal("");
+  };
+
   const triggerAutofillAnimation = (fields: AutoFillField[]) => {
     const fieldSet = new Set(fields) as Set<AutoFillField>;
     setAutoFilledFields(fieldSet);
@@ -253,7 +305,7 @@ export default function NewCasePage() {
       dob: "",
       age: "",
       gender: "",
-      document_type: "CLINICAL_NOTE",
+      document_type: "PRIOR_AUTH",
       primary_diagnosis_code: "",
       primary_diagnosis_display: "",
       secondary_diagnoses: "",
@@ -329,9 +381,10 @@ export default function NewCasePage() {
           filledFields.push("clinical_notes");
         }
         if (data.detected_document_type) {
-          newForm.document_type = data.detected_document_type;
+          newForm.document_type = data.detected_document_type === "APPEAL_DOCUMENT" ? "APPEAL_DOCUMENT" : "PRIOR_AUTH";
           newConfidences.document_type = data.parse_confidence;
         }
+
 
         if (data.vitals) mergedVitals = { ...mergedVitals, ...data.vitals };
         if (data.labs) mergedLabs = { ...mergedLabs, ...data.labs };
@@ -700,56 +753,134 @@ export default function NewCasePage() {
             </div>
           </div>
 
-          {(extractedVitals || extractedLabs) && (
+          {(extractedVitals || extractedLabs) ? (
             <div className="card" style={{ marginBottom: "20px", borderLeft: "3px solid var(--info)" }}>
               <h3 style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.95rem", marginBottom: "16px" }}>
                 <Activity size={18} style={{ color: "var(--info)" }} /> Extracted Clinical Data
               </h3>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
-                {extractedVitals && (
-                  <div>
-                    <div className="label" style={{ marginBottom: "8px" }}>Vitals</div>
+
+                {/* ── VITALS ── */}
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
+                    <div className="label">Vitals</div>
+                    <button
+                      onClick={() => { setAddModal({ section: "vitals" }); setNewEntryKey(""); setNewEntryVal(""); }}
+                      style={{
+                        display: "flex", alignItems: "center", gap: "4px",
+                        fontSize: "0.72rem", fontWeight: 600, padding: "3px 8px",
+                        borderRadius: "100px", border: "1px solid var(--info)",
+                        background: "rgba(var(--info-rgb,59,130,246),0.06)", color: "var(--info)",
+                        cursor: "pointer", transition: "all 0.15s"
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(59,130,246,0.14)"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(59,130,246,0.06)"; }}
+                    >
+                      <PlusCircle size={12} /> Add
+                    </button>
+                  </div>
+
+                  {extractedVitals && Object.keys(extractedVitals).length > 0 ? (
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
                       {Object.entries(extractedVitals).filter(([_, v]) => v !== null).map(([key, val]) => {
-                        const isAbnormal = (key === "o2_sat" && Number(val) < 90) || (key === "hr" && Number(val) > 100) || (key === "rr" && Number(val) > 24) || (key === "temp" && Number(val) > 100.4) || (key === "bp" && typeof val === "string" && Number(val.split('/')[0]) < 90);
-                        
-                        const handleBoxClick = () => {
-                          if (!isAbnormal) return;
-                          const info = ABNORMAL_EXPLANATIONS[key] || {
-                            title: `Abnormal Vital: ${key.replace("_", " ").toUpperCase()}`,
-                            range: "Standard reference range",
-                            meaning: "This value is flagged as abnormal.",
-                            significance: "Clinical review is required to evaluate this vital sign."
-                          };
-                          setAbnormalExplanation({
-                            ...info,
-                            key,
-                            val: `${String(val)}${key === "temp" ? "°F" : key === "o2_sat" ? "%" : ""}`
-                          });
-                        };
+                        const isEditing = editingVital?.key === key;
+                        const isAbnormal = !isEditing && (
+                          (key === "o2_sat" && Number(val) < 90) ||
+                          (key === "hr" && Number(val) > 100) ||
+                          (key === "rr" && Number(val) > 24) ||
+                          (key === "temp" && Number(val) > 100.4) ||
+                          (key === "bp" && typeof val === "string" && Number(val.split('/')[0]) < 90)
+                        );
+
+                        if (isEditing) {
+                          return (
+                            <div key={key} style={{
+                              padding: "8px 10px", border: "1.5px solid var(--primary)",
+                              borderRadius: "var(--radius-md)", background: "var(--primary-light)"
+                            }}>
+                              <div style={{ fontSize: "0.7rem", textTransform: "uppercase", color: "var(--primary)", fontWeight: 600, marginBottom: "4px" }}>
+                                {key.replace("_", " ")}
+                              </div>
+                              <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
+                                <input
+                                  autoFocus
+                                  className="input"
+                                  value={editingVital!.value}
+                                  onChange={(e) => setEditingVital({ key, value: e.target.value })}
+                                  onKeyDown={(e) => { if (e.key === "Enter") saveVitalEdit(); if (e.key === "Escape") setEditingVital(null); }}
+                                  style={{ fontSize: "0.82rem", padding: "4px 8px", height: "28px", flex: 1 }}
+                                />
+                                <button onClick={saveVitalEdit} style={{ background: "var(--success)", border: "none", borderRadius: "6px", padding: "4px 7px", cursor: "pointer", color: "#fff", display: "flex" }} title="Save">
+                                  <Save size={12} />
+                                </button>
+                                <button onClick={() => setEditingVital(null)} style={{ background: "var(--bg-hover)", border: "none", borderRadius: "6px", padding: "4px 7px", cursor: "pointer", color: "var(--text-secondary)", display: "flex" }} title="Cancel">
+                                  <X size={12} />
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        }
 
                         return (
-                          <div key={key} 
-                            onClick={handleBoxClick}
-                            style={{ 
-                              padding: "8px 12px", 
-                              background: isAbnormal ? "rgba(239, 68, 68, 0.04)" : "var(--bg-body)", 
+                          <div key={key}
+                            style={{
+                              padding: "8px 12px",
+                              background: isAbnormal ? "rgba(239, 68, 68, 0.04)" : "var(--bg-body)",
                               border: isAbnormal ? "1px solid rgba(239, 68, 68, 0.15)" : "1px solid var(--border-default)",
-                              borderRadius: "var(--radius-md)", 
+                              borderRadius: "var(--radius-md)",
                               fontSize: "0.85rem",
-                              cursor: isAbnormal ? "pointer" : "default",
-                              transition: "transform 0.2s"
+                              position: "relative",
+                              transition: "all 0.2s"
                             }}
                             onMouseEnter={(e) => {
-                              if (!isAbnormal) return;
-                              e.currentTarget.style.transform = "translateY(-2px) scale(1.02)";
+                              e.currentTarget.querySelector<HTMLElement>('.vital-actions')!.style.opacity = '1';
+                              if (isAbnormal) e.currentTarget.style.transform = "translateY(-2px) scale(1.02)";
                             }}
                             onMouseLeave={(e) => {
-                              if (!isAbnormal) return;
-                              e.currentTarget.style.transform = "none";
+                              e.currentTarget.querySelector<HTMLElement>('.vital-actions')!.style.opacity = '0';
+                              if (isAbnormal) e.currentTarget.style.transform = "none";
                             }}
                           >
-                            <span style={{ color: isAbnormal ? "var(--danger)" : "var(--text-tertiary)", textTransform: "uppercase", fontSize: "0.7rem", display: "flex", alignItems: "center", gap: "4px" }}>
+                            {/* Action buttons (hover-reveal) */}
+                            <div className="vital-actions" style={{
+                              position: "absolute", top: "4px", right: "4px",
+                              display: "flex", gap: "2px", opacity: 0,
+                              transition: "opacity 0.15s"
+                            }}>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setEditingVital({ key, value: String(val) }); }}
+                                title="Edit"
+                                style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)", borderRadius: "4px", padding: "2px 5px", cursor: "pointer", color: "var(--primary)", display: "flex" }}
+                              >
+                                <Pencil size={10} />
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); deleteVital(key); }}
+                                title="Delete"
+                                style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)", borderRadius: "4px", padding: "2px 5px", cursor: "pointer", color: "var(--danger)", display: "flex" }}
+                              >
+                                <Trash2 size={10} />
+                              </button>
+                            </div>
+
+                            <span
+                              onClick={() => {
+                                if (!isAbnormal) return;
+                                const info = ABNORMAL_EXPLANATIONS[key] || {
+                                  title: `Abnormal Vital: ${key.replace("_", " ").toUpperCase()}`,
+                                  range: "Standard reference range",
+                                  meaning: "This value is flagged as abnormal.",
+                                  significance: "Clinical review is required to evaluate this vital sign."
+                                };
+                                setAbnormalExplanation({ ...info, key, val: `${String(val)}${key === "temp" ? "°F" : key === "o2_sat" ? "%" : ""}` });
+                              }}
+                              style={{
+                                color: isAbnormal ? "var(--danger)" : "var(--text-tertiary)",
+                                textTransform: "uppercase", fontSize: "0.7rem",
+                                display: "flex", alignItems: "center", gap: "4px",
+                                cursor: isAbnormal ? "pointer" : "default"
+                              }}
+                            >
                               {isAbnormal && <AlertTriangle size={10} style={{ color: "var(--danger)" }} />}
                               {key.replace("_", " ")}
                             </span>
@@ -758,56 +889,138 @@ export default function NewCasePage() {
                         );
                       })}
                     </div>
+                  ) : (
+                    <div style={{ fontSize: "0.82rem", color: "var(--text-tertiary)", fontStyle: "italic", padding: "8px 0" }}>No vitals recorded yet.</div>
+                  )}
+                </div>
+
+                {/* ── LAB RESULTS ── */}
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
+                    <div className="label">Lab Results</div>
+                    <button
+                      onClick={() => { setAddModal({ section: "labs" }); setNewEntryKey(""); setNewEntryVal(""); }}
+                      style={{
+                        display: "flex", alignItems: "center", gap: "4px",
+                        fontSize: "0.72rem", fontWeight: 600, padding: "3px 8px",
+                        borderRadius: "100px", border: "1px solid var(--info)",
+                        background: "rgba(59,130,246,0.06)", color: "var(--info)",
+                        cursor: "pointer", transition: "all 0.15s"
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(59,130,246,0.14)"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(59,130,246,0.06)"; }}
+                    >
+                      <PlusCircle size={12} /> Add
+                    </button>
                   </div>
-                )}
-                {extractedLabs && (
-                  <div>
-                    <div className="label" style={{ marginBottom: "8px" }}>Lab Results</div>
+
+                  {extractedLabs && Object.keys(extractedLabs).length > 0 ? (
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
                       {Object.entries(extractedLabs).filter(([_, v]) => v !== null).map(([key, val]) => {
                         const lowerKey = key.toLowerCase();
-                        const isLabAbnormal = (lowerKey === "bnp" && Number(val) > 500) || (lowerKey === "wbc" && (Number(val) > 12 || Number(val) < 4)) || (lowerKey === "lactate" && Number(val) >= 2.0) || (lowerKey === "creatinine" && Number(val) > 1.5) || (lowerKey === "troponin" && Number(val) > 0.04) || (lowerKey === "potassium" && Number(val) > 5.5) || (lowerKey === "ef" && Number(val) < 40);
-                        
-                        const handleLabClick = () => {
-                          if (!isLabAbnormal) return;
-                          const labName = (lowerKey === "bnp" || lowerKey === "ef" || lowerKey === "wbc") 
-                            ? lowerKey.toUpperCase() 
-                            : key.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
-                          const info = ABNORMAL_EXPLANATIONS[lowerKey] || {
-                            title: `Abnormal Lab: ${labName}`,
-                            range: "Standard reference range",
-                            meaning: "This value is flagged as abnormal.",
-                            significance: "Clinical review is required to evaluate this lab value."
-                          };
-                          setAbnormalExplanation({
-                            ...info,
-                            key: lowerKey,
-                            val: String(val)
-                          });
-                        };
+                        const isEditing = editingLab?.key === key;
+                        const isLabAbnormal = !isEditing && (
+                          (lowerKey === "bnp" && Number(val) > 500) ||
+                          (lowerKey === "wbc" && (Number(val) > 12 || Number(val) < 4)) ||
+                          (lowerKey === "lactate" && Number(val) >= 2.0) ||
+                          (lowerKey === "creatinine" && Number(val) > 1.5) ||
+                          (lowerKey === "troponin" && Number(val) > 0.04) ||
+                          (lowerKey === "potassium" && Number(val) > 5.5) ||
+                          (lowerKey === "ef" && Number(val) < 40)
+                        );
+
+                        if (isEditing) {
+                          return (
+                            <div key={key} style={{
+                              padding: "8px 10px", border: "1.5px solid var(--primary)",
+                              borderRadius: "var(--radius-md)", background: "var(--primary-light)"
+                            }}>
+                              <div style={{ fontSize: "0.7rem", textTransform: "uppercase", color: "var(--primary)", fontWeight: 600, marginBottom: "4px" }}>
+                                {key}
+                              </div>
+                              <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
+                                <input
+                                  autoFocus
+                                  className="input"
+                                  value={editingLab!.value}
+                                  onChange={(e) => setEditingLab({ key, value: e.target.value })}
+                                  onKeyDown={(e) => { if (e.key === "Enter") saveLabEdit(); if (e.key === "Escape") setEditingLab(null); }}
+                                  style={{ fontSize: "0.82rem", padding: "4px 8px", height: "28px", flex: 1 }}
+                                />
+                                <button onClick={saveLabEdit} style={{ background: "var(--success)", border: "none", borderRadius: "6px", padding: "4px 7px", cursor: "pointer", color: "#fff", display: "flex" }} title="Save">
+                                  <Save size={12} />
+                                </button>
+                                <button onClick={() => setEditingLab(null)} style={{ background: "var(--bg-hover)", border: "none", borderRadius: "6px", padding: "4px 7px", cursor: "pointer", color: "var(--text-secondary)", display: "flex" }} title="Cancel">
+                                  <X size={12} />
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        }
 
                         return (
-                          <div key={key} 
-                            onClick={handleLabClick}
-                            style={{ 
-                              padding: "8px 12px", 
-                              background: isLabAbnormal ? "rgba(239, 68, 68, 0.04)" : "var(--bg-body)", 
+                          <div key={key}
+                            style={{
+                              padding: "8px 12px",
+                              background: isLabAbnormal ? "rgba(239, 68, 68, 0.04)" : "var(--bg-body)",
                               border: isLabAbnormal ? "1px solid rgba(239, 68, 68, 0.15)" : "1px solid var(--border-default)",
-                              borderRadius: "var(--radius-md)", 
+                              borderRadius: "var(--radius-md)",
                               fontSize: "0.85rem",
-                              cursor: isLabAbnormal ? "pointer" : "default",
-                              transition: "transform 0.2s"
+                              position: "relative",
+                              transition: "all 0.2s"
                             }}
                             onMouseEnter={(e) => {
-                              if (!isLabAbnormal) return;
-                              e.currentTarget.style.transform = "translateY(-2px) scale(1.02)";
+                              e.currentTarget.querySelector<HTMLElement>('.lab-actions')!.style.opacity = '1';
+                              if (isLabAbnormal) e.currentTarget.style.transform = "translateY(-2px) scale(1.02)";
                             }}
                             onMouseLeave={(e) => {
-                              if (!isLabAbnormal) return;
-                              e.currentTarget.style.transform = "none";
+                              e.currentTarget.querySelector<HTMLElement>('.lab-actions')!.style.opacity = '0';
+                              if (isLabAbnormal) e.currentTarget.style.transform = "none";
                             }}
                           >
-                            <span style={{ color: isLabAbnormal ? "var(--danger)" : "var(--text-tertiary)", textTransform: "uppercase", fontSize: "0.7rem", display: "flex", alignItems: "center", gap: "4px" }}>
+                            {/* Action buttons (hover-reveal) */}
+                            <div className="lab-actions" style={{
+                              position: "absolute", top: "4px", right: "4px",
+                              display: "flex", gap: "2px", opacity: 0,
+                              transition: "opacity 0.15s"
+                            }}>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setEditingLab({ key, value: String(val) }); }}
+                                title="Edit"
+                                style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)", borderRadius: "4px", padding: "2px 5px", cursor: "pointer", color: "var(--primary)", display: "flex" }}
+                              >
+                                <Pencil size={10} />
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); deleteLab(key); }}
+                                title="Delete"
+                                style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)", borderRadius: "4px", padding: "2px 5px", cursor: "pointer", color: "var(--danger)", display: "flex" }}
+                              >
+                                <Trash2 size={10} />
+                              </button>
+                            </div>
+
+                            <span
+                              onClick={() => {
+                                if (!isLabAbnormal) return;
+                                const labName = (lowerKey === "bnp" || lowerKey === "ef" || lowerKey === "wbc")
+                                  ? lowerKey.toUpperCase()
+                                  : key.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
+                                const info = ABNORMAL_EXPLANATIONS[lowerKey] || {
+                                  title: `Abnormal Lab: ${labName}`,
+                                  range: "Standard reference range",
+                                  meaning: "This value is flagged as abnormal.",
+                                  significance: "Clinical review is required to evaluate this lab value."
+                                };
+                                setAbnormalExplanation({ ...info, key: lowerKey, val: String(val) });
+                              }}
+                              style={{
+                                color: isLabAbnormal ? "var(--danger)" : "var(--text-tertiary)",
+                                textTransform: "uppercase", fontSize: "0.7rem",
+                                display: "flex", alignItems: "center", gap: "4px",
+                                cursor: isLabAbnormal ? "pointer" : "default"
+                              }}
+                            >
                               {isLabAbnormal && <AlertTriangle size={10} style={{ color: "var(--danger)" }} />}
                               {key}
                             </span>
@@ -816,8 +1029,114 @@ export default function NewCasePage() {
                         );
                       })}
                     </div>
+                  ) : (
+                    <div style={{ fontSize: "0.82rem", color: "var(--text-tertiary)", fontStyle: "italic", padding: "8px 0" }}>No lab results recorded yet.</div>
+                  )}
+                </div>
+
+              </div>
+            </div>
+          ) : (
+            /* Show the card with just Add buttons even when no data extracted yet */
+            <div className="card" style={{ marginBottom: "20px", borderLeft: "3px solid var(--info)" }}>
+              <h3 style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.95rem", marginBottom: "16px" }}>
+                <Activity size={18} style={{ color: "var(--info)" }} /> Extracted Clinical Data
+              </h3>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
+                {["vitals", "labs"].map((section) => (
+                  <div key={section}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
+                      <div className="label">{section === "vitals" ? "Vitals" : "Lab Results"}</div>
+                      <button
+                        onClick={() => { setAddModal({ section: section as "vitals" | "labs" }); setNewEntryKey(""); setNewEntryVal(""); }}
+                        style={{
+                          display: "flex", alignItems: "center", gap: "4px",
+                          fontSize: "0.72rem", fontWeight: 600, padding: "3px 8px",
+                          borderRadius: "100px", border: "1px solid var(--info)",
+                          background: "rgba(59,130,246,0.06)", color: "var(--info)",
+                          cursor: "pointer", transition: "all 0.15s"
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(59,130,246,0.14)"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(59,130,246,0.06)"; }}
+                      >
+                        <PlusCircle size={12} /> Add
+                      </button>
+                    </div>
+                    <div style={{ fontSize: "0.82rem", color: "var(--text-tertiary)", fontStyle: "italic" }}>
+                      Upload a document or add entries manually.
+                    </div>
                   </div>
-                )}
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ── Add New Entry Modal ── */}
+          {addModal && (
+            <div style={{
+              position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+              background: "rgba(0,0,0,0.45)", zIndex: 9998,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              backdropFilter: "blur(3px)"
+            }} onClick={() => setAddModal(null)}>
+              <div style={{
+                background: "var(--bg-surface)", borderRadius: "var(--radius-lg)",
+                width: "90%", maxWidth: "420px",
+                boxShadow: "var(--shadow-xl)", overflow: "hidden"
+              }} onClick={(e) => e.stopPropagation()}>
+                {/* Header */}
+                <div style={{
+                  padding: "16px 20px", borderBottom: "1px solid var(--border-default)",
+                  display: "flex", justifyContent: "space-between", alignItems: "center"
+                }}>
+                  <span style={{ fontWeight: 600, fontSize: "0.95rem", display: "flex", alignItems: "center", gap: "8px" }}>
+                    <PlusCircle size={17} style={{ color: "var(--info)" }} />
+                    Add {addModal.section === "vitals" ? "Vital" : "Lab Result"}
+                  </span>
+                  <button onClick={() => setAddModal(null)} style={{
+                    background: "none", border: "none", cursor: "pointer",
+                    padding: "4px", color: "var(--text-tertiary)", borderRadius: "var(--radius-sm)"
+                  }}>
+                    <X size={20} />
+                  </button>
+                </div>
+                {/* Body */}
+                <div style={{ padding: "24px", display: "flex", flexDirection: "column", gap: "16px" }}>
+                  <div>
+                    <label className="label" style={{ marginBottom: "6px", display: "block" }}>
+                      {addModal.section === "vitals" ? "Vital Name" : "Lab Name"}
+                    </label>
+                    <input
+                      autoFocus
+                      className="input"
+                      placeholder={addModal.section === "vitals" ? "e.g., temp, hr, o2_sat" : "e.g., wbc, lactate, bnp"}
+                      value={newEntryKey}
+                      onChange={(e) => setNewEntryKey(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") commitNewEntry(); }}
+                    />
+                  </div>
+                  <div>
+                    <label className="label" style={{ marginBottom: "6px", display: "block" }}>Value</label>
+                    <input
+                      className="input"
+                      placeholder={addModal.section === "vitals" ? "e.g., 101.2, 90/60" : "e.g., 4.2, 18.9"}
+                      value={newEntryVal}
+                      onChange={(e) => setNewEntryVal(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") commitNewEntry(); }}
+                    />
+                  </div>
+                  <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end", marginTop: "4px" }}>
+                    <button className="btn btn-secondary" onClick={() => setAddModal(null)} style={{ fontSize: "0.85rem" }}>Cancel</button>
+                    <button
+                      className="btn btn-primary"
+                      onClick={commitNewEntry}
+                      disabled={!newEntryKey.trim() || !newEntryVal.trim()}
+                      style={{ fontSize: "0.85rem", gap: "6px" }}
+                    >
+                      <Plus size={14} /> Add Entry
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -877,7 +1196,7 @@ export default function NewCasePage() {
               {isSubmitting ? (
                 <><Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} /> Processing...</>
               ) : (
-                <><Plus size={16} /> Submit for Review</>
+                <><Upload size={16} /> Upload Case</>
               )}
             </button>
           </div>

@@ -208,10 +208,13 @@ def extract_patient_name(text: str) -> Tuple[Optional[str], float]:
         m = re.search(p, text, re.IGNORECASE)
         if m:
             name = m.group(1).strip()
+            # Clean up trailing label keywords (e.g. DOB, MRN, Age, Sex, etc.) that might have been matched
+            name = re.sub(r'\s+(?:DOB|mrn|id|dob|ssn|gender|age|sex|patient|history)\b.*', '', name, flags=re.IGNORECASE).strip()
             # Filter out common false positives
             if name.lower() not in ("heart failure", "chest pain", "blood pressure", "medical center", "emergency department"):
                 return name, 0.85
     return None, 0.0
+
 
 
 def extract_mrn(text: str) -> Tuple[Optional[str], float]:
@@ -433,7 +436,7 @@ def extract_labs(text: str) -> Optional[ExtractedLabs]:
     return labs if found_any else None
 
 
-def extract_clinical_summary(text: str) -> Tuple[Optional[str], float]:
+def extract_clinical_summary(text: str, doc_type: str = "PRIOR_AUTH") -> Tuple[Optional[str], float]:
     """Extract a clinical summary or HPI from the text."""
     # Try GenAI (Groq LLM) first if configured
     try:
@@ -441,7 +444,28 @@ def extract_clinical_summary(text: str) -> Tuple[Optional[str], float]:
         if settings.GROQ_API_KEY and text.strip():
             from groq import Groq
             client = Groq(api_key=settings.GROQ_API_KEY)
-            prompt = f"""You are a clinical quality assurance expert. Provide a detailed yet concise clinical summary of the following raw medical text. Balance clinical thoroughness with brevity.
+            
+            if doc_type == "APPEAL_DOCUMENT":
+                prompt = f"""You are a clinical quality assurance expert. Provide a detailed yet concise summary of the following raw medical appeal document. Balance clinical thoroughness with brevity.
+            
+Ensure the output is formatted exactly with these bold headers:
+**OVERVIEW OF DISPUTE:** [Short summary of the case and what is being appealed - max 1 sentence]
+**DENIAL RATIONALE:** [The reason given by the payer/insurance for the original denial - max 2 sentences]
+**APPELLANT ARGUMENTS:** [The arguments/grounds raised by the provider or patient in support of the appeal - max 3 sentences]
+**CLINICAL EVIDENCE SUPPORTING OVERTURN:**
+- **Vitals/Labs/Imaging:** [key clinical data supporting inpatient severity, e.g. temperature, blood pressure, heart rate, respiratory rate, oxygen saturation, BNP, lactate, creatinine, EF, etc.]
+- **Treatments/Monitoring:** [IV medications, continuous monitoring, or interventions that justify the requested level of care]
+**CONCLUSION & RECOMMENDATION:** [Final clinical summary and recommendation for the appeal determination - max 2 sentences]
+
+Rules:
+- Be clinically precise, objective, and thorough. Do not omit critical clinical signs or arguments.
+- Keep each section short, bulleted, and to the point. Avoid conversational filler.
+- If any section cannot be found in the text, write "Not documented" for that specific section.
+
+Raw Medical Text:
+{text[:4000]}"""
+            else:
+                prompt = f"""You are a clinical quality assurance expert. Provide a detailed yet concise clinical summary of the following raw medical text. Balance clinical thoroughness with brevity.
             
 Ensure the output is formatted exactly with these bold headers:
 **CHIEF COMPLAINT:** [Chief Complaint - max 1 sentence]
@@ -459,6 +483,7 @@ Rules:
 
 Raw Medical Text:
 {text[:4000]}"""
+
             response = client.chat.completions.create(
                 model=settings.GROQ_FAST_MODEL,
                 messages=[{"role": "user", "content": prompt}],
@@ -471,6 +496,7 @@ Raw Medical Text:
                 return summary, 0.95
     except Exception as e:
         logger.warning(f"[Parser] LLM clinical summary extraction failed: {e}. Falling back to rule-based.")
+
 
     # Rule-based fallback
     patterns = [
@@ -620,7 +646,8 @@ def parse_document(file_bytes: bytes, filename: str) -> ParsedDocumentResponse:
     primary_dx, secondary_dx = extract_diagnoses(text)
     vitals = extract_vitals(text)
     labs = extract_labs(text)
-    summary, summary_conf = extract_clinical_summary(text)
+    summary, summary_conf = extract_clinical_summary(text, doc_type)
+
     timeline = extract_timeline(text)
     risk_signals = extract_risk_signals(text, vitals, labs)
 
