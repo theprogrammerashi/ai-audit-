@@ -322,7 +322,11 @@ def extract_diagnoses(text: str) -> Tuple[Optional[ExtractedDiagnosis], list]:
     for p in primary_patterns:
         m = re.search(p, text, re.IGNORECASE)
         if m:
-            primary_display = m.group(1).strip()[:100]
+            val = m.group(1).strip()
+            # Reject if it's actually the "Diagnosis Category" field
+            if "category" in val.lower() or "category" in m.group(0).lower():
+                continue
+            primary_display = val[:100]
             break
 
     if codes:
