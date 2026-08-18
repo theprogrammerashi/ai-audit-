@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { FolderOpen, Plus, Search, ChevronRight, Clock, Loader2, AlertTriangle, FileText, Eye } from "lucide-react";
 import api from "@/lib/api";
@@ -9,6 +9,36 @@ import CustomDropdown from "@/components/shared/CustomDropdown";
 const statusColors: Record<string, string> = {
   PENDING_REVIEW: "badge-warning", IN_REVIEW: "badge-info", DECIDED: "badge-primary",
   AUDITED: "badge-success", COMPLETED: "badge-success"
+};
+
+const getGreeting = () => {
+  const hr = new Date().getHours();
+  if (hr < 12) return "Good morning";
+  if (hr < 17) return "Good afternoon";
+  return "Good evening";
+};
+
+const getGreetingEmoji = () => {
+  const hr = new Date().getHours();
+  if (hr < 12) return "☀️";
+  if (hr < 17) return "☕";
+  return "🌙";
+};
+
+const getCaseUrgency = (c: any) => {
+  const riskSignals = c.structured_case?.risk_signals || [];
+  const signalsCount = Array.isArray(riskSignals) ? riskSignals.length : 0;
+  if (signalsCount >= 3) return "URGENT";
+  const dxCode = c.primary_diagnosis_code || "";
+  const dxDisplay = c.primary_diagnosis_display || "";
+  if (dxCode.startsWith("A41") || dxDisplay.includes("Sepsis")) {
+    return "URGENT";
+  }
+  if (signalsCount > 0) return "HIGH";
+  if (dxCode.startsWith("I50") || dxDisplay.includes("Heart Failure")) {
+    return "HIGH";
+  }
+  return "STANDARD";
 };
 
 export default function CasesPage() {
@@ -22,6 +52,63 @@ export default function CasesPage() {
   const [user, setUser] = useState<any>(null);
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [nurseFilter, setNurseFilter] = useState("ALL");
+
+  const welcomeStats = useMemo(() => {
+    const now = new Date().getTime();
+    let urgentCount = 0;
+    let overdueCount = 0;
+    
+    if (activeTab === "prior_auths") {
+      cases.forEach(c => {
+        if (c.status === "PENDING_REVIEW" || c.status === "IN_REVIEW") {
+          const urgency = getCaseUrgency(c);
+          if (urgency === "URGENT") {
+            urgentCount++;
+          }
+          let submittedStr = c.submitted_at;
+          if (submittedStr) {
+            if (!submittedStr.endsWith('Z') && !submittedStr.includes('+')) {
+              submittedStr = submittedStr.replace(' ', 'T') + 'Z';
+            }
+            const ageMs = now - new Date(submittedStr).getTime();
+            const ageHours = ageMs / (1000 * 60 * 60);
+            if (ageHours > 24) {
+              overdueCount++;
+            }
+          }
+        }
+      });
+      return {
+        urgent: urgentCount,
+        overdue: overdueCount,
+        total: cases.filter(c => c.status === "PENDING_REVIEW" || c.status === "IN_REVIEW").length
+      };
+    } else {
+      appeals.forEach(a => {
+        if (!a.appeal_outcome) {
+          if (a.appeal_level && a.appeal_level.includes("Level 2")) {
+            urgentCount++;
+          }
+          let submittedStr = a.created_at || a.appeal_received_date;
+          if (submittedStr) {
+            if (!submittedStr.endsWith('Z') && !submittedStr.includes('+')) {
+              submittedStr = submittedStr.replace(' ', 'T') + 'Z';
+            }
+            const ageMs = now - new Date(submittedStr).getTime();
+            const ageHours = ageMs / (1000 * 60 * 60);
+            if (ageHours > 24) {
+              overdueCount++;
+            }
+          }
+        }
+      });
+      return {
+        urgent: urgentCount,
+        overdue: overdueCount,
+        total: appeals.filter(a => !a.appeal_outcome).length
+      };
+    }
+  }, [cases, appeals, activeTab]);
 
   useEffect(() => {
     const fetchCases = async () => {
@@ -89,6 +176,113 @@ export default function CasesPage() {
             <Plus size={16} /> New Case
           </button>
         )}
+      </div>
+
+      {/* Dynamic Welcome Banner (Option A - Glassmorphic Card) */}
+      <div style={{
+        background: "linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(244, 63, 94, 0.08) 100%)",
+        border: "1px solid var(--border-default)",
+        borderRadius: "var(--radius-lg)",
+        padding: "24px 32px",
+        marginBottom: "28px",
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        boxShadow: "var(--shadow-sm)",
+        backdropFilter: "blur(8px)",
+        position: "relative",
+        overflow: "hidden"
+      }}>
+        {/* Decorative backdrop blobs */}
+        <div style={{
+          position: "absolute",
+          width: "150px",
+          height: "150px",
+          borderRadius: "50%",
+          background: "var(--primary)",
+          filter: "blur(60px)",
+          opacity: 0.15,
+          top: "-50px",
+          left: "-50px",
+          pointerEvents: "none"
+        }} />
+        <div style={{
+          position: "absolute",
+          width: "150px",
+          height: "150px",
+          borderRadius: "50%",
+          background: "var(--warning)",
+          filter: "blur(60px)",
+          opacity: 0.15,
+          bottom: "-50px",
+          right: "-50px",
+          pointerEvents: "none"
+        }} />
+
+        <div style={{ zIndex: 1 }}>
+          <h2 style={{ fontSize: "1.6rem", fontWeight: 700, color: "var(--text-primary)", marginBottom: "6px" }}>
+            {getGreeting()}, {user?.full_name || "Sarah Collins"}! {getGreetingEmoji()}
+          </h2>
+          <p style={{ fontSize: "0.9rem", color: "var(--text-secondary)", margin: 0 }}>
+            Here is your review queue summary for today.
+          </p>
+        </div>
+
+        <div style={{ display: "flex", gap: "16px", zIndex: 1 }}>
+          {/* Overdue stat */}
+          <div style={{
+            background: "rgba(239, 68, 68, 0.06)",
+            border: "1px solid rgba(239, 68, 68, 0.15)",
+            borderRadius: "var(--radius-md)",
+            padding: "12px 20px",
+            minWidth: "150px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "2px"
+          }}>
+            <div style={{ fontSize: "1.4rem", fontWeight: 700, color: "var(--danger)", display: "flex", alignItems: "center", gap: "8px" }}>
+              {welcomeStats.overdue}
+              <AlertTriangle size={18} style={{ color: "var(--danger)" }} />
+            </div>
+            <div style={{ fontSize: "0.75rem", fontWeight: 500, color: "var(--text-secondary)" }}>Overdue (&gt;24h)</div>
+          </div>
+
+          {/* Urgent stat */}
+          <div style={{
+            background: "rgba(245, 158, 11, 0.06)",
+            border: "1px solid rgba(245, 158, 11, 0.15)",
+            borderRadius: "var(--radius-md)",
+            padding: "12px 20px",
+            minWidth: "150px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "2px"
+          }}>
+            <div style={{ fontSize: "1.4rem", fontWeight: 700, color: "var(--warning)", display: "flex", alignItems: "center", gap: "8px" }}>
+              {welcomeStats.urgent}
+              <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "var(--warning)", display: "inline-block" }} />
+            </div>
+            <div style={{ fontSize: "0.75rem", fontWeight: 500, color: "var(--text-secondary)" }}>Urgent Priority</div>
+          </div>
+
+          {/* Pending stat */}
+          <div style={{
+            background: "var(--bg-surface)",
+            border: "1px solid var(--border-default)",
+            borderRadius: "var(--radius-md)",
+            padding: "12px 20px",
+            minWidth: "150px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "2px"
+          }}>
+            <div style={{ fontSize: "1.4rem", fontWeight: 700, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: "8px" }}>
+              {welcomeStats.total}
+              <FileText size={18} style={{ color: "var(--text-tertiary)" }} />
+            </div>
+            <div style={{ fontSize: "0.75rem", fontWeight: 500, color: "var(--text-secondary)" }}>Pending Cases</div>
+          </div>
+        </div>
       </div>
 
       <div style={{ display: "flex", gap: "16px", borderBottom: "1px solid var(--border-default)", marginBottom: "24px" }}>

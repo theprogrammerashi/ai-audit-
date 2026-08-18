@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Fragment } from "react";
+import { useState, useEffect, useMemo, Fragment } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   LayoutDashboard, CheckCircle, XCircle, AlertTriangle,
@@ -278,6 +278,62 @@ const parseClinicalSummaryForLabs = (summaryText: string, currentLabs: Record<st
 };
 
 export const formatRiskSignal = (s: string) => s.replace(/_/g, " ").replace(/\bbnp\b/ig, "BNP").replace(/\bef\b/ig, "EF");
+
+const RenderHighlightedText = ({ text }: { text: string }) => {
+  const highlighted = useMemo(() => {
+    if (!text) return "";
+    const terms = [
+      "fever",
+      "leukocytosis",
+      "hypotension",
+      "altered mental status",
+      "sepsis",
+      "infection",
+      "lactate",
+      "systolic blood pressure",
+      "diastolic blood pressure",
+      "heart rate",
+      "respiratory rate",
+      "oxygen saturation",
+      "wbc",
+      "procalcitonin",
+      "creatinine",
+      "bnp",
+      "bp",
+      "temp",
+      "map",
+      "ef"
+    ];
+    
+    let result = text;
+    // Escape HTML first to be 100% secure against XSS
+    result = result
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+      
+    // Highlight values inside brackets/parentheses (limit to 25 chars to avoid long description / nested bracket bugs and bold both brackets)
+    result = result.replace(/\(([^)]{1,25})\)/g, "<strong style='color: var(--text-primary); font-weight: 700;'>($1)</strong>");
+
+    // Highlight standalone blood pressure values (e.g. 86/52)
+    result = result.replace(/\b(\d+\/\d+)\b/g, "<strong style='color: var(--text-primary); font-weight: 700;'>$1</strong>");
+
+    // Highlight standard clinical terms standalone (avoid matching inside tag attributes)
+    terms.forEach(term => {
+      const regex = new RegExp(`\\b(${term}s?)\\b(?![^<>]*>)`, "gi");
+      result = result.replace(regex, "<strong style='color: var(--text-primary); font-weight: 700;'>$1</strong>");
+    });
+
+    // Highlight values/numbers following a bolded term (e.g. <strong>Lactate</strong> 4.2 -> <strong>Lactate</strong> <strong>4.2</strong>)
+    result = result.replace(/(<\/strong>)\s*(?::|is|of|=)?\s*(\d+(?:\.\d+)?)\b/gi, "$1 <strong style='color: var(--text-primary); font-weight: 700;'>$2</strong>");
+    
+    return result;
+  }, [text]);
+
+  return <span dangerouslySetInnerHTML={{ __html: highlighted }} />;
+};
 
 export default function WorkspaceDetailPage() {
   const params = useParams();
@@ -1026,11 +1082,11 @@ export default function WorkspaceDetailPage() {
                           <span style={{ fontSize: "0.72rem", color: "var(--text-tertiary)", fontWeight: 500, whiteSpace: "nowrap" }}>Sec. {cr.section}</span>
                         </div>
                         <div style={{ fontSize: "0.82rem", color: "var(--text-secondary)", lineHeight: 1.5, marginBottom: "6px", paddingLeft: "22px" }}>
-                          {cr.explanation || `This criterion is satisfied — ${cr.evidence || "clinical evidence supports this finding."}`}
+                          <RenderHighlightedText text={cr.explanation || `This criterion is satisfied — ${cr.evidence || "clinical evidence supports this finding."}`} />
                         </div>
                         {cr.evidence && (
                           <div style={{ fontSize: "0.78rem", color: "var(--text-tertiary)", fontStyle: "italic", paddingLeft: "22px" }}>
-                            Evidence: {cr.evidence}
+                            Evidence: <RenderHighlightedText text={cr.evidence} />
                           </div>
                         )}
                         {cr.confidence !== undefined && (
@@ -1079,11 +1135,11 @@ export default function WorkspaceDetailPage() {
                           <span style={{ fontSize: "0.72rem", color: "var(--text-tertiary)", fontWeight: 500, whiteSpace: "nowrap" }}>Sec. {cr.section}</span>
                         </div>
                         <div style={{ fontSize: "0.82rem", color: "var(--text-secondary)", lineHeight: 1.5, marginBottom: "6px", paddingLeft: "22px" }}>
-                          {cr.explanation || `This criterion is not met — ${cr.evidence || "insufficient evidence or documentation missing."}`}
+                          <RenderHighlightedText text={cr.explanation || `This criterion is not met — ${cr.evidence || "insufficient evidence or documentation missing."}`} />
                         </div>
                         {cr.evidence && (
                           <div style={{ fontSize: "0.78rem", color: "var(--text-tertiary)", fontStyle: "italic", paddingLeft: "22px" }}>
-                            Evidence: {cr.evidence}
+                            Evidence: <RenderHighlightedText text={cr.evidence} />
                           </div>
                         )}
                         {cr.confidence !== undefined && (

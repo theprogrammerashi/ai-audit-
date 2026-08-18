@@ -440,6 +440,23 @@ def extract_labs(text: str) -> Optional[ExtractedLabs]:
     return labs if found_any else None
 
 
+def expand_medical_abbreviations(text: str) -> str:
+    """Expand common medical shorthand abbreviations to full English terms for audit clarity."""
+    if not text:
+        return text
+    abbreviations = {
+        r'\bq(\d+)h\b': r'every \1 hours',
+        r'\bqd\b': 'daily',
+        r'\bbid\b': 'twice daily',
+        r'\btid\b': 'three times daily',
+        r'\bqid\b': 'four times daily',
+        r'\bprn\b': 'as needed',
+    }
+    for pattern, replacement in abbreviations.items():
+        text = re.sub(pattern, replacement, text, flags=re.IGNORECASE)
+    return text
+
+
 def extract_clinical_summary(text: str, doc_type: str = "PRIOR_AUTH") -> Tuple[Optional[str], float]:
     """Extract a clinical summary or HPI from the text."""
     # Try GenAI (Groq LLM) first if configured
@@ -464,6 +481,7 @@ Ensure the output is formatted exactly with these bold headers:
 Rules:
 - Be clinically precise, objective, and thorough. Do not omit critical clinical signs or arguments.
 - Keep each section short, bulleted, and to the point. Avoid conversational filler.
+- Do not use medical shorthand abbreviations in the summary (e.g., expand "q6h" to "every 6 hours", "q4h" to "every 4 hours", "bid" to "twice daily", "qd" to "daily", "prn" to "as needed", etc.). Use the full English words for clarity.
 - If any section cannot be found in the text, write "Not documented" for that specific section.
 
 Raw Medical Text:
@@ -483,6 +501,7 @@ Ensure the output is formatted exactly with these bold headers:
 Rules:
 - Be clinically precise, objective, and thorough. Do not omit critical clinical signs.
 - Keep each section short, bulleted, and to the point. Avoid conversational filler.
+- Do not use medical shorthand abbreviations in the summary (e.g., expand "q6h" to "every 6 hours", "q4h" to "every 4 hours", "bid" to "twice daily", "qd" to "daily", "prn" to "as needed", etc.). Use the full English words for clarity.
 - If any section cannot be found in the text, write "Not documented" for that specific section.
 
 Raw Medical Text:
@@ -496,6 +515,7 @@ Raw Medical Text:
             )
             summary = response.choices[0].message.content.strip()
             if len(summary) > 30:
+                summary = expand_medical_abbreviations(summary)
                 logger.info("[Parser] Successfully generated GenAI clinical summary.")
                 return summary, 0.95
     except Exception as e:
@@ -529,12 +549,14 @@ Raw Medical Text:
             if len(summary) > 30:
                 if len(summary) > 1000:
                     summary = summary[:997] + "..."
+                summary = expand_medical_abbreviations(summary)
                 return summary, 0.80
     
     # Fallback: use first substantial paragraph
     paragraphs = [p.strip() for p in text.split("\n\n") if len(p.strip()) > 80]
     if paragraphs:
-        return paragraphs[0][:500], 0.50
+        summary_paragraph = expand_medical_abbreviations(paragraphs[0][:500])
+        return summary_paragraph, 0.50
 
     return None, 0.0
 

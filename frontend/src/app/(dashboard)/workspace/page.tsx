@@ -157,6 +157,7 @@ export default function WorkspacePage() {
         )}
       </div>
 
+
       {/* Tabs Container */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid var(--border-default)', paddingBottom: '8px' }}>
         <div style={{ display: 'flex', gap: '4px' }}>
