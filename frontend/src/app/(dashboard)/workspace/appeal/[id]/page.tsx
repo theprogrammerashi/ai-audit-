@@ -8,6 +8,14 @@ import {
 } from "lucide-react";
 import api from "@/lib/api";
 
+const renderMarkdown = (text: string) => {
+  if (!text) return "";
+  return text
+    .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+    .replace(/\n/g, "<br />")
+    .replace(/^- /gm, "&#8226; ");
+};
+
 export default function WorkspaceAppealPage() {
   const params = useParams();
   const router = useRouter();
@@ -128,7 +136,7 @@ export default function WorkspaceAppealPage() {
             ["Member ID", data.member_id], 
             ["Type", data.appellant_type], 
             ["Level", data.appeal_level], 
-            ["Diagnosis", data.diagnosis_category]
+            ["Diagnosis", data.primary_diagnosis_display || data.diagnosis_category]
           ].map(([label, val]) => (
             <div key={label} style={{ marginBottom: "12px" }}>
               <div style={{ fontSize: "0.75rem", color: "var(--text-tertiary)", marginBottom: "2px" }}>{label}</div>
@@ -152,9 +160,10 @@ export default function WorkspaceAppealPage() {
             <h3 style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px", fontSize: "1rem" }}>
               <FileSearch size={18} style={{ color: "var(--primary)" }} /> Appeal Clinical Rationale
             </h3>
-            <p style={{ fontSize: "0.95rem", lineHeight: 1.6, color: "var(--text-secondary)" }}>
-              {data.clinical_rationale_provided || "No clinical rationale provided."}
-            </p>
+            <div 
+              style={{ fontSize: "0.95rem", lineHeight: 1.6, color: "var(--text-secondary)", whiteSpace: "pre-wrap" }}
+              dangerouslySetInnerHTML={{ __html: renderMarkdown(data.clinical_rationale_provided || "No clinical rationale provided.") }}
+            />
           </div>
 
           <div className="card" style={{ padding: "20px" }}>

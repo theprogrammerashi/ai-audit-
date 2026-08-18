@@ -56,6 +56,7 @@ class AppealIntakeItem(BaseModel):
     clinical_rationale_provided: Optional[str] = None
     requested_service: Optional[str] = None
     diagnosis_category: Optional[str] = None
+    primary_diagnosis_display: Optional[str] = None
     financial_amount_disputed: Optional[float] = None
     reviewer_assigned: Optional[str] = None
     appeal_outcome: Optional[str] = None

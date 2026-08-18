@@ -250,7 +250,7 @@ async def reassign_appeal_case(id: str, user: dict = Depends(get_current_user), 
 async def get_appeal_intake_case(id: str, user: dict = Depends(get_current_user), db=Depends(get_db)):
     try:
         result = db.execute("""
-            SELECT a.*, c.patient_name
+            SELECT a.*, c.patient_name, c.primary_diagnosis_display
             FROM appeal_intake_cases a
             LEFT JOIN cases c ON a.case_id = c.id
             WHERE a.id = ?

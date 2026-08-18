@@ -77,14 +77,15 @@ async def create_case(case: CaseCreate, user: dict = Depends(get_current_user), 
                 id, case_id, member_id, appellant_type, appeal_received_date,
                 appeal_level, denial_reason_category, clinical_rationale_provided,
                 requested_service, diagnosis_category, financial_amount_disputed,
-                reviewer_assigned, original_nurse_id
-            ) VALUES (?, ?, ?, 'Provider', ?, 'Level 1 - Internal', 'Medical Necessity', ?, ?, ?, 15000.0, ?, 'SYSTEM')
+                reviewer_assigned, original_nurse_id, created_at
+            ) VALUES (?, ?, ?, 'Provider', ?, 'Level 1 - Internal', 'Medical Necessity', ?, ?, ?, 15000.0, ?, 'SYSTEM', ?)
         """, [
             appeal_id, case_id, case.patient_mrn,
             datetime.now().strftime("%Y-%m-%d"),
             case.clinical_notes or "No clinical rationale provided.",
             f"Inpatient Admission - {case.primary_diagnosis_display or case.primary_diagnosis_code}",
-            diag_category, assigned_nurse_id
+            diag_category, assigned_nurse_id,
+            datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         ])
 
 

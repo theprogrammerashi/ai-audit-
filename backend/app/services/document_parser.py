@@ -504,7 +504,8 @@ Raw Medical Text:
 
     # Rule-based fallback
     patterns = [
-        r"(?:clinical\s*summary|summary|HPI|history\s*of\s*present\s*illness|chief\s*complaint|cc|assessment\s*(?:and|&)\s*plan|a/?p|hospital\s*course|reason\s*for\s*(?:admission|visit|consultation|review))[\s:]+(.*)",
+        r"(?:clinical\s*summary|summary|history\s*of\s*present\s*illness|chief\s*complaint|assessment\s*(?:and|&)\s*plan|hospital\s*course|reason\s*for\s*(?:admission|visit|consultation|review))[\s:]+(.*)",
+        r"\b(?:HPI|cc|ap|hpi)\b[\s:]+(.*)",
     ]
     for p in patterns:
         m = re.search(p, text, re.IGNORECASE | re.DOTALL)
