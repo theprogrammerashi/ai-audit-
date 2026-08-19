@@ -58,9 +58,12 @@ export default function CasesPage() {
     let urgentCount = 0;
     let overdueCount = 0;
     
+    const isQa = user?.role === "QA_LEAD" || user?.role === "ADMIN" || user?.role === "EXECUTIVE";
+    const pendingStatuses = isQa ? ["DECIDED"] : ["PENDING_REVIEW", "IN_REVIEW"];
+    
     if (activeTab === "prior_auths") {
       cases.forEach(c => {
-        if (c.status === "PENDING_REVIEW" || c.status === "IN_REVIEW") {
+        if (pendingStatuses.includes(c.status)) {
           const urgency = getCaseUrgency(c);
           if (urgency === "URGENT") {
             urgentCount++;
@@ -81,7 +84,7 @@ export default function CasesPage() {
       return {
         urgent: urgentCount,
         overdue: overdueCount,
-        total: cases.filter(c => c.status === "PENDING_REVIEW" || c.status === "IN_REVIEW").length
+        total: cases.filter(c => pendingStatuses.includes(c.status)).length
       };
     } else {
       appeals.forEach(a => {
@@ -108,7 +111,7 @@ export default function CasesPage() {
         total: appeals.filter(a => !a.appeal_outcome).length
       };
     }
-  }, [cases, appeals, activeTab]);
+  }, [cases, appeals, activeTab, user]);
 
   useEffect(() => {
     const fetchCases = async () => {
