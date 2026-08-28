@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Fragment } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   LayoutDashboard, CheckCircle, XCircle, ArrowUpCircle, AlertTriangle,
@@ -270,34 +270,138 @@ export default function WorkspaceAppealPage() {
               {/* Clinical Summary */}
               <div className="card" style={{ padding: "16px" }}>
                 <h4 style={{ margin: "0 0 8px 0", fontSize: "0.85rem", textTransform: "uppercase", color: "var(--text-secondary)" }}>Clinical Summary</h4>
-                <p style={{ fontSize: "0.88rem", lineHeight: 1.5, color: "var(--text-primary)", whiteSpace: "pre-wrap", margin: 0 }}>
-                  {caseData?.case?.structured_case?.clinical_summary || "No summary available."}
-                </p>
+                <div 
+                  style={{ fontSize: "0.88rem", lineHeight: 1.5, color: "var(--text-primary)" }}
+                  dangerouslySetInnerHTML={{ __html: renderMarkdown(caseData?.case?.structured_case?.clinical_summary || "No summary available.") }}
+                />
               </div>
               
               {/* Vitals & Labs */}
-              {caseData?.case?.structured_case && (
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-                  <div className="card" style={{ padding: "12px" }}>
-                    <h4 style={{ margin: "0 0 8px 0", fontSize: "0.80rem", textTransform: "uppercase", color: "var(--text-secondary)" }}>Vitals</h4>
-                    <div style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "0.82rem" }}>
-                      <div>Temp: {caseData.case.structured_case.vitals?.temp}°F</div>
-                      <div>BP: {caseData.case.structured_case.vitals?.bp}</div>
-                      <div>HR: {caseData.case.structured_case.vitals?.hr} bpm</div>
-                      <div>RR: {caseData.case.structured_case.vitals?.rr} /min</div>
-                      <div>O2 Sat: {caseData.case.structured_case.vitals?.o2_sat}%</div>
+              {caseData?.case?.structured_case && (() => {
+                const structuredCase = caseData.case.structured_case;
+                const rawVitals = structuredCase.vitals || {};
+                const rawLabs = structuredCase.labs || {};
+
+                const vitalsList = [
+                  { 
+                    label: "Temp", 
+                    value: rawVitals.temp ? `${rawVitals.temp}°F` : null,
+                    isAbnormal: rawVitals.temp ? Number(rawVitals.temp) > 100.4 : false
+                  },
+                  { 
+                    label: "BP", 
+                    value: rawVitals.bp || null,
+                    isAbnormal: rawVitals.bp && typeof rawVitals.bp === "string" ? Number(rawVitals.bp.split('/')[0]) < 90 : false
+                  },
+                  { 
+                    label: "HR", 
+                    value: rawVitals.hr ? `${rawVitals.hr} bpm` : null,
+                    isAbnormal: rawVitals.hr ? Number(rawVitals.hr) > 100 : false
+                  },
+                  { 
+                    label: "RR", 
+                    value: rawVitals.rr ? `${rawVitals.rr} /min` : null,
+                    isAbnormal: rawVitals.rr ? Number(rawVitals.rr) > 24 : false
+                  },
+                  { 
+                    label: "O2 Sat", 
+                    value: rawVitals.o2_sat ? `${rawVitals.o2_sat}%` : null,
+                    isAbnormal: rawVitals.o2_sat ? Number(rawVitals.o2_sat) < 90 : false
+                  },
+                ].filter(item => item.value !== null && item.value !== undefined && item.value !== "");
+
+                const checkLabAbnormal = (key: string, val: any) => {
+                  const lowerKey = key.toLowerCase();
+                  const numVal = parseFloat(String(val));
+                  if (isNaN(numVal)) return false;
+                  return (
+                    (lowerKey === "bnp" && numVal > 500) || 
+                    (lowerKey === "wbc" && (numVal > 12 || numVal < 4)) || 
+                    (lowerKey === "lactate" && numVal >= 2.0) || 
+                    (lowerKey === "creatinine" && numVal > 1.5) || 
+                    (lowerKey === "troponin" && numVal > 0.04) || 
+                    (lowerKey === "potassium" && numVal > 5.5) || 
+                    (lowerKey === "ef" && numVal < 40) ||
+                    (lowerKey === "pco2" && (numVal > 45 || numVal < 35)) ||
+                    (lowerKey === "po2" && numVal < 75) ||
+                    (lowerKey === "ph" && (numVal > 7.45 || numVal < 7.35))
+                  );
+                };
+
+                const labsList = Object.entries(rawLabs)
+                  .filter(([_, val]) => val !== null && val !== undefined && val !== "")
+                  .map(([key, val]) => {
+                    let labName = key;
+                    const lowerKey = key.toLowerCase();
+                    if (lowerKey === "bnp" || lowerKey === "ef" || lowerKey === "wbc") {
+                      labName = lowerKey.toUpperCase();
+                    } else if (lowerKey === "pco2") {
+                      labName = "pCO2";
+                    } else if (lowerKey === "po2") {
+                      labName = "pO2";
+                    } else if (lowerKey === "ph") {
+                      labName = "pH";
+                    } else {
+                      labName = key.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
+                    }
+                    return { 
+                      label: labName, 
+                      value: String(val),
+                      isAbnormal: checkLabAbnormal(key, val)
+                    };
+                  });
+
+                return (
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                    <div className="card" style={{ padding: "12px" }}>
+                      <h4 style={{ margin: "0 0 8px 0", fontSize: "0.80rem", textTransform: "uppercase", color: "var(--text-secondary)" }}>Vitals</h4>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "8px", fontSize: "0.85rem", marginTop: "12px" }}>
+                        {vitalsList.map((item, idx) => (
+                          <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: "6px", borderBottom: idx < vitalsList.length - 1 ? "1px solid var(--border-default)" : "none" }}>
+                            <span style={{ color: "var(--text-secondary)" }}>{item.label}</span>
+                            <span style={{ 
+                              fontWeight: 600, 
+                              color: item.isAbnormal ? "var(--danger)" : "var(--text-primary)",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "4px"
+                            }}>
+                              {item.isAbnormal && <AlertTriangle size={12} style={{ color: "var(--danger)" }} />}
+                              {item.value}
+                            </span>
+                          </div>
+                        ))}
+                        {vitalsList.length === 0 && (
+                          <div style={{ color: "var(--text-tertiary)", fontStyle: "italic", fontSize: "0.82rem" }}>No vitals recorded.</div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="card" style={{ padding: "12px" }}>
+                      <h4 style={{ margin: "0 0 8px 0", fontSize: "0.80rem", textTransform: "uppercase", color: "var(--text-secondary)" }}>Labs</h4>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "8px", fontSize: "0.85rem", marginTop: "12px" }}>
+                        {labsList.map((item, idx) => (
+                          <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: "6px", borderBottom: idx < labsList.length - 1 ? "1px solid var(--border-default)" : "none" }}>
+                            <span style={{ color: "var(--text-secondary)" }}>{item.label}</span>
+                            <span style={{ 
+                              fontWeight: 600, 
+                              color: item.isAbnormal ? "var(--danger)" : "var(--text-primary)",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "4px"
+                            }}>
+                              {item.isAbnormal && <AlertTriangle size={12} style={{ color: "var(--danger)" }} />}
+                              {item.value}
+                            </span>
+                          </div>
+                        ))}
+                        {labsList.length === 0 && (
+                          <div style={{ color: "var(--text-tertiary)", fontStyle: "italic", fontSize: "0.82rem" }}>No labs recorded.</div>
+                        )}
+                      </div>
                     </div>
                   </div>
-                  <div className="card" style={{ padding: "12px" }}>
-                    <h4 style={{ margin: "0 0 8px 0", fontSize: "0.80rem", textTransform: "uppercase", color: "var(--text-secondary)" }}>Labs</h4>
-                    <div style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "0.82rem" }}>
-                      {Object.entries(caseData.case.structured_case.labs || {}).map(([k, v]) => (
-                        <div key={k}>{k.toUpperCase()}: {String(v)}</div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
+                );
+              })()}
 
               {/* Original Decision */}
               <div className="card" style={{ padding: "16px", borderLeft: "4px solid var(--danger)" }}>
@@ -306,9 +410,10 @@ export default function WorkspaceAppealPage() {
                   Status: <span className="badge badge-danger">DENIED</span>
                 </div>
                 <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginBottom: "4px", fontWeight: 600 }}>Reviewer Rationale:</div>
-                <p style={{ fontSize: "0.85rem", lineHeight: 1.5, color: "var(--text-primary)", whiteSpace: "pre-wrap", background: "var(--bg-hover)", padding: "10px", borderRadius: "4px", margin: 0 }}>
-                  {caseData?.decision?.rationale || "No rationale recorded."}
-                </p>
+                <div 
+                  style={{ fontSize: "0.85rem", lineHeight: 1.5, color: "var(--text-primary)", background: "var(--bg-hover)", padding: "10px", borderRadius: "4px", margin: 0 }}
+                  dangerouslySetInnerHTML={{ __html: renderMarkdown(caseData?.decision?.rationale || "No rationale recorded.") }}
+                />
               </div>
             </div>
           </div>

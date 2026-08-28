@@ -24,9 +24,12 @@ class Settings(BaseSettings):
     
     # Groq API
     GROQ_API_KEY: str = ""
+    # GROQ_MODEL: str = "llama-3.3-70b-versatile"
+    # GROQ_FAST_MODEL: str = "llama-3.1-8b-instant"
     GROQ_MODEL: str = "groq/compound"
-    GROQ_FAST_MODEL: str = "groq/compound"
+    GROQ_FAST_MODEL: str = "groq/compound-mini"
     
+
     # ChromaDB
     CHROMA_HOST: str = "localhost"
     CHROMA_PORT: int = 8001
