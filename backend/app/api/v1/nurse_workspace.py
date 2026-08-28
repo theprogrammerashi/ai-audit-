@@ -34,13 +34,16 @@ async def get_review_queue(
             SELECT c.id, c.case_number, c.patient_name, c.patient_mrn,
                    c.primary_diagnosis_display, c.status, c.submitted_at,
                    c.submitted_by AS assigned_nurse_id, u.full_name AS assigned_to,
-                   CASE
-                     WHEN COALESCE(json_array_length(json_extract(c.structured_case, '$.risk_signals')), 0) >= 3 THEN 'URGENT'
-                     WHEN COALESCE(json_array_length(json_extract(c.structured_case, '$.risk_signals')), 0) > 0 THEN 'HIGH'
-                     WHEN c.primary_diagnosis_code LIKE 'A41%' OR c.primary_diagnosis_display LIKE '%Sepsis%' THEN 'URGENT'
-                     WHEN c.primary_diagnosis_code LIKE 'I50%' OR c.primary_diagnosis_display LIKE '%Heart Failure%' THEN 'HIGH'
-                     ELSE 'STANDARD'
-                   END AS urgency
+                   COALESCE(
+                     NULLIF(json_extract(c.structured_case, '$.priority'), ''),
+                     CASE
+                       WHEN COALESCE(json_array_length(json_extract(c.structured_case, '$.risk_signals')), 0) >= 3 THEN 'URGENT'
+                       WHEN COALESCE(json_array_length(json_extract(c.structured_case, '$.risk_signals')), 0) > 0 THEN 'HIGH'
+                       WHEN c.primary_diagnosis_code LIKE 'A41%' OR c.primary_diagnosis_display LIKE '%Sepsis%' THEN 'URGENT'
+                       WHEN c.primary_diagnosis_code LIKE 'I50%' OR c.primary_diagnosis_display LIKE '%Heart Failure%' THEN 'HIGH'
+                       ELSE 'STANDARD'
+                     END
+                   ) AS urgency
             FROM cases c
             LEFT JOIN users u ON c.submitted_by = u.id
             WHERE c.status IN ('PENDING_REVIEW', 'IN_REVIEW')
@@ -55,7 +58,17 @@ async def get_review_queue(
                    COALESCE(c.primary_diagnosis_display, a.diagnosis_category) AS primary_diagnosis_display, 'PENDING_REVIEW' AS status,
                    COALESCE(a.created_at, a.appeal_received_date) AS submitted_at,
                    a.reviewer_assigned AS assigned_nurse_id, u.full_name AS assigned_to,
-                   'HIGH' AS urgency
+                   COALESCE(
+                     NULLIF(json_extract(c.structured_case, '$.priority'), ''),
+                     CASE
+                       WHEN a.appeal_level = 'Expedited' THEN 'URGENT'
+                       WHEN c.primary_diagnosis_code LIKE 'A41%' OR c.primary_diagnosis_display LIKE '%Sepsis%' OR a.diagnosis_category = 'Infectious Disease' THEN 'URGENT'
+                       WHEN COALESCE(json_array_length(json_extract(c.structured_case, '$.risk_signals')), 0) >= 3 THEN 'URGENT'
+                       WHEN COALESCE(json_array_length(json_extract(c.structured_case, '$.risk_signals')), 0) > 0 THEN 'HIGH'
+                       WHEN c.primary_diagnosis_code LIKE 'I50%' OR c.primary_diagnosis_display LIKE '%Heart Failure%' OR a.diagnosis_category = 'Cardiovascular' THEN 'HIGH'
+                       ELSE 'STANDARD'
+                     END
+                   ) AS urgency
             FROM appeal_intake_cases a
             LEFT JOIN cases c ON a.case_id = c.id
             LEFT JOIN users u ON a.reviewer_assigned = u.id
@@ -67,13 +80,16 @@ async def get_review_queue(
             SELECT c.id, c.case_number, c.patient_name, c.patient_mrn,
                    c.primary_diagnosis_display, c.status, c.submitted_at,
                    c.submitted_by AS assigned_nurse_id, u.full_name AS assigned_to,
-                   CASE
-                     WHEN COALESCE(json_array_length(json_extract(c.structured_case, '$.risk_signals')), 0) >= 3 THEN 'URGENT'
-                     WHEN COALESCE(json_array_length(json_extract(c.structured_case, '$.risk_signals')), 0) > 0 THEN 'HIGH'
-                     WHEN c.primary_diagnosis_code LIKE 'A41%' OR c.primary_diagnosis_display LIKE '%Sepsis%' THEN 'URGENT'
-                     WHEN c.primary_diagnosis_code LIKE 'I50%' OR c.primary_diagnosis_display LIKE '%Heart Failure%' THEN 'HIGH'
-                     ELSE 'STANDARD'
-                   END AS urgency
+                   COALESCE(
+                     NULLIF(json_extract(c.structured_case, '$.priority'), ''),
+                     CASE
+                       WHEN COALESCE(json_array_length(json_extract(c.structured_case, '$.risk_signals')), 0) >= 3 THEN 'URGENT'
+                       WHEN COALESCE(json_array_length(json_extract(c.structured_case, '$.risk_signals')), 0) > 0 THEN 'HIGH'
+                       WHEN c.primary_diagnosis_code LIKE 'A41%' OR c.primary_diagnosis_display LIKE '%Sepsis%' THEN 'URGENT'
+                       WHEN c.primary_diagnosis_code LIKE 'I50%' OR c.primary_diagnosis_display LIKE '%Heart Failure%' THEN 'HIGH'
+                       ELSE 'STANDARD'
+                     END
+                   ) AS urgency
             FROM cases c
             LEFT JOIN users u ON c.submitted_by = u.id
             WHERE c.status IN ('PENDING_REVIEW', 'IN_REVIEW')
@@ -86,7 +102,17 @@ async def get_review_queue(
                    COALESCE(c.primary_diagnosis_display, a.diagnosis_category) AS primary_diagnosis_display, 'PENDING_REVIEW' AS status,
                    COALESCE(a.created_at, a.appeal_received_date) AS submitted_at,
                    a.reviewer_assigned AS assigned_nurse_id, u.full_name AS assigned_to,
-                   'HIGH' AS urgency
+                   COALESCE(
+                     NULLIF(json_extract(c.structured_case, '$.priority'), ''),
+                     CASE
+                       WHEN a.appeal_level = 'Expedited' THEN 'URGENT'
+                       WHEN c.primary_diagnosis_code LIKE 'A41%' OR c.primary_diagnosis_display LIKE '%Sepsis%' OR a.diagnosis_category = 'Infectious Disease' THEN 'URGENT'
+                       WHEN COALESCE(json_array_length(json_extract(c.structured_case, '$.risk_signals')), 0) >= 3 THEN 'URGENT'
+                       WHEN COALESCE(json_array_length(json_extract(c.structured_case, '$.risk_signals')), 0) > 0 THEN 'HIGH'
+                       WHEN c.primary_diagnosis_code LIKE 'I50%' OR c.primary_diagnosis_display LIKE '%Heart Failure%' OR a.diagnosis_category = 'Cardiovascular' THEN 'HIGH'
+                       ELSE 'STANDARD'
+                     END
+                   ) AS urgency
             FROM appeal_intake_cases a
             LEFT JOIN cases c ON a.case_id = c.id
             LEFT JOIN users u ON a.reviewer_assigned = u.id

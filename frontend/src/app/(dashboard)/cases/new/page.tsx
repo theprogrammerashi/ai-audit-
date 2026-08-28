@@ -461,6 +461,7 @@ export default function NewCasePage() {
           labs: extractedLabs,
           timeline: extractedTimeline,
           risk_signals: riskSignals,
+          priority: form.priority,
         },
       });
       setSubmitted(true);

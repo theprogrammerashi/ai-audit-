@@ -118,7 +118,7 @@ export default function AnalyticsPage() {
   const overturnedCount = intake.filter((c: any) => c.appeal_outcome && c.appeal_outcome.includes("Overturned")).length;
   const upheldCount = intake.filter((c: any) => c.appeal_outcome === "Upheld").length;
   const overturnRate = resolvedAppeals > 0 ? Math.round((overturnedCount / resolvedAppeals) * 100) : 0;
-  const avgResolutionDays = intake.filter((c: any) => c.turnaround_days).reduce((sum: number, c: any) => sum + (c.turnaround_days || 0), 0) / (resolvedAppeals || 1);
+  const avgResolutionDays = intake.filter((c: any) => c.turnaround_days != null).reduce((sum: number, c: any) => sum + (c.turnaround_days || 0), 0) / (resolvedAppeals || 1);
 
   // Outcome distribution from analytics
   const outcomeDist = analyticsData?.outcome_distribution || {};

@@ -192,7 +192,7 @@ def init_database():
     conn.execute("""
         CREATE TABLE IF NOT EXISTS appeal_intake_cases (
             id VARCHAR PRIMARY KEY,
-            case_id VARCHAR UNIQUE,
+            case_id VARCHAR,
             member_id VARCHAR,
             appellant_type VARCHAR,
             original_denial_date DATE,

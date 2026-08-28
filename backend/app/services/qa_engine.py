@@ -220,7 +220,7 @@ def compute_qa_audit(
     elif not submitted_at:
         submitted_at = datetime.now(timezone.utc)
         
-    turnaround_hours = (datetime.now(timezone.utc) - submitted_at).total_seconds() / 3600
+    turnaround_hours = max(0.0, (datetime.now(timezone.utc) - submitted_at).total_seconds() / 3600)
     
     timeliness_score = 100
     timeliness_explanation = "Decision made within SLA (<24h)."

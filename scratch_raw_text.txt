@@ -1,0 +1,71 @@
+CareAudit.ai
+EXL
+Clinical Audit Intelligence | Excellence Health System
+Appeal Request -- Reconsideration of Adverse Determination
+Generated: 2026-08-28 | Confidential Clinical Document
+PATIENT NAME Daniel Thompson DATE OF BIRTH 1970-03-15 APPEAL LEVLE1L - Internal Appeal
+MRN 58472196 ORIGINAL DENIAL DATE 2026-08-14
+MEMBER ID MBR-2026-5801 APPEAL FILED DATE 2026-08-28
+REASON FOR APPEAL
+This is a formal Level 1 Internal Appeal to overturn the adverse determination issued on
+2026-08-14 for inpatient admission for Sepsis, Unspecified (A41.9).
+The denial letter stated that the patient did not meet medical necessity criteria for
+inpatient-level care. We respectfully disagree with this determination based on the
+clinical evidence presented below.
+CLINICAL SUMMARY
+Reason for Review Evaluation of medical necessity for inpatient admission due to suspected
+sepsis with persistent hypotension, elevated lactate, altered mental status, and
+requirement for intravenous antibiotics and close monitoring..
+CLINICAL RATIONALE FOR RECONSIDERATION
+The denial failed to account for the following objective clinical findings:
+Vitals at Presentation:
+(cid:127) Blood Pressure: 86/52
+(cid:127) Heart Rate: 122 bpm
+(cid:127) Respiratory Rate: 28 /min
+(cid:127) O2 Saturation: 94% on room air
+(cid:127) Temperature: 102.8 F
+Laboratory and Diagnostic Findings:
+(cid:127) WBC: 18.9
+(cid:127) Lactate: 4.2
+(cid:127) Creatinine: 1.7
+(cid:127) Procalcitonin: 8.6
+(cid:127) Hemoglobin: 13.8
+(cid:127) Sodium: 132.0
+Additional Risk Indicators:
+(cid:127) ALTERED_MENTAL_STATUS
+(cid:127) ELEVATED_LACTATE
+(cid:127) LEUKOCYTOSIS
+(cid:127) HYPOTENSION
+(cid:127) FEVER
+Excellence Health System | Patient: Daniel Thompson | MRN: 58472196 | Page 1 CONFIDENTIAL — Not for distribution
+CareAudit.ai
+EXL
+Clinical Audit Intelligence | Excellence Health System
+Appeal Request -- Reconsideration of Adverse Determination
+Generated: 2026-08-28 | Confidential Clinical Document
+POLICY REFERENCE
+Per policy UM-SEP-001, the patient meets the applicable criteria for inpatient
+admission at the time of the original review. All relevant clinical thresholds
+documented above were met or exceeded at the time of presentation.
+REQUESTED SERVICE
+Inpatient admission for management of Sepsis, Unspecified, including appropriate
+monitoring, IV therapy, specialist consultations, and diagnostic workup.
+KEY EVIDENCE CITED
+(cid:127) ED Provider Note (see attached)
+(cid:127) Laboratory Results Report (see attached)
+(cid:127) Imaging and Diagnostic Studies (see attached)
+(cid:127) Clinical Nursing Notes and Flow Sheets (see attached)
+FINANCIAL INFORMATION
+Estimated cost of requested service: $15,000.00
+Diagnosis Category: Infectious Disease - Sepsis
+APPELLANT INFORMATION
+Appellant Type: Provider
+Attending Physician: Dr. Angela Brooks, MD, Infectious Disease
+Contact: um.appeals@excellencehealth.org | Phone: (555) 100-2000
+CONCLUSION
+Based on the objective clinical evidence documented above, all applicable medical
+necessity criteria were met at the time of the original adverse determination.
+We respectfully request that the denial be overturned and inpatient admission be
+authorized retroactively. The clinical complexity and acuity of this patient's
+presentation clearly warranted inpatient-level care.
+Excellence Health System | Patient: Daniel Thompson | MRN: 58472196 | Page 2 CONFIDENTIAL — Not for distribution

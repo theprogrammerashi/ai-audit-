@@ -62,7 +62,8 @@ export default function CasesPage() {
     const pendingStatuses = isQa ? ["DECIDED"] : ["PENDING_REVIEW", "IN_REVIEW"];
     
     if (activeTab === "prior_auths") {
-      cases.forEach(c => {
+      const priorAuthCases = cases.filter(c => (c.document_type || "PRIOR_AUTH") !== "APPEAL_DOCUMENT");
+      priorAuthCases.forEach(c => {
         if (pendingStatuses.includes(c.status)) {
           const urgency = getCaseUrgency(c);
           if (urgency === "URGENT") {
@@ -84,7 +85,7 @@ export default function CasesPage() {
       return {
         urgent: urgentCount,
         overdue: overdueCount,
-        total: cases.filter(c => pendingStatuses.includes(c.status)).length
+        total: priorAuthCases.filter(c => pendingStatuses.includes(c.status)).length
       };
     } else {
       appeals.forEach(a => {
@@ -153,7 +154,7 @@ export default function CasesPage() {
     );
   }
 
-  let filtered = cases;
+  let filtered = cases.filter(c => (c.document_type || "PRIOR_AUTH") !== "APPEAL_DOCUMENT");
   if (statusFilter !== "ALL") {
     filtered = filtered.filter(c => c.status === statusFilter);
   }

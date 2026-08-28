@@ -82,6 +82,7 @@ class CaseResponse(BaseModel):
     primary_diagnosis_display: str
     secondary_diagnoses: Optional[str] = None
     structured_case: Optional[Dict[str, Any]] = None
+    document_type: Optional[str] = "PRIOR_AUTH"
     status: str
     submitted_at: Optional[datetime] = None
     submitted_by: Optional[str] = None

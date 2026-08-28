@@ -59,13 +59,14 @@ async def create_case(case: CaseCreate, user: dict = Depends(get_current_user), 
 
     # If it is an appeal document, insert it into appeal_intake_cases so that it shows up in the appeals workflow
     if case.document_type == "APPEAL_DOCUMENT":
-        # Look up existing prior authorization case by MRN or patient name (prioritizing decided/audited cases)
+        # Look up existing decided/audited prior authorization case for reference
         target_case_id = case_id
         existing_row = db.execute(
             """
             SELECT c.id FROM cases c
             LEFT JOIN nurse_decisions n ON c.id = n.case_id
-            WHERE (c.patient_mrn = ? OR (c.patient_name IS NOT NULL AND LOWER(c.patient_name) = LOWER(?))) AND c.id != ?
+            WHERE (c.patient_mrn = ? OR (c.patient_name IS NOT NULL AND LOWER(c.patient_name) = LOWER(?))) 
+              AND c.id != ? AND (c.document_type IS NULL OR c.document_type != 'APPEAL_DOCUMENT')
             ORDER BY (CASE WHEN n.id IS NOT NULL THEN 1 ELSE 0 END) DESC, c.submitted_at DESC
             LIMIT 1
             """,
@@ -82,45 +83,47 @@ async def create_case(case: CaseCreate, user: dict = Depends(get_current_user), 
         
         if diag_code.startswith("I50") or "heart" in diag_display or "cardio" in diag_display:
             diag_category = "Cardiovascular"
+            policy_ref = "UM-CHF-001"
         elif diag_code.startswith("J44") or "copd" in diag_display or "respiratory" in diag_display:
             diag_category = "Respiratory"
+            policy_ref = "UM-COPD-001"
         elif diag_code.startswith("A41") or "sepsis" in diag_display or "infection" in diag_display:
             diag_category = "Infectious Disease"
+            policy_ref = "UM-SEP-001"
         else:
             diag_category = "General Medicine"
+            policy_ref = "UM-GEN-001"
 
-        # Check if an appeal intake record already exists for this target case
-        existing_appeal = db.execute(
-            "SELECT id FROM appeal_intake_cases WHERE case_id = ?",
-            [target_case_id]
-        ).fetchone()
+        # Build evidence cited string from structured case data if available
+        evidence_parts = []
+        if case.structured_case:
+            v = case.structured_case.get("vitals") or {}
+            l = case.structured_case.get("labs") or {}
+            if v.get("bp"): evidence_parts.append(f"BP {v['bp']}")
+            if v.get("temp"): evidence_parts.append(f"Temp {v['temp']}°F")
+            if v.get("hr"): evidence_parts.append(f"HR {v['hr']} bpm")
+            if l.get("lactate"): evidence_parts.append(f"Lactate {l['lactate']}")
+            if l.get("wbc"): evidence_parts.append(f"WBC {l['wbc']}")
+            if l.get("procalcitonin"): evidence_parts.append(f"Procalcitonin {l['procalcitonin']}")
+            if l.get("creatinine"): evidence_parts.append(f"Creatinine {l['creatinine']}")
+        evidence_cited = ", ".join(evidence_parts) if evidence_parts else "Clinical records and diagnostic findings attached"
 
-        if existing_appeal:
-            db.execute("""
-                UPDATE appeal_intake_cases
-                SET clinical_rationale_provided = ?,
-                    appeal_received_date = ?
-                WHERE case_id = ?
-            """, [
-                case.clinical_notes or "No clinical rationale provided.",
-                datetime.now().strftime("%Y-%m-%d"),
-                target_case_id
-            ])
-        else:
-            db.execute("""
-                INSERT INTO appeal_intake_cases (
-                    id, case_id, member_id, appellant_type, appeal_received_date,
-                    appeal_level, denial_reason_category, clinical_rationale_provided,
-                    requested_service, diagnosis_category, financial_amount_disputed,
-                    reviewer_assigned, original_nurse_id
-                ) VALUES (?, ?, ?, 'Provider', ?, 'Level 1 - Internal', 'Medical Necessity', ?, ?, ?, 15000.0, ?, 'SYSTEM')
-            """, [
-                appeal_id, target_case_id, case.patient_mrn,
-                datetime.now().strftime("%Y-%m-%d"),
-                case.clinical_notes or "No clinical rationale provided.",
-                f"Inpatient Admission - {case.primary_diagnosis_display or case.primary_diagnosis_code}",
-                diag_category, assigned_nurse_id
-            ])
+        # Always insert a new appeal record for this appeal document
+        db.execute("""
+            INSERT INTO appeal_intake_cases (
+                id, case_id, member_id, appellant_type, appeal_received_date,
+                appeal_level, denial_reason_category, clinical_rationale_provided,
+                requested_service, diagnosis_category, financial_amount_disputed,
+                reviewer_assigned, original_nurse_id, key_evidence_cited, policy_referenced
+            ) VALUES (?, ?, ?, 'Provider', ?, 'Level 1 - Internal', 'Medical Necessity', ?, ?, ?, 15000.0, ?, 'SYSTEM', ?, ?)
+        """, [
+            appeal_id, case_id, case.patient_mrn,
+            datetime.now().strftime("%Y-%m-%d"),
+            case.clinical_notes or "No clinical rationale provided.",
+            f"Inpatient Admission - {case.primary_diagnosis_display or case.primary_diagnosis_code}",
+            diag_category, assigned_nurse_id,
+            evidence_cited, policy_ref
+        ])
 
 
     # Trigger policy engine
@@ -136,6 +139,7 @@ async def create_case(case: CaseCreate, user: dict = Depends(get_current_user), 
         patient_age=case.patient_age, primary_diagnosis_code=case.primary_diagnosis_code,
         primary_diagnosis_display=case.primary_diagnosis_display,
         secondary_diagnoses=case.secondary_diagnoses, structured_case=case.structured_case,
+        document_type=case.document_type or "PRIOR_AUTH",
         status="PENDING_REVIEW", submitted_by=user["id"]
     )
 
@@ -187,16 +191,12 @@ async def list_cases(status_filter: Optional[str] = None, user: dict = Depends(g
 
 @router.get("/{case_id}", response_model=CaseFullResponse)
 async def get_case(case_id: str, user: dict = Depends(get_current_user), db: sqlite3.Connection = Depends(get_db)):
-    result = db.execute("SELECT * FROM cases WHERE id = ?", [case_id]).fetchone()
+    result = db.execute("SELECT * FROM cases WHERE id = ? OR case_number = ?", [case_id, case_id]).fetchone()
     if not result:
         raise HTTPException(status_code=404, detail=f"Case {case_id} not found")
     
     columns = [desc[0] for desc in db.description]
     case_dict = dict(zip(columns, result))
-    
-    role = user.get("role", "NURSE")
-    if role == "NURSE" and case_dict.get("submitted_by") != user["id"]:
-        raise HTTPException(status_code=403, detail="Not assigned to this case.")
 
     if isinstance(case_dict.get("structured_case"), str):
         case_dict["structured_case"] = json.loads(case_dict["structured_case"])

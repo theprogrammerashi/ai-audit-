@@ -247,9 +247,9 @@ def extract_dob(text: str) -> Tuple[Optional[str], float]:
 def extract_age(text: str) -> Tuple[Optional[int], float]:
     """Extract patient age."""
     patterns = [
-        r"(?:age|aged)[:\s]*(\d{1,3})\s*(?:year|yr|y/?o|yo)",
-        r"(\d{1,3})\s*(?:year|yr)\s*(?:old|-old)",
-        r"AGE[:\s]*(\d{1,3})",
+        r"\b(?:age|aged)[:\s]*(\d{1,3})\s*(?:year|yr|y/?o|yo)\b",
+        r"\b(\d{1,3})\s*(?:year|yr)\s*(?:old|-old)\b",
+        r"\bAGE[:\s]*(\d{1,3})\b",
     ]
     for p in patterns:
         m = re.search(p, text, re.IGNORECASE)
@@ -258,6 +258,23 @@ def extract_age(text: str) -> Tuple[Optional[int], float]:
             if 0 < age < 120:
                 return age, 0.88
     return None, 0.0
+
+
+def calculate_age_from_dob(dob_str: str) -> Optional[int]:
+    """Calculate age from DOB string (supports common formats)."""
+    if not dob_str:
+        return None
+    from datetime import datetime
+    for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%d/%m/%Y", "%m-%d-%Y", "%d-%m-%Y", "%Y/%m/%d"):
+        try:
+            dob_date = datetime.strptime(dob_str.strip(), fmt)
+            today = datetime.today()
+            age = today.year - dob_date.year - ((today.month, today.day) < (dob_date.month, dob_date.day))
+            if 0 <= age < 120:
+                return age
+        except ValueError:
+            continue
+    return None
 
 
 def extract_gender(text: str) -> Optional[str]:
@@ -522,84 +539,41 @@ Raw Medical Text:
         logger.warning(f"[Parser] LLM clinical summary extraction failed: {e}. Falling back to rule-based.")
 
 
-    # Rule-based fallback: extract multiple sections for a comprehensive summary
-    sections = []
+    # Rule-based fallback: use pattern matching with smart section-boundary detection
+    patterns = [
+        r"(?:clinical\s*summary|summary|history\s*of\s*present\s*illness|chief\s*complaint|assessment\s*(?:and|&)\s*plan|hospital\s*course|reason\s*for\s*(?:admission|visit|consultation|review))[\s:]+(.*)",
+        r"\b(?:HPI|cc|ap|hpi)\b[\s:]+(.*)",
+    ]
+    for p in patterns:
+        m = re.search(p, text, re.IGNORECASE | re.DOTALL)
+        if m:
+            raw = m.group(1).strip()
+            lines = raw.split('\n')
+            summary_lines = []
+            for line in lines:
+                line_stripped = line.strip()
+                if not line_stripped and summary_lines:
+                    break # Blank line means end of section
+                # Stop if it looks like a new header or field
+                if summary_lines and (line_stripped.isupper() or line_stripped.endswith(':') or line_stripped.startswith('Key ') or line_stripped.startswith('SECTION ') or (':' in line_stripped[:30] and len(line_stripped.split()) < 8)):
+                    break
+                summary_lines.append(line_stripped)
+            
+            summary = " ".join(summary_lines)
+            summary = re.sub(r'={3,}', '', summary)
+            summary = re.sub(r'\s+', ' ', summary).strip()
+            
+            if len(summary) > 30:
+                if len(summary) > 1000:
+                    summary = summary[:997] + "..."
+                summary = expand_medical_abbreviations(summary)
+                return summary, 0.80
     
-    # 1. Chief Complaint & HPI
-    cc_match = re.search(r"Chief\s*Complaint[\s:\n]+([^\n]+)", text, re.IGNORECASE)
-    hpi_match = re.search(r"History\s*of\s*Present\s*Illness\s*(?:\(HPI\))?[\s:\n]+([^\n]+(?:\n[^\n]+){1,8})", text, re.IGNORECASE)
-    
-    hpi_parts = []
-    if cc_match:
-        hpi_parts.append(f"**Chief Complaint:** {cc_match.group(1).strip()}")
-    if hpi_match:
-        hpi_text = re.sub(r'\s+', ' ', hpi_match.group(1)).strip()
-        hpi_text = re.split(r'\b(?:Past Medical|Review of Systems|Vital Signs|Physical Exam)\b', hpi_text, flags=re.IGNORECASE)[0].strip()
-        if len(hpi_text) > 15:
-            hpi_parts.append(f"**History of Present Illness (HPI):** {hpi_text}")
-    elif not cc_match:
-        # Fallback HPI search
-        fallback_hpi = re.search(r"(?:HPI|Reason\s*for\s*(?:Admission|Review|Visit)|Overview\s*of\s*Dispute)[\s:\n]+([^\n]+(?:\n[^\n]+){1,6})", text, re.IGNORECASE)
-        if fallback_hpi:
-            f_text = re.sub(r'\s+', ' ', fallback_hpi.group(1)).strip()
-            f_text = re.split(r'\b(?:VITALS|OBJECTIVE|LABS|LABORATORY|ASSESSMENT|PLAN|POLICY|KEY EVIDENCE)\b', f_text, flags=re.IGNORECASE)[0].strip()
-            if len(f_text) > 15:
-                hpi_parts.append(f"**History:** {f_text}")
-
-    if hpi_parts:
-        sections.append("\n".join(hpi_parts))
-
-    # 2. Vitals & Physical Exam
-    vitals_match = re.search(r"Vital\s*Signs[\s:\n]+([^\n]+(?:\n[^\n]+){1,7})", text, re.IGNORECASE)
-    exam_match = re.search(r"Physical\s*Examination[\s:\n]+([^\n]+(?:\n[^\n]+){1,7})", text, re.IGNORECASE)
-    
-    objective_parts = []
-    if vitals_match:
-        v_text = re.sub(r'\s+', ' ', vitals_match.group(1)).strip()
-        v_text = re.split(r'\b(?:Physical Examination|Emergency Department|Assessment|Plan)\b', v_text, flags=re.IGNORECASE)[0].strip()
-        if len(v_text) > 15:
-            objective_parts.append(f"• **Vitals:** {v_text}")
-    if exam_match:
-        e_text = re.sub(r'\s+', ' ', exam_match.group(1)).strip()
-        e_text = re.split(r'\b(?:Emergency Department|Assessment|Plan|SECTION)\b', e_text, flags=re.IGNORECASE)[0].strip()
-        if len(e_text) > 15:
-            objective_parts.append(f"• **Exam:** {e_text[:350]}")
-
-    if objective_parts:
-        sections.append("**Objective Findings:**\n" + "\n".join(objective_parts))
-
-    # 3. Emergency Department Course & Assessment & Plan
-    ed_match = re.search(r"Emergency\s*Department\s*Course[\s:\n]+([^\n]+(?:\n[^\n]+){1,7})", text, re.IGNORECASE)
-    plan_match = re.search(r"(?:Primary\s*Diagnosis|Assessment|Plan\s*of\s*Care)[\s:\n]+([^\n]+(?:\n[^\n]+){1,6})", text, re.IGNORECASE)
-    
-    plan_parts = []
-    if ed_match:
-        ed_text = re.sub(r'\s+', ' ', ed_match.group(1)).strip()
-        ed_text = re.split(r'\b(?:Assessment|Primary Diagnosis|Plan|SECTION)\b', ed_text, flags=re.IGNORECASE)[0].strip()
-        if len(ed_text) > 15:
-            plan_parts.append(f"• **ED Course:** {ed_text}")
-    if plan_match:
-        p_text = re.sub(r'\s+', ' ', plan_match.group(1)).strip()
-        p_text = re.split(r'\b(?:Medical Necessity|SECTION|Member Information)\b', p_text, flags=re.IGNORECASE)[0].strip()
-        if len(p_text) > 15:
-            plan_parts.append(f"• **Plan:** {p_text}")
-
-    if plan_parts:
-        sections.append("**Treatment & Plan:**\n" + "\n".join(plan_parts))
-
-    if sections:
-        rich_summary = expand_medical_abbreviations("\n\n".join(sections))
-        return rich_summary, 0.85
-    
-    # Fallback: use first substantial paragraphs
-    paragraphs = [p.strip() for p in text.split("\n\n") if len(p.strip()) > 60]
+    # Fallback: use first substantial paragraph
+    paragraphs = [p.strip() for p in text.split("\n\n") if len(p.strip()) > 80]
     if paragraphs:
-        summary_paragraph = expand_medical_abbreviations("\n\n".join(paragraphs[:3]))
-        if len(summary_paragraph) > 1500:
-            summary_paragraph = summary_paragraph[:1497] + "..."
-        return summary_paragraph, 0.70
-        
-    return text[:1000].strip(), 0.50
+        summary_paragraph = expand_medical_abbreviations(paragraphs[0][:500])
+        return summary_paragraph, 0.50
 
     return None, 0.0
 
@@ -712,6 +686,14 @@ def parse_document(file_bytes: bytes, filename: str) -> ParsedDocumentResponse:
     mrn, mrn_conf = extract_mrn(text)
     dob, dob_conf = extract_dob(text)
     age, age_conf = extract_age(text)
+    
+    # Fallback to calculating age from DOB if age is missing or incorrectly evaluated as 1 (due to page number matches)
+    if dob and (age is None or age == 1):
+        calculated_age = calculate_age_from_dob(dob)
+        if calculated_age is not None:
+            age = calculated_age
+            age_conf = 0.90
+            
     gender = extract_gender(text)
     primary_dx, secondary_dx = extract_diagnoses(text)
     vitals = extract_vitals(text)

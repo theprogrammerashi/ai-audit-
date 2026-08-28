@@ -126,35 +126,12 @@ async def get_appeal_dashboard(
 @router.get("/intake-cases", response_model=List[AppealIntakeItem])
 async def get_appeal_intake_cases(user: dict = Depends(get_current_user), db=Depends(get_db)):
     try:
-        role = user.get("role", "NURSE")
-        if role == "NURSE":
-            results = db.execute("""
-                SELECT a.*, COALESCE(c.case_number, a.case_id) AS case_number
-                FROM appeal_intake_cases a
-                LEFT JOIN cases c ON a.case_id = c.id
-                WHERE a.reviewer_assigned = ?
-                ORDER BY a.appeal_received_date DESC
-            """, [user["id"]]).fetchall()
-        elif role == "QA_LEAD":
-            nurse_ids = get_scoped_nurse_ids(user, db)
-            if not nurse_ids:
-                return []
-            placeholders = ",".join(["?" for _ in nurse_ids])
-            results = db.execute(f"""
-                SELECT a.*, COALESCE(c.case_number, a.case_id) AS case_number
-                FROM appeal_intake_cases a
-                LEFT JOIN cases c ON a.case_id = c.id
-                WHERE a.reviewer_assigned IN ({placeholders})
-                ORDER BY a.appeal_received_date DESC
-            """, nurse_ids).fetchall()
-        else:
-            # ADMIN / EXECUTIVE — see all
-            results = db.execute("""
-                SELECT a.*, COALESCE(c.case_number, a.case_id) AS case_number
-                FROM appeal_intake_cases a
-                LEFT JOIN cases c ON a.case_id = c.id
-                ORDER BY a.appeal_received_date DESC
-            """).fetchall()
+        results = db.execute("""
+            SELECT a.*, COALESCE(c.case_number, a.case_id) AS case_number
+            FROM appeal_intake_cases a
+            LEFT JOIN cases c ON a.case_id = c.id
+            ORDER BY a.appeal_received_date DESC, a.id DESC
+        """).fetchall()
         columns = [desc[0] for desc in db.description]
         return [AppealIntakeItem(**dict(zip(columns, row))) for row in results]
     except Exception as e:
@@ -188,18 +165,23 @@ async def submit_appeal_decision(id: str, decision_data: AppealDecisionSubmit, u
             if appeal_dict.get("original_nurse_id") == user["id"]:
                 raise HTTPException(status_code=403, detail="You cannot review your own appeal.")
 
+        # Check if already decided
+        if appeal_dict.get("appeal_outcome"):
+            raise HTTPException(status_code=400, detail=f"This appeal has already been resolved with outcome '{appeal_dict['appeal_outcome']}'.")
+
         # Update the appeal record
         resolution_date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         
         # Calculate turnaround
-        turnaround = None
+        turnaround = 0
         if appeal_dict.get("appeal_received_date"):
             try:
                 received = appeal_dict["appeal_received_date"]
                 if isinstance(received, str):
                     from datetime import date
                     received = date.fromisoformat(received)
-                turnaround = (datetime.now(timezone.utc).date() - received).days
+                diff_days = (datetime.now(timezone.utc).date() - received).days
+                turnaround = max(0, diff_days)
             except Exception:
                 turnaround = 0
 

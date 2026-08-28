@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import {
   LayoutDashboard, CheckCircle, XCircle, ArrowUpCircle, AlertTriangle,
   Shield, Clock, ArrowLeft, Loader2, FileText, Check, AlertCircle, FileSearch, Edit3,
-  FolderOpen, X
+  FolderOpen, X, Lock
 } from "lucide-react";
 import api from "@/lib/api";
 
@@ -15,6 +15,102 @@ const renderMarkdown = (text: string) => {
     .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
     .replace(/\n/g, "<br />")
     .replace(/^- /gm, "&#8226; ");
+};
+
+const ABNORMAL_EXPLANATIONS: Record<string, { title: string; range: string; meaning: string; significance: string }> = {
+  // Vitals
+  temp: {
+    title: "Abnormal Vital: Temperature (Fever)",
+    range: "97.0°F - 100.4°F",
+    meaning: "Elevated core body temperature (> 100.4°F or 38°C).",
+    significance: "Indicates active systemic inflammatory response (SIRS) or infection."
+  },
+  bp: {
+    title: "Abnormal Vital: Blood Pressure (Hypotension)",
+    range: "90/60 - 120/80 mmHg",
+    meaning: "Low blood pressure (systolic < 90 mmHg).",
+    significance: "Indicates reduced tissue perfusion and potential hemodynamic instability or shock."
+  },
+  hr: {
+    title: "Abnormal Vital: Heart Rate (Tachycardia)",
+    range: "60 - 100 bpm",
+    meaning: "Elevated heart rate (> 100 beats per minute).",
+    significance: "Reflects physiological stress, compensatory mechanism for fever, hypovolemia, or hypoperfusion."
+  },
+  rr: {
+    title: "Abnormal Vital: Respiratory Rate (Tachypnea)",
+    range: "12 - 20 breaths/min",
+    meaning: "Elevated respiratory rate (> 24 breaths per minute).",
+    significance: "Indicates respiratory distress, hypoxemia, or metabolic acidosis compensation."
+  },
+  o2_sat: {
+    title: "Abnormal Vital: Oxygen Saturation (Hypoxemia)",
+    range: "95% - 100%",
+    meaning: "Low arterial blood oxygen saturation (< 90%).",
+    significance: "Reflects impaired gas exchange in lungs, requiring immediate oxygen supplementation."
+  },
+  
+  // Labs
+  wbc: {
+    title: "Abnormal Lab: WBC (Leukocytosis)",
+    range: "4.0 - 11.0 K/uL",
+    meaning: "Elevated White Blood Cell count (> 12.0 K/uL).",
+    significance: "Strong marker of active infection, systemic inflammation, or leukemoid reaction."
+  },
+  lactate: {
+    title: "Abnormal Lab: Lactate (Hyperlactatemia)",
+    range: "< 2.0 mmol/L",
+    meaning: "Elevated blood lactate levels (>= 2.0 mmol/L).",
+    significance: "Indicates anaerobic metabolism due to systemic hypoperfusion, tissue hypoxia, or sepsis."
+  },
+  creatinine: {
+    title: "Abnormal Lab: Creatinine",
+    range: "0.6 - 1.2 mg/dL",
+    meaning: "Elevated serum creatinine level (> 1.5 mg/dL).",
+    significance: "Indicates acute kidney injury (AKI) or renal dysfunction due to hypoperfusion or nephrotoxicity."
+  },
+  bnp: {
+    title: "Abnormal Lab: BNP",
+    range: "< 100 pg/mL",
+    meaning: "Elevated Brain Natriuretic Peptide (> 500 pg/mL).",
+    significance: "Indicates myocardial wall stretch, typical of acute decompensated heart failure."
+  },
+  troponin: {
+    title: "Abnormal Lab: Troponin",
+    range: "< 0.04 ng/mL",
+    meaning: "Elevated troponin level (> 0.04 ng/mL).",
+    significance: "Specific marker of myocardial injury, suggesting acute coronary syndrome or cardiac strain."
+  },
+  potassium: {
+    title: "Abnormal Lab: Potassium (Hyperkalemia)",
+    range: "3.5 - 5.0 mEq/L",
+    meaning: "Elevated serum potassium level (> 5.5 mEq/L).",
+    significance: "Can cause severe cardiac conduction abnormalities or arrhythmias."
+  },
+  ef: {
+    title: "Abnormal Lab: Ejection Fraction (Reduced EF)",
+    range: "55% - 70%",
+    meaning: "Reduced left ventricular ejection fraction (< 40%).",
+    significance: "Indicates systolic heart failure with high risk for clinical instability."
+  },
+  ph: {
+    title: "Abnormal Lab: ABG pH (Acidosis/Alkalosis)",
+    range: "7.35 - 7.45",
+    meaning: "Blood pH is outside the normal physiological range.",
+    significance: "Indicates respiratory or metabolic acid-base disturbance. A pH < 7.35 indicates acidosis."
+  },
+  pco2: {
+    title: "Abnormal Lab: ABG pCO2 (Hypercapnia)",
+    range: "35 - 45 mmHg",
+    meaning: "Partial pressure of carbon dioxide in arterial blood is elevated.",
+    significance: "High pCO2 (>45 mmHg) indicates hypercapnia, typical of respiratory failure or COPD exacerbation."
+  },
+  po2: {
+    title: "Abnormal Lab: ABG pO2 (Hypoxemia)",
+    range: "75 - 100 mmHg",
+    meaning: "Partial pressure of oxygen in arterial blood is low.",
+    significance: "Low pO2 (<75 mmHg) indicates arterial hypoxemia, requiring oxygen therapy."
+  }
 };
 
 export default function WorkspaceAppealPage() {
@@ -32,6 +128,38 @@ export default function WorkspaceAppealPage() {
 
   const [rationale, setRationale] = useState("");
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [abnormalExplanation, setAbnormalExplanation] = useState<any | null>(null);
+
+  const handleVitalClick = (key: string, val: any, isAb: boolean) => {
+    if (!isAb) return;
+    const info = ABNORMAL_EXPLANATIONS[key] || {
+      title: `Abnormal Vital: ${key.replace("_", " ").toUpperCase()}`,
+      range: "Standard reference range",
+      meaning: "This value is flagged as abnormal.",
+      significance: "Clinical review is required to evaluate this vital sign."
+    };
+    setAbnormalExplanation({
+      ...info,
+      key,
+      val: `${String(val)}${key === "temp" ? "°F" : key === "o2_sat" ? "%" : ""}`
+    });
+  };
+
+  const handleLabClick = (key: string, val: any, isAb: boolean) => {
+    if (!isAb) return;
+    const lowerKey = key.toLowerCase();
+    const info = ABNORMAL_EXPLANATIONS[lowerKey] || {
+      title: `Abnormal Lab: ${key.replace("_", " ").toUpperCase()}`,
+      range: "Standard reference range",
+      meaning: "This value is flagged as abnormal.",
+      significance: "Clinical review is required to evaluate this lab test."
+    };
+    setAbnormalExplanation({
+      ...info,
+      key: lowerKey,
+      val: String(val)
+    });
+  };
 
   useEffect(() => {
     const fetchAppealData = async () => {
@@ -127,9 +255,15 @@ export default function WorkspaceAppealPage() {
           <div>
             <div style={{ fontWeight: 600, display: "flex", gap: "8px", alignItems: "center" }}>
               {data.id}
-              <span className="badge badge-warning" style={{ fontSize: "0.7rem", display: "flex", alignItems: "center", gap: "4px" }}>
-                <FileText size={10} /> APPEAL REVIEW
-              </span>
+              {data.appeal_outcome ? (
+                <span className={`badge ${data.appeal_outcome.toLowerCase().includes("overturn") ? "badge-warning" : "badge-success"}`} style={{ fontSize: "0.75rem", display: "flex", alignItems: "center", gap: "4px" }}>
+                  <Check size={11} /> RESOLVED: {data.appeal_outcome.toUpperCase()}
+                </span>
+              ) : (
+                <span className="badge badge-warning" style={{ fontSize: "0.7rem", display: "flex", alignItems: "center", gap: "4px" }}>
+                  <FileText size={10} /> APPEAL REVIEW
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -187,6 +321,172 @@ export default function WorkspaceAppealPage() {
             />
           </div>
 
+          {/* Original Case Details Card */}
+          {caseData?.case?.structured_case && (
+            <div className="card" style={{ padding: "20px" }}>
+              <h3 style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px", fontSize: "1rem" }}>
+                <FolderOpen size={18} style={{ color: "var(--primary)" }} /> Original Case Clinical Details
+              </h3>
+              
+              <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: "24px", marginTop: "12px" }}>
+                {/* Clinical Summary */}
+                <div>
+                  <h4 style={{ margin: "0 0 10px 0", fontSize: "0.85rem", textTransform: "uppercase", color: "var(--text-secondary)" }}>Clinical Summary</h4>
+                  <div 
+                    style={{ fontSize: "0.88rem", lineHeight: 1.6, color: "var(--text-secondary)" }}
+                    dangerouslySetInnerHTML={{ __html: renderMarkdown(caseData.case.structured_case.clinical_summary || "No clinical summary available.") }}
+                  />
+                </div>
+
+                {/* Vitals & Labs Grid */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                  {(() => {
+                    const structuredCase = caseData.case.structured_case;
+                    const rawVitals = structuredCase.vitals || {};
+                    const rawLabs = structuredCase.labs || {};
+
+                    const vitalsList = [
+                      { 
+                        key: "temp",
+                        label: "Temp", 
+                        value: rawVitals.temp ? `${rawVitals.temp}°F` : null,
+                        isAbnormal: rawVitals.temp ? Number(rawVitals.temp) > 100.4 : false,
+                        rawVal: rawVitals.temp
+                      },
+                      { 
+                        key: "bp",
+                        label: "BP", 
+                        value: rawVitals.bp || null,
+                        isAbnormal: rawVitals.bp && typeof rawVitals.bp === "string" ? Number(rawVitals.bp.split('/')[0]) < 90 : false,
+                        rawVal: rawVitals.bp
+                      },
+                      { 
+                        key: "hr",
+                        label: "HR", 
+                        value: rawVitals.hr ? `${rawVitals.hr} bpm` : null,
+                        isAbnormal: rawVitals.hr ? Number(rawVitals.hr) > 100 : false,
+                        rawVal: rawVitals.hr
+                      },
+                      { 
+                        key: "rr",
+                        label: "RR", 
+                        value: rawVitals.rr ? `${rawVitals.rr} /min` : null,
+                        isAbnormal: rawVitals.rr ? Number(rawVitals.rr) > 24 : false,
+                        rawVal: rawVitals.rr
+                      },
+                      { 
+                        key: "o2_sat",
+                        label: "O2 Sat", 
+                        value: rawVitals.o2_sat ? `${rawVitals.o2_sat}%` : null,
+                        isAbnormal: rawVitals.o2_sat ? Number(rawVitals.o2_sat) < 90 : false,
+                        rawVal: rawVitals.o2_sat
+                      },
+                    ].filter(item => item.value !== null && item.value !== undefined && item.value !== "");
+
+                    const checkLabAbnormal = (key: string, val: any) => {
+                      const lowerKey = key.toLowerCase();
+                      const numVal = parseFloat(String(val));
+                      if (isNaN(numVal)) return false;
+                      return (
+                        (lowerKey === "bnp" && numVal > 500) || 
+                        (lowerKey === "wbc" && (numVal > 12 || numVal < 4)) || 
+                        (lowerKey === "lactate" && numVal >= 2.0) || 
+                        (lowerKey === "creatinine" && numVal > 1.5) || 
+                        (lowerKey === "troponin" && numVal > 0.04) || 
+                        (lowerKey === "potassium" && numVal > 5.5) || 
+                        (lowerKey === "ef" && numVal < 40) ||
+                        (lowerKey === "pco2" && (numVal > 45 || numVal < 35)) ||
+                        (lowerKey === "po2" && numVal < 75) ||
+                        (lowerKey === "ph" && (numVal > 7.45 || numVal < 7.35))
+                      );
+                    };
+
+                    const labsList = Object.entries(rawLabs)
+                      .filter(([_, val]) => val !== null && val !== undefined && val !== "")
+                      .map(([key, val]) => {
+                        let labName = key;
+                        const lowerKey = key.toLowerCase();
+                        if (lowerKey === "bnp" || lowerKey === "ef" || lowerKey === "wbc") {
+                          labName = lowerKey.toUpperCase();
+                        } else if (lowerKey === "pco2") {
+                          labName = "pCO2";
+                        } else if (lowerKey === "po2") {
+                          labName = "pO2";
+                        } else if (lowerKey === "ph") {
+                          labName = "pH";
+                        } else {
+                          labName = key.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
+                        }
+                        return { 
+                          key,
+                          label: labName, 
+                          value: String(val),
+                          isAbnormal: checkLabAbnormal(key, val),
+                          rawVal: val
+                        };
+                      });
+
+                    return (
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                        {/* Vitals */}
+                        <div style={{ background: "rgba(15,14,12,0.01)", border: "1px solid var(--border-default)", borderRadius: "6px", padding: "10px" }}>
+                          <h5 style={{ margin: "0 0 8px 0", fontSize: "0.75rem", textTransform: "uppercase", color: "var(--text-secondary)" }}>Vitals</h5>
+                          <div style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "0.82rem" }}>
+                            {vitalsList.map((item, idx) => (
+                              <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: "4px", borderBottom: idx < vitalsList.length - 1 ? "1px solid var(--border-default)" : "none" }}>
+                                <span style={{ color: "var(--text-secondary)" }}>{item.label}</span>
+                                <span 
+                                  onClick={() => item.isAbnormal && handleVitalClick(item.key, item.rawVal, item.isAbnormal)}
+                                  style={{ 
+                                    fontWeight: 600, 
+                                    color: item.isAbnormal ? "var(--danger)" : "var(--text-primary)",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "4px",
+                                    cursor: item.isAbnormal ? "pointer" : "default"
+                                  }}
+                                >
+                                  {item.isAbnormal && <AlertTriangle size={11} style={{ color: "var(--danger)" }} />}
+                                  {item.value}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Labs */}
+                        <div style={{ background: "rgba(15,14,12,0.01)", border: "1px solid var(--border-default)", borderRadius: "6px", padding: "10px" }}>
+                          <h5 style={{ margin: "0 0 8px 0", fontSize: "0.75rem", textTransform: "uppercase", color: "var(--text-secondary)" }}>Labs</h5>
+                          <div style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "0.82rem", maxHeight: "250px", overflowY: "auto" }}>
+                            {labsList.map((item, idx) => (
+                              <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: "4px", borderBottom: idx < labsList.length - 1 ? "1px solid var(--border-default)" : "none" }}>
+                                <span style={{ color: "var(--text-secondary)" }}>{item.label}</span>
+                                <span 
+                                  onClick={() => item.isAbnormal && handleLabClick(item.key, item.rawVal, item.isAbnormal)}
+                                  style={{ 
+                                    fontWeight: 600, 
+                                    color: item.isAbnormal ? "var(--danger)" : "var(--text-primary)",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "4px",
+                                    cursor: item.isAbnormal ? "pointer" : "default"
+                                  }}
+                                >
+                                  {item.isAbnormal && <AlertTriangle size={11} style={{ color: "var(--danger)" }} />}
+                                  {item.value}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="card" style={{ padding: "20px" }}>
             <h3 style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px", fontSize: "1rem" }}>
               <Shield size={18} style={{ color: "var(--primary)" }} /> New Evidence & Policy
@@ -203,40 +503,87 @@ export default function WorkspaceAppealPage() {
             </div>
           </div>
 
-          <div className="card" style={{ padding: "20px" }}>
-            <h3 style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px", fontSize: "1rem" }}>
-              <Edit3 size={18} style={{ color: "var(--primary)" }} /> Final Review Rationale
-            </h3>
-            <textarea
-              className="input-field"
-              style={{ minHeight: "120px", fontSize: "0.9rem", lineHeight: 1.6 }}
-              placeholder="Enter your final clinical rationale for the appeal outcome..."
-              value={rationale}
-              onChange={(e) => setRationale(e.target.value)}
-            />
-          </div>
+          {data.appeal_outcome ? (
+            <div className="card" style={{ padding: "24px", border: "1.5px solid var(--border-default)", background: "var(--bg-surface)" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px", flexWrap: "wrap", gap: "12px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                  <div style={{ 
+                    width: "40px", height: "40px", borderRadius: "50%", 
+                    background: data.appeal_outcome.toLowerCase().includes("overturn") ? "rgba(245,158,11,0.12)" : "rgba(22,163,74,0.12)", 
+                    display: "flex", alignItems: "center", justifyContent: "center" 
+                  }}>
+                    {data.appeal_outcome.toLowerCase().includes("overturn") ? (
+                      <ArrowUpCircle size={22} style={{ color: "var(--warning)" }} />
+                    ) : (
+                      <CheckCircle size={22} style={{ color: "var(--success)" }} />
+                    )}
+                  </div>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: "1.05rem", fontWeight: 600 }}>
+                      Final Appeal Determination: {data.appeal_outcome}
+                    </h3>
+                    <p style={{ margin: 0, fontSize: "0.8rem", color: "var(--text-secondary)" }}>
+                      {data.resolution_date ? `Resolved on ${data.resolution_date}` : "Decision finalized"}
+                    </p>
+                  </div>
+                </div>
+                <span className={`badge ${data.appeal_outcome.toLowerCase().includes("overturn") ? "badge-warning" : "badge-success"}`} style={{ fontSize: "0.85rem", padding: "6px 14px" }}>
+                  {data.appeal_outcome}
+                </span>
+              </div>
 
-          <div className="card" style={{ padding: "20px", border: "2px solid var(--border-default)" }}>
-            <h3 style={{ fontSize: "1rem", marginBottom: "20px" }}>Appeal Decision</h3>
-            <div style={{ display: "flex", gap: "16px" }}>
-              <button
-                className="btn btn-warning"
-                style={{ flex: 1, padding: "16px", fontSize: "1rem", gap: "8px", background: "var(--warning)", color: "white" }}
-                onClick={() => handleSubmitDecision("Overturned")}
-                disabled={isSubmitting}
-              >
-                <CheckCircle size={20} /> Overturn Denial
-              </button>
-              <button
-                className="btn btn-danger"
-                style={{ flex: 1, padding: "16px", fontSize: "1rem", gap: "8px" }}
-                onClick={() => handleSubmitDecision("Upheld")}
-                disabled={isSubmitting}
-              >
-                <XCircle size={20} /> Uphold Denial
-              </button>
+              <div style={{ background: "rgba(15,14,12,0.02)", padding: "16px", borderRadius: "8px", border: "1px solid var(--border-default)", marginBottom: "16px" }}>
+                <h4 style={{ fontSize: "0.8rem", color: "var(--text-secondary)", marginBottom: "8px", textTransform: "uppercase", display: "flex", alignItems: "center", gap: "6px" }}>
+                  <Edit3 size={14} /> Recorded Review Rationale
+                </h4>
+                <div style={{ fontSize: "0.9rem", lineHeight: 1.6, color: "var(--text-primary)" }}>
+                  {data.clinical_rationale_provided || "No clinical rationale recorded."}
+                </div>
+              </div>
+
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.82rem", color: "var(--text-secondary)", background: "var(--bg-hover)", padding: "10px 14px", borderRadius: "6px" }}>
+                <Lock size={14} style={{ flexShrink: 0 }} />
+                <span>This appeal has been finalized and its outcome is locked in the system records.</span>
+              </div>
             </div>
-          </div>
+          ) : (
+            <>
+              <div className="card" style={{ padding: "20px" }}>
+                <h3 style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px", fontSize: "1rem" }}>
+                  <Edit3 size={18} style={{ color: "var(--primary)" }} /> Final Review Rationale
+                </h3>
+                <textarea
+                  className="input-field"
+                  style={{ minHeight: "120px", fontSize: "0.9rem", lineHeight: 1.6 }}
+                  placeholder="Enter your final clinical rationale for the appeal outcome..."
+                  value={rationale}
+                  onChange={(e) => setRationale(e.target.value)}
+                />
+              </div>
+
+              <div className="card" style={{ padding: "20px", border: "2px solid var(--border-default)" }}>
+                <h3 style={{ fontSize: "1rem", marginBottom: "20px" }}>Appeal Decision</h3>
+                <div style={{ display: "flex", gap: "16px" }}>
+                  <button
+                    className="btn btn-warning"
+                    style={{ flex: 1, padding: "16px", fontSize: "1rem", gap: "8px", background: "var(--warning)", color: "white" }}
+                    onClick={() => handleSubmitDecision("Overturned")}
+                    disabled={isSubmitting}
+                  >
+                    <CheckCircle size={20} /> Overturn Denial
+                  </button>
+                  <button
+                    className="btn btn-danger"
+                    style={{ flex: 1, padding: "16px", fontSize: "1rem", gap: "8px" }}
+                    onClick={() => handleSubmitDecision("Upheld")}
+                    disabled={isSubmitting}
+                  >
+                    <XCircle size={20} /> Uphold Denial
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
 
         </div>
       </div>
@@ -284,29 +631,39 @@ export default function WorkspaceAppealPage() {
 
                 const vitalsList = [
                   { 
+                    key: "temp",
                     label: "Temp", 
                     value: rawVitals.temp ? `${rawVitals.temp}°F` : null,
-                    isAbnormal: rawVitals.temp ? Number(rawVitals.temp) > 100.4 : false
+                    isAbnormal: rawVitals.temp ? Number(rawVitals.temp) > 100.4 : false,
+                    rawVal: rawVitals.temp
                   },
                   { 
+                    key: "bp",
                     label: "BP", 
                     value: rawVitals.bp || null,
-                    isAbnormal: rawVitals.bp && typeof rawVitals.bp === "string" ? Number(rawVitals.bp.split('/')[0]) < 90 : false
+                    isAbnormal: rawVitals.bp && typeof rawVitals.bp === "string" ? Number(rawVitals.bp.split('/')[0]) < 90 : false,
+                    rawVal: rawVitals.bp
                   },
                   { 
+                    key: "hr",
                     label: "HR", 
                     value: rawVitals.hr ? `${rawVitals.hr} bpm` : null,
-                    isAbnormal: rawVitals.hr ? Number(rawVitals.hr) > 100 : false
+                    isAbnormal: rawVitals.hr ? Number(rawVitals.hr) > 100 : false,
+                    rawVal: rawVitals.hr
                   },
                   { 
+                    key: "rr",
                     label: "RR", 
                     value: rawVitals.rr ? `${rawVitals.rr} /min` : null,
-                    isAbnormal: rawVitals.rr ? Number(rawVitals.rr) > 24 : false
+                    isAbnormal: rawVitals.rr ? Number(rawVitals.rr) > 24 : false,
+                    rawVal: rawVitals.rr
                   },
                   { 
+                    key: "o2_sat",
                     label: "O2 Sat", 
                     value: rawVitals.o2_sat ? `${rawVitals.o2_sat}%` : null,
-                    isAbnormal: rawVitals.o2_sat ? Number(rawVitals.o2_sat) < 90 : false
+                    isAbnormal: rawVitals.o2_sat ? Number(rawVitals.o2_sat) < 90 : false,
+                    rawVal: rawVitals.o2_sat
                   },
                 ].filter(item => item.value !== null && item.value !== undefined && item.value !== "");
 
@@ -345,9 +702,11 @@ export default function WorkspaceAppealPage() {
                       labName = key.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
                     }
                     return { 
+                      key,
                       label: labName, 
                       value: String(val),
-                      isAbnormal: checkLabAbnormal(key, val)
+                      isAbnormal: checkLabAbnormal(key, val),
+                      rawVal: val
                     };
                   });
 
@@ -359,13 +718,17 @@ export default function WorkspaceAppealPage() {
                         {vitalsList.map((item, idx) => (
                           <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: "6px", borderBottom: idx < vitalsList.length - 1 ? "1px solid var(--border-default)" : "none" }}>
                             <span style={{ color: "var(--text-secondary)" }}>{item.label}</span>
-                            <span style={{ 
-                              fontWeight: 600, 
-                              color: item.isAbnormal ? "var(--danger)" : "var(--text-primary)",
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "4px"
-                            }}>
+                            <span 
+                              onClick={() => item.isAbnormal && handleVitalClick(item.key, item.rawVal, item.isAbnormal)}
+                              style={{ 
+                                fontWeight: 600, 
+                                color: item.isAbnormal ? "var(--danger)" : "var(--text-primary)",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "4px",
+                                cursor: item.isAbnormal ? "pointer" : "default"
+                              }}
+                            >
                               {item.isAbnormal && <AlertTriangle size={12} style={{ color: "var(--danger)" }} />}
                               {item.value}
                             </span>
@@ -382,13 +745,17 @@ export default function WorkspaceAppealPage() {
                         {labsList.map((item, idx) => (
                           <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: "6px", borderBottom: idx < labsList.length - 1 ? "1px solid var(--border-default)" : "none" }}>
                             <span style={{ color: "var(--text-secondary)" }}>{item.label}</span>
-                            <span style={{ 
-                              fontWeight: 600, 
-                              color: item.isAbnormal ? "var(--danger)" : "var(--text-primary)",
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "4px"
-                            }}>
+                            <span 
+                              onClick={() => item.isAbnormal && handleLabClick(item.key, item.rawVal, item.isAbnormal)}
+                              style={{ 
+                                fontWeight: 600, 
+                                color: item.isAbnormal ? "var(--danger)" : "var(--text-primary)",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "4px",
+                                cursor: item.isAbnormal ? "pointer" : "default"
+                              }}
+                            >
                               {item.isAbnormal && <AlertTriangle size={12} style={{ color: "var(--danger)" }} />}
                               {item.value}
                             </span>
@@ -414,6 +781,60 @@ export default function WorkspaceAppealPage() {
                   style={{ fontSize: "0.85rem", lineHeight: 1.5, color: "var(--text-primary)", background: "var(--bg-hover)", padding: "10px", borderRadius: "4px", margin: 0 }}
                   dangerouslySetInnerHTML={{ __html: renderMarkdown(caseData?.decision?.rationale || "No rationale recorded.") }}
                 />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {abnormalExplanation && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+          background: "rgba(0,0,0,0.5)", zIndex: 9999,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          backdropFilter: "blur(2px)"
+        }} onClick={() => setAbnormalExplanation(null)}>
+          <div style={{
+            background: "var(--bg-surface)", borderRadius: "var(--radius-lg)",
+            width: "90%", maxWidth: "500px", display: "flex", flexDirection: "column",
+            boxShadow: "var(--shadow-xl)", overflow: "hidden"
+          }} onClick={(e) => e.stopPropagation()}>
+            <div style={{
+              padding: "16px 20px", borderBottom: "1px solid var(--border-default)",
+              display: "flex", justifyContent: "space-between", alignItems: "center"
+            }}>
+              <span style={{ fontWeight: 600, fontSize: "0.95rem", display: "flex", alignItems: "center", gap: "8px" }}>
+                <AlertTriangle size={18} style={{ color: "var(--danger)" }} /> {abnormalExplanation.title}
+              </span>
+              <button onClick={() => setAbnormalExplanation(null)} style={{
+                background: "none", border: "none", cursor: "pointer", padding: "4px",
+                color: "var(--text-tertiary)", borderRadius: "var(--radius-sm)"
+              }}>
+                <X size={20} />
+              </button>
+            </div>
+            <div style={{ padding: "24px", fontSize: "0.9rem", lineHeight: 1.6, color: "var(--text-secondary)" }}>
+              <div style={{ 
+                marginBottom: "16px", padding: "12px", background: "rgba(239,68,68,0.06)", 
+                borderRadius: "var(--radius-md)", borderLeft: "3px solid var(--danger)" 
+              }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                  <div>
+                    <div style={{ fontSize: "0.75rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-tertiary)", marginBottom: "2px" }}>Patient Value</div>
+                    <div style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--danger)" }}>{abnormalExplanation.val}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: "0.75rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-tertiary)", marginBottom: "2px" }}>Reference Range</div>
+                    <div style={{ fontSize: "1rem", fontWeight: 500, color: "var(--text-primary)" }}>{abnormalExplanation.range}</div>
+                  </div>
+                </div>
+              </div>
+              <div style={{ marginBottom: "16px" }}>
+                <h4 style={{ color: "var(--text-primary)", fontSize: "0.85rem", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "6px" }}>Clinical Meaning</h4>
+                <p style={{ margin: 0 }}>{abnormalExplanation.meaning}</p>
+              </div>
+              <div>
+                <h4 style={{ color: "var(--text-primary)", fontSize: "0.85rem", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "6px" }}>Clinical Significance</h4>
+                <p style={{ margin: 0 }}>{abnormalExplanation.significance}</p>
               </div>
             </div>
           </div>
