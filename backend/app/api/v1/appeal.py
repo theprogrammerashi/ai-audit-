@@ -128,25 +128,37 @@ async def get_appeal_intake_cases(user: dict = Depends(get_current_user), db=Dep
     try:
         role = user.get("role", "NURSE")
         if role == "NURSE":
-            results = db.execute(
-                "SELECT * FROM appeal_intake_cases WHERE reviewer_assigned = ? ORDER BY appeal_received_date DESC",
-                [user["id"]]
-            ).fetchall()
+            results = db.execute("""
+                SELECT a.*, COALESCE(c.case_number, a.case_id) AS case_number
+                FROM appeal_intake_cases a
+                LEFT JOIN cases c ON a.case_id = c.id
+                WHERE a.reviewer_assigned = ?
+                ORDER BY a.appeal_received_date DESC
+            """, [user["id"]]).fetchall()
         elif role == "QA_LEAD":
             nurse_ids = get_scoped_nurse_ids(user, db)
             if not nurse_ids:
                 return []
             placeholders = ",".join(["?" for _ in nurse_ids])
-            results = db.execute(
-                f"SELECT * FROM appeal_intake_cases WHERE reviewer_assigned IN ({placeholders}) ORDER BY appeal_received_date DESC",
-                nurse_ids
-            ).fetchall()
+            results = db.execute(f"""
+                SELECT a.*, COALESCE(c.case_number, a.case_id) AS case_number
+                FROM appeal_intake_cases a
+                LEFT JOIN cases c ON a.case_id = c.id
+                WHERE a.reviewer_assigned IN ({placeholders})
+                ORDER BY a.appeal_received_date DESC
+            """, nurse_ids).fetchall()
         else:
             # ADMIN / EXECUTIVE — see all
-            results = db.execute("SELECT * FROM appeal_intake_cases ORDER BY appeal_received_date DESC").fetchall()
+            results = db.execute("""
+                SELECT a.*, COALESCE(c.case_number, a.case_id) AS case_number
+                FROM appeal_intake_cases a
+                LEFT JOIN cases c ON a.case_id = c.id
+                ORDER BY a.appeal_received_date DESC
+            """).fetchall()
         columns = [desc[0] for desc in db.description]
         return [AppealIntakeItem(**dict(zip(columns, row))) for row in results]
-    except:
+    except Exception as e:
+        print(f"[ERROR] get_appeal_intake_cases failed: {e}")
         return []
 
 class AppealDecisionSubmit(BaseModel):
@@ -250,7 +262,7 @@ async def reassign_appeal_case(id: str, user: dict = Depends(get_current_user), 
 async def get_appeal_intake_case(id: str, user: dict = Depends(get_current_user), db=Depends(get_db)):
     try:
         result = db.execute("""
-            SELECT a.*, c.patient_name, c.primary_diagnosis_display
+            SELECT a.*, c.patient_name, c.primary_diagnosis_display, COALESCE(c.case_number, a.case_id) AS case_number
             FROM appeal_intake_cases a
             LEFT JOIN cases c ON a.case_id = c.id
             WHERE a.id = ?

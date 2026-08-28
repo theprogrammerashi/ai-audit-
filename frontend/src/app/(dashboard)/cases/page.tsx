@@ -404,34 +404,38 @@ export default function CasesPage() {
                 <th>Type</th>
                 <th>Diagnosis</th>
                 <th>Outcome</th>
-                <th style={{ textAlign: "center" }}>Turnaround</th>
+                <th>Date</th>
                 <th style={{ textAlign: "center" }}>Action</th>
               </tr>
             </thead>
             <tbody>
-              {appeals.filter(a => (a.case_id || "").toLowerCase().includes(search.toLowerCase()) || (a.member_id || "").toLowerCase().includes(search.toLowerCase())).map((a) => (
-                <tr key={a.id}>
-                  <td style={{ fontWeight: 600 }}>{a.case_id}</td>
-                  <td>{a.member_id}</td>
-                  <td>{a.appellant_type}</td>
-                  <td>{a.diagnosis_category}</td>
-                  <td>
-                    {a.appeal_outcome ? (
-                      <span className={`badge ${a.appeal_outcome.includes("Overturn") ? "badge-warning" : "badge-success"}`}>
-                        {a.appeal_outcome}
-                      </span>
-                    ) : (
-                      <span className="badge badge-warning">Pending Review</span>
-                    )}
-                  </td>
-                  <td style={{ textAlign: "center" }}>{a.turnaround_days} days</td>
+              {appeals.filter(a => (a.id || "").toLowerCase().includes(search.toLowerCase()) || (a.case_number || "").toLowerCase().includes(search.toLowerCase()) || (a.member_id || "").toLowerCase().includes(search.toLowerCase())).map((a) => {
+                const d = a.appeal_received_date ? new Date(a.appeal_received_date) : null;
+                const dateStr = d ? d.toLocaleDateString() : "N/A";
+                return (
+                  <tr key={a.id}>
+                    <td style={{ fontWeight: 600 }}>{a.id}</td>
+                    <td>{a.member_id}</td>
+                    <td>{a.appellant_type}</td>
+                    <td>{a.diagnosis_category}</td>
+                    <td>
+                      {a.appeal_outcome ? (
+                        <span className={`badge ${a.appeal_outcome.includes("Overturn") ? "badge-warning" : "badge-success"}`}>
+                          {a.appeal_outcome}
+                        </span>
+                      ) : (
+                        <span className="badge badge-warning">Pending Review</span>
+                      )}
+                    </td>
+                    <td>{dateStr}</td>
                   <td style={{ textAlign: "center" }}>
                     <button className="btn btn-secondary" style={{ padding: "6px 12px", fontSize: "0.75rem", margin: "0 auto" }} onClick={() => router.push(`/cases/appeal/${a.id}`)}>
                       <Eye size={14} /> View 360
                     </button>
                   </td>
                 </tr>
-              ))}
+              );
+            })}
             </tbody>
           </table>
         </div>

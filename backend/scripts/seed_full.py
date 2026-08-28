@@ -375,7 +375,9 @@ def build_cases():
             "processing_confidence": round(random.uniform(0.90, 0.97), 2),
         }
 
-        if i < 2:
+        if i == 0:
+            status = "DECIDED"   # case-019 (Daniel Thompson) is DECIDED so it gets a nurse denial rationale
+        elif i < 2:
             status = "PENDING_REVIEW"
         elif i < 5:
             status = "DECIDED"   # nurse decided, waiting for QA review
@@ -638,8 +640,6 @@ def build_decisions(cases):
     }
 
     for i, c in enumerate(non_pending):
-        if i >= 20:
-            break
         decision_type = decision_types[i % len(decision_types)]
         reviewer_id = c.get("submitted_by", "EXL-N009")
         structured = json.loads(c["structured_case"])

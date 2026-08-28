@@ -46,6 +46,7 @@ class AppealDashboardResponse(BaseModel):
 class AppealIntakeItem(BaseModel):
     id: str
     case_id: str
+    case_number: Optional[str] = None
     patient_name: Optional[str] = None
     member_id: Optional[str] = None
     appellant_type: Optional[str] = None

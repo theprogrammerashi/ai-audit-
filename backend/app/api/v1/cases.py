@@ -59,7 +59,24 @@ async def create_case(case: CaseCreate, user: dict = Depends(get_current_user), 
 
     # If it is an appeal document, insert it into appeal_intake_cases so that it shows up in the appeals workflow
     if case.document_type == "APPEAL_DOCUMENT":
-        appeal_id = str(uuid.uuid4())
+        # Look up existing prior authorization case by MRN or patient name (prioritizing decided/audited cases)
+        target_case_id = case_id
+        existing_row = db.execute(
+            """
+            SELECT c.id FROM cases c
+            LEFT JOIN nurse_decisions n ON c.id = n.case_id
+            WHERE (c.patient_mrn = ? OR (c.patient_name IS NOT NULL AND LOWER(c.patient_name) = LOWER(?))) AND c.id != ?
+            ORDER BY (CASE WHEN n.id IS NOT NULL THEN 1 ELSE 0 END) DESC, c.submitted_at DESC
+            LIMIT 1
+            """,
+            [case.patient_mrn or "", case.patient_name or "", case_id]
+        ).fetchone()
+        
+        if existing_row:
+            target_case_id = existing_row[0]
+
+        count = db.execute("SELECT COUNT(*) FROM appeal_intake_cases").fetchone()[0]
+        appeal_id = f"APL-{datetime.now().year}-{str(count + 1).zfill(3)}"
         diag_display = (case.primary_diagnosis_display or case.primary_diagnosis_code or "").lower()
         diag_code = (case.primary_diagnosis_code or "").upper()
         
@@ -72,21 +89,38 @@ async def create_case(case: CaseCreate, user: dict = Depends(get_current_user), 
         else:
             diag_category = "General Medicine"
 
-        db.execute("""
-            INSERT INTO appeal_intake_cases (
-                id, case_id, member_id, appellant_type, appeal_received_date,
-                appeal_level, denial_reason_category, clinical_rationale_provided,
-                requested_service, diagnosis_category, financial_amount_disputed,
-                reviewer_assigned, original_nurse_id, created_at
-            ) VALUES (?, ?, ?, 'Provider', ?, 'Level 1 - Internal', 'Medical Necessity', ?, ?, ?, 15000.0, ?, 'SYSTEM', ?)
-        """, [
-            appeal_id, case_id, case.patient_mrn,
-            datetime.now().strftime("%Y-%m-%d"),
-            case.clinical_notes or "No clinical rationale provided.",
-            f"Inpatient Admission - {case.primary_diagnosis_display or case.primary_diagnosis_code}",
-            diag_category, assigned_nurse_id,
-            datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        ])
+        # Check if an appeal intake record already exists for this target case
+        existing_appeal = db.execute(
+            "SELECT id FROM appeal_intake_cases WHERE case_id = ?",
+            [target_case_id]
+        ).fetchone()
+
+        if existing_appeal:
+            db.execute("""
+                UPDATE appeal_intake_cases
+                SET clinical_rationale_provided = ?,
+                    appeal_received_date = ?
+                WHERE case_id = ?
+            """, [
+                case.clinical_notes or "No clinical rationale provided.",
+                datetime.now().strftime("%Y-%m-%d"),
+                target_case_id
+            ])
+        else:
+            db.execute("""
+                INSERT INTO appeal_intake_cases (
+                    id, case_id, member_id, appellant_type, appeal_received_date,
+                    appeal_level, denial_reason_category, clinical_rationale_provided,
+                    requested_service, diagnosis_category, financial_amount_disputed,
+                    reviewer_assigned, original_nurse_id
+                ) VALUES (?, ?, ?, 'Provider', ?, 'Level 1 - Internal', 'Medical Necessity', ?, ?, ?, 15000.0, ?, 'SYSTEM')
+            """, [
+                appeal_id, target_case_id, case.patient_mrn,
+                datetime.now().strftime("%Y-%m-%d"),
+                case.clinical_notes or "No clinical rationale provided.",
+                f"Inpatient Admission - {case.primary_diagnosis_display or case.primary_diagnosis_code}",
+                diag_category, assigned_nurse_id
+            ])
 
 
     # Trigger policy engine

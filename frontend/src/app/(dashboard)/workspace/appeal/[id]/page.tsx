@@ -4,7 +4,8 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   LayoutDashboard, CheckCircle, XCircle, ArrowUpCircle, AlertTriangle,
-  Shield, Clock, ArrowLeft, Loader2, FileText, Check, AlertCircle, FileSearch, Edit3
+  Shield, Clock, ArrowLeft, Loader2, FileText, Check, AlertCircle, FileSearch, Edit3,
+  FolderOpen, X
 } from "lucide-react";
 import api from "@/lib/api";
 
@@ -22,6 +23,7 @@ export default function WorkspaceAppealPage() {
   const appealId = params.id as string;
   
   const [data, setData] = useState<any>(null);
+  const [caseData, setCaseData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,12 +31,23 @@ export default function WorkspaceAppealPage() {
   const [submitted, setSubmitted] = useState(false);
 
   const [rationale, setRationale] = useState("");
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   useEffect(() => {
     const fetchAppealData = async () => {
       try {
         const res = await api.get(`/appeal/intake-cases/${appealId}`);
         setData(res.data);
+        
+        // Fetch original case details
+        if (res.data.case_id) {
+          try {
+            const caseRes = await api.get(`/cases/${res.data.case_id}`);
+            setCaseData(caseRes.data);
+          } catch (caseErr) {
+            console.error("Failed to fetch case details:", caseErr);
+          }
+        }
       } catch (err) {
         console.error("Failed to fetch appeal data:", err);
         setError("Failed to load appeal data");
@@ -113,7 +126,7 @@ export default function WorkspaceAppealPage() {
           <FileText size={22} style={{ color: "var(--warning)" }} />
           <div>
             <div style={{ fontWeight: 600, display: "flex", gap: "8px", alignItems: "center" }}>
-              {data.case_id}
+              {data.id}
               <span className="badge badge-warning" style={{ fontSize: "0.7rem", display: "flex", alignItems: "center", gap: "4px" }}>
                 <FileText size={10} /> APPEAL REVIEW
               </span>
@@ -134,6 +147,14 @@ export default function WorkspaceAppealPage() {
           {[
             ["Patient Name", data.patient_name],
             ["Member ID", data.member_id], 
+            ["Associated Case", (
+              <button 
+                onClick={() => setIsDrawerOpen(true)}
+                style={{ background: "none", border: "none", color: "var(--primary)", padding: 0, textDecoration: "underline", cursor: "pointer", fontWeight: 600, fontSize: "0.9rem", textAlign: "left", display: "inline-block" }}
+              >
+                {data.case_number || data.case_id}
+              </button>
+            )],
             ["Type", data.appellant_type], 
             ["Level", data.appeal_level], 
             ["Diagnosis", data.primary_diagnosis_display || data.diagnosis_category]
@@ -219,6 +240,80 @@ export default function WorkspaceAppealPage() {
 
         </div>
       </div>
+
+      {/* Style block for keyframes */}
+      <style>{`
+        @keyframes slideIn {
+          from { transform: translateX(100%); }
+          to { transform: translateX(0); }
+        }
+      `}</style>
+
+      {/* Drawer Backdrop */}
+      {isDrawerOpen && (
+        <div 
+          onClick={() => setIsDrawerOpen(false)}
+          style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", background: "rgba(0,0,0,0.4)", zIndex: 1000, display: "flex", justifyContent: "flex-end" }}
+        >
+          {/* Drawer Content */}
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            style={{ width: "500px", height: "100%", background: "var(--bg-surface)", borderLeft: "1px solid var(--border-default)", display: "flex", flexDirection: "column", animation: "slideIn 0.25s ease-out", overflow: "hidden" }}
+          >
+            {/* Header */}
+            <div style={{ padding: "20px", borderBottom: "1px solid var(--border-default)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <h3 style={{ margin: 0, display: "flex", alignItems: "center", gap: "8px" }}><FolderOpen size={20} color="var(--primary)" /> Case {caseData?.case?.case_number || data.case_number}</h3>
+              <button onClick={() => setIsDrawerOpen(false)} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", color: "var(--text-secondary)" }}><X size={20} /></button>
+            </div>
+            {/* Body */}
+            <div style={{ padding: "20px", flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: "20px" }}>
+              {/* Clinical Summary */}
+              <div className="card" style={{ padding: "16px" }}>
+                <h4 style={{ margin: "0 0 8px 0", fontSize: "0.85rem", textTransform: "uppercase", color: "var(--text-secondary)" }}>Clinical Summary</h4>
+                <p style={{ fontSize: "0.88rem", lineHeight: 1.5, color: "var(--text-primary)", whiteSpace: "pre-wrap", margin: 0 }}>
+                  {caseData?.case?.structured_case?.clinical_summary || "No summary available."}
+                </p>
+              </div>
+              
+              {/* Vitals & Labs */}
+              {caseData?.case?.structured_case && (
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                  <div className="card" style={{ padding: "12px" }}>
+                    <h4 style={{ margin: "0 0 8px 0", fontSize: "0.80rem", textTransform: "uppercase", color: "var(--text-secondary)" }}>Vitals</h4>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "0.82rem" }}>
+                      <div>Temp: {caseData.case.structured_case.vitals?.temp}°F</div>
+                      <div>BP: {caseData.case.structured_case.vitals?.bp}</div>
+                      <div>HR: {caseData.case.structured_case.vitals?.hr} bpm</div>
+                      <div>RR: {caseData.case.structured_case.vitals?.rr} /min</div>
+                      <div>O2 Sat: {caseData.case.structured_case.vitals?.o2_sat}%</div>
+                    </div>
+                  </div>
+                  <div className="card" style={{ padding: "12px" }}>
+                    <h4 style={{ margin: "0 0 8px 0", fontSize: "0.80rem", textTransform: "uppercase", color: "var(--text-secondary)" }}>Labs</h4>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "0.82rem" }}>
+                      {Object.entries(caseData.case.structured_case.labs || {}).map(([k, v]) => (
+                        <div key={k}>{k.toUpperCase()}: {String(v)}</div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Original Decision */}
+              <div className="card" style={{ padding: "16px", borderLeft: "4px solid var(--danger)" }}>
+                <h4 style={{ margin: "0 0 8px 0", fontSize: "0.85rem", textTransform: "uppercase", color: "var(--danger)" }}>Original Denial Decision</h4>
+                <div style={{ fontSize: "0.88rem", marginBottom: "8px" }}>
+                  Status: <span className="badge badge-danger">DENIED</span>
+                </div>
+                <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginBottom: "4px", fontWeight: 600 }}>Reviewer Rationale:</div>
+                <p style={{ fontSize: "0.85rem", lineHeight: 1.5, color: "var(--text-primary)", whiteSpace: "pre-wrap", background: "var(--bg-hover)", padding: "10px", borderRadius: "4px", margin: 0 }}>
+                  {caseData?.decision?.rationale || "No rationale recorded."}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

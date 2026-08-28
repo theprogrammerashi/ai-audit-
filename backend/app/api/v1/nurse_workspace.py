@@ -51,7 +51,7 @@ async def get_review_queue(
         
         # Appeals assigned to nurse
         appeals = db.execute("""
-            SELECT a.id, a.case_id AS case_number, c.patient_name, a.member_id AS patient_mrn,
+            SELECT a.id, a.id AS case_number, c.patient_name, a.member_id AS patient_mrn,
                    COALESCE(c.primary_diagnosis_display, a.diagnosis_category) AS primary_diagnosis_display, 'PENDING_REVIEW' AS status,
                    COALESCE(a.created_at, a.appeal_received_date) AS submitted_at,
                    a.reviewer_assigned AS assigned_nurse_id, u.full_name AS assigned_to,
@@ -82,7 +82,7 @@ async def get_review_queue(
         """).fetchall()
         
         appeals = db.execute("""
-            SELECT a.id, a.case_id AS case_number, c.patient_name, a.member_id AS patient_mrn,
+            SELECT a.id, a.id AS case_number, c.patient_name, a.member_id AS patient_mrn,
                    COALESCE(c.primary_diagnosis_display, a.diagnosis_category) AS primary_diagnosis_display, 'PENDING_REVIEW' AS status,
                    COALESCE(a.created_at, a.appeal_received_date) AS submitted_at,
                    a.reviewer_assigned AS assigned_nurse_id, u.full_name AS assigned_to,

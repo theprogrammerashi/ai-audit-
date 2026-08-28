@@ -77,7 +77,7 @@ echo.
 :: Start Backend in background
 cd /d "%~dp0backend"
 set PYTHONIOENCODING=utf-8
-start "CareAudit-Backend" cmd /c "call %VENV_DIR%\Scripts\activate.bat && set PYTHONIOENCODING=utf-8 && uvicorn app.main:app --reload --port 8000"
+start "CareAudit-Backend" cmd /k "call %VENV_DIR%\Scripts\activate.bat && set PYTHONIOENCODING=utf-8 && python -m uvicorn app.main:app --reload --port 8000"
 
 :: Start Frontend in foreground
 cd /d "%~dp0frontend"

@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     # Groq API
     GROQ_API_KEY: str = ""
     GROQ_MODEL: str = "groq/compound"
-    GROQ_FAST_MODEL: str = "groq/compound-mini"
+    GROQ_FAST_MODEL: str = "groq/compound"
     
     # ChromaDB
     CHROMA_HOST: str = "localhost"

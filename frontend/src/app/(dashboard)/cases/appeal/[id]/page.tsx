@@ -60,7 +60,7 @@ export default function AppealView360() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "24px" }}>
         <div>
           <h1 style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "8px" }}>
-            <FileText size={28} /> Appeal 360 View: {appeal.case_id}
+            <FileText size={28} /> Appeal 360 View: {appeal.id}
           </h1>
           <p style={{ color: "var(--text-secondary)", fontSize: "0.95rem" }}>
             Patient: {appeal.member_id} • Type: {appeal.appellant_type} • Level: {appeal.appeal_level}
@@ -85,6 +85,10 @@ export default function AppealView360() {
             <ShieldCheck size={18} color="var(--primary)" /> Case Overview
           </h3>
           <div style={{ display: "flex", flexDirection: "column", gap: "12px", fontSize: "0.9rem" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--border-default)", paddingBottom: "8px" }}>
+              <span style={{ color: "var(--text-secondary)" }}>Associated Case Number:</span>
+              <span style={{ fontWeight: 500 }}>{appeal.case_number || appeal.case_id}</span>
+            </div>
             <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--border-default)", paddingBottom: "8px" }}>
               <span style={{ color: "var(--text-secondary)" }}>Diagnosis Category:</span>
               <span style={{ fontWeight: 500 }}>{appeal.diagnosis_category}</span>
