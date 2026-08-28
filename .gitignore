@@ -24,7 +24,8 @@ __pycache__/
 *.pyo
 .pytest_cache/
 *.egg-info/
-data/
+data/*
+!data/careaudit.sqlite
 backend/venv/
 
 # IDE
