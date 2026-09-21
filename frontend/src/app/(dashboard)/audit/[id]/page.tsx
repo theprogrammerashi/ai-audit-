@@ -347,9 +347,11 @@ export default function AuditDetailPage() {
           <h3 style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px", color: "var(--primary)", fontSize: "0.95rem" }}>
             <Lightbulb size={18} /> AI Score Rationale
           </h3>
-          <p style={{ fontSize: "0.9rem", lineHeight: 1.7, color: "var(--text-secondary)", margin: 0 }}>
-            {d.qa_ai_explanation}
-          </p>
+          <div style={{ fontSize: "0.9rem", lineHeight: 1.7, color: "var(--text-secondary)" }}>
+            {String(d.qa_ai_explanation).split("\n\n").map((para: string, i: number) => (
+              para.trim() ? <p key={i} style={{ margin: i === 0 ? 0 : "10px 0 0" }}>{para}</p> : null
+            ))}
+          </div>
         </div>
       )}
 

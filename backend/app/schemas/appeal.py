@@ -66,6 +66,42 @@ class AppealIntakeItem(BaseModel):
     key_evidence_cited: Optional[str] = None
     policy_referenced: Optional[str] = None
 
+class AppealCriterion(BaseModel):
+    criterion: str
+    status: str            # MET | NOT_MET | UNKNOWN
+    threshold: str
+    evidence: str
+
+
+class AppealAIRecommendation(BaseModel):
+    model_config = ConfigDict(protected_namespaces=())
+
+    appeal_id: str
+    recommendation: str            # OVERTURN | UPHOLD
+    recommendation_label: str
+    confidence: float
+    recommendation_text: str
+    clinical_analysis: str
+    policy_name: str
+    policy_referenced: str
+    criteria: List[AppealCriterion] = []
+    criteria_met_count: int
+    criteria_evaluated_count: int
+    criteria_required: int
+    supporting_findings: List[str] = []
+    gaps: List[str] = []
+    risk_if_overturned: str
+    risk_if_upheld: str
+    policy_explanation: str
+    nurse_actions: List[str] = []
+    evidence_source: str
+    original_decision: Optional[str] = None
+    original_rationale: Optional[str] = None
+    appeal_risk_overturn_probability: Optional[float] = None
+    already_resolved: bool = False
+    recorded_outcome: Optional[str] = None
+
+
 class AppealAnalyticsResponse(BaseModel):
     overturn_rate_by_denial_reason: dict
     overturn_rate_by_diagnosis: dict

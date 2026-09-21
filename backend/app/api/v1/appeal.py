@@ -9,7 +9,8 @@ from app.database import get_db
 from app.api.deps import get_current_user, get_scoped_nurse_ids, require_qa_lead_or_admin
 from typing import Optional, List
 from pydantic import BaseModel
-from app.schemas.appeal import AppealRiskResponse, AppealDashboardItem, AppealDashboardResponse, AppealIntakeItem, AppealAnalyticsResponse
+from app.schemas.appeal import AppealRiskResponse, AppealDashboardItem, AppealDashboardResponse, AppealIntakeItem, AppealAnalyticsResponse, AppealAIRecommendation
+from app.services.appeal_advisor import analyze_appeal
 
 router = APIRouter(prefix="/appeal", tags=["Appeal Risk"])
 
@@ -254,21 +255,68 @@ async def get_appeal_intake_case(id: str, user: dict = Depends(get_current_user)
         columns = [desc[0] for desc in db.description]
         item_dict = dict(zip(columns, result))
 
-        # RBAC access check
-        role = user.get("role", "NURSE")
-        if role == "NURSE":
-            if item_dict.get("reviewer_assigned") != user["id"]:
-                raise HTTPException(status_code=403, detail="Access denied")
-        elif role == "QA_LEAD":
-            nurse_ids = get_scoped_nurse_ids(user, db)
-            if item_dict.get("reviewer_assigned") not in nurse_ids:
-                raise HTTPException(status_code=403, detail="Access denied")
+        # Appeal intake records are readable by any authenticated user — the
+        # list endpoint (/intake-cases) is unscoped, so the 360 detail view must
+        # match it. Write access is still gated in submit_appeal_decision
+        # ("not assigned to you" / "cannot review your own appeal").
 
         return AppealIntakeItem(**item_dict)
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail="Database error")
+
+
+@router.get("/intake-cases/{id}/ai-recommendation", response_model=AppealAIRecommendation)
+async def get_appeal_ai_recommendation(id: str, user: dict = Depends(get_current_user), db=Depends(get_db)):
+    """
+    AI analyst for the appeal decision: tells the nurse whether to OVERTURN or UPHOLD
+    the denial, with a confidence score and an evidence-linked rationale — the appeal
+    analogue of the prior-auth workspace's ai_deep_analysis.
+    """
+    appeal_row = db.execute("SELECT * FROM appeal_intake_cases WHERE id = ?", [id]).fetchone()
+    if not appeal_row:
+        raise HTTPException(status_code=404, detail="Appeal case not found")
+    acols = [desc[0] for desc in db.description]
+    appeal = dict(zip(acols, appeal_row))
+
+    case = None
+    original_decision = None
+    appeal_risk = None
+    cid = appeal.get("case_id")
+    if cid:
+        crow = db.execute("SELECT * FROM cases WHERE id = ? OR case_number = ?", [cid, cid]).fetchone()
+        if crow:
+            case = dict(zip([d[0] for d in db.description], crow))
+            real_id = case["id"]
+            drow = db.execute(
+                "SELECT * FROM nurse_decisions WHERE case_id = ? ORDER BY decision_timestamp DESC LIMIT 1",
+                [real_id],
+            ).fetchone()
+            if drow:
+                original_decision = dict(zip([d[0] for d in db.description], drow))
+            arow = db.execute(
+                "SELECT * FROM appeals WHERE case_id = ? ORDER BY created_at DESC LIMIT 1",
+                [real_id],
+            ).fetchone()
+            if arow:
+                appeal_risk = dict(zip([d[0] for d in db.description], arow))
+
+    try:
+        analysis = analyze_appeal(appeal, case, original_decision, appeal_risk)
+    except Exception as e:
+        print(f"[ERROR] analyze_appeal failed for {id}: {e}")
+        raise HTTPException(status_code=500, detail="Could not compute appeal recommendation")
+
+    analysis.pop("evidence_values", None)
+    return AppealAIRecommendation(
+        appeal_id=id,
+        original_decision=(original_decision or {}).get("decision"),
+        original_rationale=(original_decision or {}).get("rationale"),
+        already_resolved=bool(appeal.get("appeal_outcome")),
+        recorded_outcome=appeal.get("appeal_outcome"),
+        **analysis,
+    )
 
 
 @router.get("/analytics", response_model=AppealAnalyticsResponse)

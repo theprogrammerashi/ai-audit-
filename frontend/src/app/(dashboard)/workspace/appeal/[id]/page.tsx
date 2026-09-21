@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import {
   LayoutDashboard, CheckCircle, XCircle, ArrowUpCircle, AlertTriangle,
   Shield, Clock, ArrowLeft, Loader2, FileText, Check, AlertCircle, FileSearch, Edit3,
-  FolderOpen, X, Lock
+  FolderOpen, X, Lock, Sparkles, Scale, ListChecks
 } from "lucide-react";
 import api from "@/lib/api";
 
@@ -120,6 +120,7 @@ export default function WorkspaceAppealPage() {
   
   const [data, setData] = useState<any>(null);
   const [caseData, setCaseData] = useState<any>(null);
+  const [aiRec, setAiRec] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -166,7 +167,12 @@ export default function WorkspaceAppealPage() {
       try {
         const res = await api.get(`/appeal/intake-cases/${appealId}`);
         setData(res.data);
-        
+
+        // AI recommendation (Overturn / Uphold / Review) — mirrors prior-auth AI analysis
+        api.get(`/appeal/intake-cases/${appealId}/ai-recommendation`)
+          .then((r) => setAiRec(r.data))
+          .catch((e) => console.error("Failed to fetch AI recommendation:", e));
+
         // Fetch original case details
         if (res.data.case_id) {
           try {
@@ -503,6 +509,109 @@ export default function WorkspaceAppealPage() {
             </div>
           </div>
 
+          {/* ═══ AI Appeal Recommendation (Overturn / Uphold / Review) ═══ */}
+          {aiRec && (() => {
+            const rec = aiRec.recommendation as string;
+            const theme = rec === "OVERTURN"
+              ? { c: "var(--success)", bg: "rgba(22,163,74,0.08)", bd: "rgba(22,163,74,0.25)", Icon: ArrowUpCircle }
+              : rec === "UPHOLD"
+              ? { c: "var(--danger)", bg: "rgba(239,68,68,0.08)", bd: "rgba(239,68,68,0.25)", Icon: XCircle }
+              : { c: "var(--warning)", bg: "rgba(245,158,11,0.10)", bd: "rgba(245,158,11,0.30)", Icon: AlertTriangle };
+            const Icon = theme.Icon;
+            const conf = Math.round((aiRec.confidence || 0) * 100);
+            const statusChip = (s: string) => {
+              const m: Record<string, string> = { MET: "badge-success", NOT_MET: "badge-danger", UNKNOWN: "badge-warning" };
+              return <span className={`badge ${m[s] || "badge-info"}`} style={{ fontSize: "0.65rem" }}>{s.replace("_", " ")}</span>;
+            };
+            return (
+              <div className="card" style={{ padding: "0", border: `1.5px solid ${theme.bd}`, overflow: "hidden" }}>
+                {/* Header */}
+                <div style={{ padding: "14px 20px", background: theme.bg, borderBottom: `1px solid ${theme.bd}`, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", fontWeight: 700, fontSize: "0.95rem" }}>
+                    <Sparkles size={17} style={{ color: theme.c }} /> AI Appeal Analysis
+                  </div>
+                  <span style={{ fontSize: "0.78rem", fontWeight: 600, color: theme.c, background: "var(--bg-surface)", border: `1px solid ${theme.bd}`, borderRadius: "999px", padding: "3px 12px" }}>
+                    Confidence {conf}%
+                  </span>
+                </div>
+
+                <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "18px" }}>
+                  {/* Recommendation banner */}
+                  <div style={{ display: "flex", gap: "12px", alignItems: "flex-start" }}>
+                    <Icon size={26} style={{ color: theme.c, flexShrink: 0, marginTop: "2px" }} />
+                    <div>
+                      <div style={{ fontSize: "1.05rem", fontWeight: 700, color: theme.c }}>
+                        AI Recommends: {aiRec.recommendation_label}
+                      </div>
+                      <p style={{ margin: "4px 0 0", fontSize: "0.88rem", color: "var(--text-secondary)", lineHeight: 1.6 }}>
+                        {aiRec.recommendation_text}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Criteria assessment */}
+                  {Array.isArray(aiRec.criteria) && aiRec.criteria.length > 0 && (
+                    <div>
+                      <h4 style={{ fontSize: "0.78rem", textTransform: "uppercase", color: "var(--text-secondary)", margin: "0 0 8px", display: "flex", alignItems: "center", gap: "6px" }}>
+                        <ListChecks size={14} /> Policy Criteria — {aiRec.criteria_met_count}/{aiRec.criteria_evaluated_count} met (bar: {aiRec.criteria_required})
+                      </h4>
+                      <div style={{ border: "1px solid var(--border-default)", borderRadius: "8px", overflow: "hidden" }}>
+                        {aiRec.criteria.map((cr: any, i: number) => (
+                          <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: "10px", padding: "9px 12px", borderBottom: i < aiRec.criteria.length - 1 ? "1px solid var(--border-default)" : "none", background: cr.status === "MET" ? "rgba(22,163,74,0.04)" : cr.status === "NOT_MET" ? "rgba(239,68,68,0.04)" : "transparent" }}>
+                            <div>
+                              <div style={{ fontSize: "0.85rem", fontWeight: 600 }}>{cr.criterion}</div>
+                              <div style={{ fontSize: "0.78rem", color: "var(--text-tertiary)" }}>Requires {cr.threshold} · {cr.evidence}</div>
+                            </div>
+                            <div style={{ alignSelf: "center" }}>{statusChip(cr.status)}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Supports / Gaps */}
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
+                    <div style={{ background: "rgba(22,163,74,0.05)", border: "1px solid rgba(22,163,74,0.2)", borderRadius: "8px", padding: "12px" }}>
+                      <h4 style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "var(--success)", margin: "0 0 8px" }}>Supports Overturn</h4>
+                      {(aiRec.supporting_findings || []).length ? (
+                        <ul style={{ margin: 0, paddingLeft: "16px", fontSize: "0.82rem", lineHeight: 1.6, color: "var(--text-secondary)" }}>
+                          {aiRec.supporting_findings.map((f: string, i: number) => <li key={i}>{f}</li>)}
+                        </ul>
+                      ) : <div style={{ fontSize: "0.82rem", color: "var(--text-tertiary)", fontStyle: "italic" }}>No criteria met on the available evidence.</div>}
+                    </div>
+                    <div style={{ background: "rgba(239,68,68,0.05)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: "8px", padding: "12px" }}>
+                      <h4 style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "var(--danger)", margin: "0 0 8px" }}>Gaps / Not Met</h4>
+                      {(aiRec.gaps || []).length ? (
+                        <ul style={{ margin: 0, paddingLeft: "16px", fontSize: "0.82rem", lineHeight: 1.6, color: "var(--text-secondary)" }}>
+                          {aiRec.gaps.map((f: string, i: number) => <li key={i}>{f}</li>)}
+                        </ul>
+                      ) : <div style={{ fontSize: "0.82rem", color: "var(--text-tertiary)", fontStyle: "italic" }}>None — all evaluated criteria are met.</div>}
+                    </div>
+                  </div>
+
+                  {/* Risk both ways */}
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
+                    <div style={{ border: "1px solid var(--border-default)", borderRadius: "8px", padding: "12px" }}>
+                      <h4 style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "var(--text-secondary)", margin: "0 0 6px", display: "flex", alignItems: "center", gap: "5px" }}><Scale size={13} /> If Overturned</h4>
+                      <p style={{ margin: 0, fontSize: "0.82rem", lineHeight: 1.6, color: "var(--text-secondary)" }}>{aiRec.risk_if_overturned}</p>
+                    </div>
+                    <div style={{ border: "1px solid var(--border-default)", borderRadius: "8px", padding: "12px" }}>
+                      <h4 style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "var(--text-secondary)", margin: "0 0 6px", display: "flex", alignItems: "center", gap: "5px" }}><Scale size={13} /> If Upheld</h4>
+                      <p style={{ margin: 0, fontSize: "0.82rem", lineHeight: 1.6, color: "var(--text-secondary)" }}>{aiRec.risk_if_upheld}</p>
+                    </div>
+                  </div>
+
+                  {/* Original decision + evidence source */}
+                  <div style={{ fontSize: "0.8rem", color: "var(--text-tertiary)", display: "flex", flexWrap: "wrap", gap: "14px" }}>
+                    {aiRec.original_decision && <span>Original decision: <strong style={{ color: "var(--danger)" }}>{aiRec.original_decision}</strong></span>}
+                    {aiRec.appeal_risk_overturn_probability != null && <span>Appeal-risk model: <strong>{Math.round(aiRec.appeal_risk_overturn_probability * 100)}% overturn</strong></span>}
+                    <span>Evidence source: {aiRec.evidence_source}</span>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
           {data.appeal_outcome ? (
             <div className="card" style={{ padding: "24px", border: "1.5px solid var(--border-default)", background: "var(--bg-surface)" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px", flexWrap: "wrap", gap: "12px" }}>
@@ -562,19 +671,26 @@ export default function WorkspaceAppealPage() {
               </div>
 
               <div className="card" style={{ padding: "20px", border: "2px solid var(--border-default)" }}>
-                <h3 style={{ fontSize: "1rem", marginBottom: "20px" }}>Appeal Decision</h3>
+                <h3 style={{ fontSize: "1rem", marginBottom: "8px" }}>Appeal Decision</h3>
+                {aiRec && (
+                  <p style={{ margin: "0 0 16px", fontSize: "0.82rem", color: "var(--text-secondary)" }}>
+                    {aiRec.recommendation === "REVIEW"
+                      ? "AI could not score enough criteria — review the records and decide."
+                      : <>AI suggests <strong style={{ color: aiRec.recommendation === "OVERTURN" ? "var(--success)" : "var(--danger)" }}>{aiRec.recommendation_label}</strong> ({Math.round((aiRec.confidence || 0) * 100)}% confidence). Final call is yours.</>}
+                  </p>
+                )}
                 <div style={{ display: "flex", gap: "16px" }}>
                   <button
                     className="btn btn-warning"
-                    style={{ flex: 1, padding: "16px", fontSize: "1rem", gap: "8px", background: "var(--warning)", color: "white" }}
+                    style={{ flex: 1, padding: "16px", fontSize: "1rem", gap: "8px", background: "var(--warning)", color: "white", outline: aiRec?.recommendation === "OVERTURN" ? "3px solid rgba(22,163,74,0.5)" : "none", outlineOffset: "2px" }}
                     onClick={() => handleSubmitDecision("Overturned")}
                     disabled={isSubmitting}
                   >
-                    <CheckCircle size={20} /> Overturn Denial
+                    <CheckCircle size={20} /> Overturn Denial {aiRec?.recommendation === "OVERTURN" ? "★" : ""}
                   </button>
                   <button
                     className="btn btn-danger"
-                    style={{ flex: 1, padding: "16px", fontSize: "1rem", gap: "8px" }}
+                    style={{ flex: 1, padding: "16px", fontSize: "1rem", gap: "8px", outline: aiRec?.recommendation === "UPHOLD" ? "3px solid rgba(239,68,68,0.5)" : "none", outlineOffset: "2px" }}
                     onClick={() => handleSubmitDecision("Upheld")}
                     disabled={isSubmitting}
                   >

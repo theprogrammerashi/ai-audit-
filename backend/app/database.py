@@ -23,6 +23,13 @@ class DuckDBCompatConnection:
         self.rowcount = -1
         
     def execute(self, query, params=()):
+        # Every statement below already auto-commits individually, so explicit
+        # transaction-control statements (used by some bulk-import scripts for
+        # batching) are no-ops here rather than being passed through to SQLite,
+        # which would error with "no transaction is active" on COMMIT.
+        first_word = query.strip().split(None, 1)[0].upper() if query.strip() else ""
+        if first_word in ("BEGIN", "COMMIT", "ROLLBACK"):
+            return self.conn.cursor()
         cursor = self.conn.execute(query, params)
         self.description = cursor.description
         self.rowcount = cursor.rowcount
@@ -84,7 +91,35 @@ def init_database():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
-    
+
+    # ── Cases ──
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS cases (
+            id VARCHAR PRIMARY KEY,
+            case_number VARCHAR UNIQUE NOT NULL,
+            patient_mrn VARCHAR NOT NULL,
+            patient_name VARCHAR,
+            patient_dob VARCHAR,
+            patient_age INTEGER,
+            primary_diagnosis_code VARCHAR NOT NULL,
+            primary_diagnosis_display VARCHAR NOT NULL,
+            secondary_diagnoses VARCHAR,
+            document_type VARCHAR DEFAULT 'PRIOR_AUTH',
+            structured_case JSON,
+            status VARCHAR NOT NULL DEFAULT 'PENDING_REVIEW',
+            submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            submitted_by VARCHAR REFERENCES users(id)
+        )
+    """)
+    try:
+        conn.execute("ALTER TABLE cases ADD COLUMN assigned_nurse_id VARCHAR REFERENCES users(id)")
+    except Exception:
+        pass  # Column already exists
+    try:
+        conn.execute("UPDATE cases SET assigned_nurse_id = submitted_by WHERE assigned_nurse_id IS NULL AND submitted_by IS NOT NULL")
+    except Exception:
+        pass
+
     # ── Documents ──
     conn.execute("""
         CREATE TABLE IF NOT EXISTS documents (
@@ -169,8 +204,20 @@ def init_database():
     """)
     
     # ── Migrations for existing DB ──
-                                    # ── QA Verification Gating ──
-                # ── Appeals ──
+    try:
+        conn.execute("ALTER TABLE audit_results ADD COLUMN qa_verified BOOLEAN DEFAULT FALSE")
+    except Exception:
+        pass
+    try:
+        conn.execute("ALTER TABLE audit_results ADD COLUMN qa_verified_by VARCHAR")
+    except Exception:
+        pass
+    try:
+        conn.execute("ALTER TABLE audit_results ADD COLUMN qa_verified_at TIMESTAMP")
+    except Exception:
+        pass
+
+    # ── Appeals ──
     conn.execute("""
         CREATE TABLE IF NOT EXISTS appeals (
             id VARCHAR PRIMARY KEY,
@@ -212,6 +259,10 @@ def init_database():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
+    try:
+        conn.execute("ALTER TABLE appeal_intake_cases ADD COLUMN original_nurse_id VARCHAR")
+    except Exception:
+        pass
     # ── Reviewer Stats ──
     conn.execute("""
         CREATE TABLE IF NOT EXISTS reviewer_stats (

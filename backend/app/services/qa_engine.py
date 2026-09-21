@@ -5,12 +5,100 @@ Now includes human-readable AI explanation and stores override columns.
 """
 import uuid
 import json
+import re
 from datetime import datetime, timezone
 from typing import Optional
 
 
+_DIM_LABELS = [
+    ("clinical_accuracy", "Clinical Accuracy"),
+    ("documentation_completeness", "Documentation Completeness"),
+    ("policy_compliance", "Policy Compliance"),
+    ("consistency_score", "Consistency"),
+    ("timeliness_score", "Timeliness"),
+]
+
+
+_DIM_WEIGHT_F = {
+    "clinical_accuracy": 0.40,
+    "documentation_completeness": 0.20,
+    "policy_compliance": 0.20,
+    "consistency_score": 0.10,
+    "timeliness_score": 0.10,
+}
+
+
+_VERB = {"APPROVED": "approved", "DENIED": "denied", "APPROVE": "approved", "DENY": "denied"}
+_NOUN = {"APPROVED": "approval", "DENIED": "denial", "APPROVE": "approval", "DENY": "denial"}
+
+
+def _mismatch_clause(findings: list, decision: Optional[str], ai_recommendation: Optional[str]) -> str:
+    """
+    Describe a decision/policy disagreement, sourced from the POLICY_MISMATCH finding
+    that the engine recorded at audit time (so it always matches the score). Returns
+    "" when there is no such finding.
+    """
+    pm = next((f.get("description", "") for f in findings if f.get("type") == "POLICY_MISMATCH"), "")
+    if not pm:
+        return ""
+    # e.g. "Reviewer DENIED the case but AI analysis recommended APPROVED. 5/5 admission criteria were met."
+    m = re.search(r"\b(\d{1,2})\s*/\s*(\d{1,2})\b(?=[^/]*criteria)", pm)
+    crit = ""
+    if m:
+        met, tot = int(m.group(1)), int(m.group(2))
+        if 0 <= met <= tot <= 12:
+            crit = f" ({met}/{tot} admission criteria met)"
+    dv = _VERB.get((decision or "").upper())
+    dn = _NOUN.get((ai_recommendation or "").upper())
+    if dv and dn:
+        return f"the reviewer {dv} the case while the policy analysis pointed toward {dn}{crit}"
+    # fall back to trimming the raw finding text
+    return pm.rstrip(".").replace("AI analysis recommended", "the policy analysis recommended")
+
+
+def _dimension_note(key: str, score: int, positive: bool, *,
+                    findings: list, decision: Optional[str],
+                    ai_recommendation: Optional[str]) -> str:
+    """
+    One short, factual clause explaining a single dimension's score.
+    State what happened only - no advice, no "should", no next-step suggestions.
+    """
+    if key == "clinical_accuracy":
+        if positive:
+            return "the decision matches the policy analysis"
+        mm = _mismatch_clause(findings, decision, ai_recommendation)
+        if mm:
+            return mm
+        if score < 60:
+            return "the decision is not supported by the documented clinical criteria"
+        return "the decision only partly lines up with the documented clinical criteria"
+
+    if key == "documentation_completeness":
+        doc_issues = [f.get("description", "") for f in findings
+                      if f.get("type") == "DOCUMENTATION_GAP" and f.get("description")]
+        if positive:
+            return "the rationale is detailed, cites the specific vitals and labs, and references the policy"
+        if doc_issues:
+            return "; ".join(doc_issues).rstrip(".").lower()
+        return "the rationale is thin on detail and clinical values"
+
+    if key == "policy_compliance":
+        return ("the applicable policy code is cited in the rationale" if positive
+                else "the applicable policy code is not cited in the rationale")
+
+    if key == "consistency_score":
+        return ("the outcome matches how peers decided similar cases" if positive
+                else "the outcome differs from how peers decided similar cases")
+
+    # timeliness_score
+    sla_issue = next((f.get("description", "") for f in findings if f.get("type") == "SLA_BREACH"), "")
+    if positive:
+        return "the decision was made within the turnaround window"
+    return sla_issue.rstrip(".").lower() if sla_issue else "turnaround exceeded the SLA target"
+
+
 def _build_ai_explanation(
-    qa_score: int,
+    qa_score: float,
     clinical_accuracy: int,
     documentation_completeness: int,
     policy_compliance: int,
@@ -18,67 +106,117 @@ def _build_ai_explanation(
     timeliness_score: int,
     findings: list,
     missing_evidence: list,
-    decision: str,
-    ai_recommendation: str,
+    decision: Optional[str],
+    ai_recommendation: Optional[str],
 ) -> str:
-    """Generate a plain-English explanation of why the QA score was assigned."""
-    lines = [f"This decision received a QA score of {qa_score}/100."]
+    """
+    Plain-English, paragraph-form explanation of the QA score.
 
-    # Score band
+    Every statement is keyed to the dimension score it describes and always quotes
+    the real number, so the narrative can never contradict the per-dimension
+    breakdown shown in the UI.
+    """
+    dims = {
+        "clinical_accuracy": int(clinical_accuracy),
+        "documentation_completeness": int(documentation_completeness),
+        "policy_compliance": int(policy_compliance),
+        "consistency_score": int(consistency_score),
+        "timeliness_score": int(timeliness_score),
+    }
+    STRONG = 85          # at/above this a dimension is a strength
+
+    strong = [(k, l) for k, l in _DIM_LABELS if dims[k] >= STRONG]
+    concern = [(k, l) for k, l in _DIM_LABELS if dims[k] < STRONG]
+
     if qa_score >= 90:
-        lines.append("The review meets excellent clinical documentation standards.")
+        verdict = "a strong review"
     elif qa_score >= 80:
-        lines.append("The review is generally well-documented with minor improvement areas.")
+        verdict = "a solid review"
     elif qa_score >= 70:
-        lines.append("The review meets minimum standards but has notable documentation gaps.")
+        verdict = "an acceptable review with one weak area"
     elif qa_score >= 60:
-        lines.append("The review has significant documentation and compliance issues requiring attention.")
+        verdict = "a review with real weaknesses"
     else:
-        lines.append("The review has critical deficiencies that must be addressed immediately.")
+        verdict = "a review with critical weaknesses"
 
-    # Decision vs recommendation
-    if decision != ai_recommendation:
-        lines.append(
-            f"The reviewer chose to {decision} while AI analysis recommended {ai_recommendation}. "
-            f"This contradiction is the primary driver of the reduced clinical accuracy score ({clinical_accuracy}/100)."
+    para1 = f"QA score {qa_score:g}/100 - {verdict}."
+
+    # Paragraph 2 - what pulled the score down. Concerns are listed worst-first;
+    # the biggest weighted loss is prefixed "chiefly" only when it is clearly the
+    # driver (below 70, and not in a near-tie with the next one).
+    if concern:
+        concern = sorted(concern, key=lambda kl: (100 - dims[kl[0]]) * _DIM_WEIGHT_F[kl[0]], reverse=True)
+        losses = [(100 - dims[k]) * _DIM_WEIGHT_F[k] for k, _ in concern]
+        mark_chief = (
+            len(concern) > 1 and dims[concern[0][0]] < 70
+            and (len(losses) < 2 or losses[0] >= losses[1] * 1.4)
         )
+        parts = []
+        for i, (k, lbl) in enumerate(concern):
+            note = _dimension_note(k, dims[k], positive=False, findings=findings,
+                                   decision=decision, ai_recommendation=ai_recommendation)
+            prefix = "chiefly " if (i == 0 and mark_chief) else ""
+            parts.append(f"{prefix}{lbl} {dims[k]}/100 - {note}")
+        para2 = "Points lost: " + "; ".join(parts) + "."
     else:
-        lines.append(f"The reviewer's {decision} decision aligns with the AI recommendation (+).")
+        para2 = "No dimension scored below 85."
 
-    # Documentation breakdown
-    doc_issues = [f for f in findings if f.get("type") == "DOCUMENTATION_GAP"]
-    if doc_issues:
-        descs = "; ".join(f.get("description", "") for f in doc_issues)
-        lines.append(
-            f"Documentation Completeness scored {documentation_completeness}/100. "
-            f"Issues found: {descs}."
-        )
-    else:
-        lines.append(f"Documentation Completeness scored {documentation_completeness}/100 — rationale was well-structured.")
-
-    # Missing evidence
     if missing_evidence:
-        evidence_list = "; ".join(missing_evidence)
-        lines.append(f"The following clinical values were extracted but not cited in the rationale: {evidence_list}.")
+        para2 += (" Values in the case but not quoted in the rationale: "
+                  + "; ".join(missing_evidence).rstrip(".") + ".")
 
-    # Policy compliance
-    lines.append(
-        f"Policy Compliance scored {policy_compliance}/100. "
-        + ("Policy code was properly cited." if policy_compliance >= 80 else "No policy code was referenced in the rationale.")
+    # Paragraph 3 - the strengths, with real numbers.
+    if strong:
+        parts = []
+        for k, lbl in strong:
+            note = _dimension_note(k, dims[k], positive=True, findings=findings,
+                                   decision=decision, ai_recommendation=ai_recommendation)
+            parts.append(f"{lbl} {dims[k]}/100 - {note}")
+        para3 = "Strengths: " + "; ".join(parts) + "."
+    else:
+        para3 = ""
+
+    return "\n\n".join(p for p in (para1, para2, para3) if p)
+
+
+def rebuild_qa_explanation(audit_row: dict, decision: Optional[str] = None,
+                           ai_recommendation: Optional[str] = None) -> str:
+    """
+    Regenerate the QA explanation from a stored audit_results row so the text
+    always matches the (possibly QA-overridden) dimension scores on display.
+    """
+    def _pick(*keys, default=0):
+        for k in keys:
+            v = audit_row.get(k)
+            if v is not None:
+                return v
+        return default
+
+    findings = audit_row.get("findings") or []
+    if isinstance(findings, str):
+        try:
+            findings = json.loads(findings)
+        except Exception:
+            findings = []
+    missing = audit_row.get("missing_evidence") or []
+    if isinstance(missing, str):
+        try:
+            missing = json.loads(missing)
+        except Exception:
+            missing = []
+
+    return _build_ai_explanation(
+        qa_score=_pick("qa_override_score", "qa_score", default=0),
+        clinical_accuracy=int(_pick("clinical_accuracy_override", "clinical_accuracy", default=0)),
+        documentation_completeness=int(_pick("documentation_completeness_override", "documentation_completeness", default=0)),
+        policy_compliance=int(_pick("policy_compliance_override", "policy_compliance", default=0)),
+        consistency_score=int(_pick("consistency_score_override", "consistency_score", default=0)),
+        timeliness_score=int(_pick("timeliness_score_override", "timeliness_score", default=0)),
+        findings=findings,
+        missing_evidence=missing,
+        decision=decision,
+        ai_recommendation=ai_recommendation,
     )
-
-    # Consistency
-    lines.append(f"Consistency Score: {consistency_score}/100.")
-
-    # Timeliness
-    lines.append(f"Timeliness Score: {timeliness_score}/100.")
-
-    # Recommendations
-    recs = [f.get("recommendation", "") for f in findings if f.get("recommendation")]
-    if recs:
-        lines.append("Recommendations: " + " | ".join(recs[:3]))
-
-    return " ".join(lines)
 
 
 def compute_qa_audit(

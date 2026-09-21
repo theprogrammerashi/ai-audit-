@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from app.database import get_db
 from app.api.deps import get_current_user, get_scoped_nurse_ids, require_qa_lead_or_admin
 from app.schemas.audit import AuditResultResponse, AuditFinding, AuditQueueItem
+from app.services.qa_engine import rebuild_qa_explanation
 
 router = APIRouter(prefix="/audit", tags=["Audit"])
 
@@ -80,10 +81,11 @@ async def get_audit_result(
     # Access control — check this case belongs to a nurse in scope
     nurse_ids = get_scoped_nurse_ids(user, db)
     nd = db.execute(
-        "SELECT reviewer_id FROM nurse_decisions WHERE id = ?",
+        "SELECT reviewer_id, decision FROM nurse_decisions WHERE id = ?",
         [audit_dict.get("decision_id", "")]
     ).fetchone()
-    
+    nurse_decision = nd[1] if nd else None
+
     has_access = False
     if audit_dict.get("submitted_by") in nurse_ids:
         has_access = True
@@ -114,6 +116,27 @@ async def get_audit_result(
     audit_dict["effective_score"] = (
         audit_dict.get("qa_override_score") or audit_dict.get("qa_score")
     )
+
+    # Regenerate the QA rationale from the (possibly overridden) dimension scores so
+    # the narrative can never contradict the per-dimension breakdown shown in the UI.
+    ai_recommendation = None
+    try:
+        pm = db.execute(
+            "SELECT recommendation FROM policy_matches WHERE case_id = ? ORDER BY created_at DESC LIMIT 1",
+            [audit_dict["case_id"]],
+        ).fetchone()
+        if pm and pm[0]:
+            ai_recommendation = "APPROVED" if pm[0] in (
+                "INPATIENT_ADMISSION_SUPPORTED", "APPROVE", "APPROVED", "SUPPORTED"
+            ) else "DENIED"
+    except Exception:
+        pass
+    try:
+        audit_dict["qa_ai_explanation"] = rebuild_qa_explanation(
+            audit_dict, decision=nurse_decision, ai_recommendation=ai_recommendation
+        )
+    except Exception as e:
+        print(f"[WARN] rebuild_qa_explanation failed for {case_id}: {e}")
 
     return AuditResultResponse(**audit_dict)
 
